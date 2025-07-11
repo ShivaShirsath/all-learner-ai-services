@@ -4300,7 +4300,7 @@ export class ScoresController {
   async GetContentWordbyUser(
     @Req() request: FastifyRequest,
     @Query('language') language: string,
-    @Query() { contentlimit = 5 },
+    @Query('contentlimit') contentlimit: number,
     @Query() { gettargetlimit = 5 },
     @Query(
       'tags',
@@ -4371,9 +4371,7 @@ export class ScoresController {
       const url = process.env.ALL_CONTENT_SERVICE_API;
 
       // Add the check for the limit
-      if (contentlimit < 5) {
-        contentlimit = 5;
-      } else if (contentlimit > 20) {
+      if (contentlimit > 20) {
         contentlimit = 20;
       }
 
@@ -4468,7 +4466,7 @@ export class ScoresController {
   async GetContentSentencebyUser(
     @Req() request: FastifyRequest,
     @Query('language') language,
-    @Query() { contentlimit = 5 },
+    @Query('contentlimit') contentlimit: number,
     @Query() { gettargetlimit = 5 },
     @Query(
       'tags',
@@ -4553,10 +4551,7 @@ export class ScoresController {
       const url = process.env.ALL_CONTENT_SERVICE_API;
 
       // Add the check for the limit
-      // Add the check for the limit
-      if (contentlimit < 5) {
-        contentlimit = 5;
-      } else if (contentlimit > 20) {
+      if (contentlimit > 20) {
         contentlimit = 20;
       }
 
