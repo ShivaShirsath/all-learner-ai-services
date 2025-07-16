@@ -68,6 +68,9 @@ export class CreateLearnerProfileDto {
 
   @ApiPropertyOptional()
   mechanics_id: string;
+
+  @ApiPropertyOptional()
+  milestone: string;
 }
 
 export class OutputDTO {

@@ -3004,7 +3004,7 @@ export class ScoresController {
         CreateLearnerProfileDto.sub_session_id,
         CreateLearnerProfileDto.language,
       );
-      
+    
       // Recomendation api call
       try {
         if (process.env.IS_RECOMENDATION === "true") {
@@ -3015,6 +3015,7 @@ export class ScoresController {
             user_id,
             CreateLearnerProfileDto.contentType,
             recomendation_cout,
+            CreateLearnerProfileDto.milestone,
           )
         }
       } catch (error) {
