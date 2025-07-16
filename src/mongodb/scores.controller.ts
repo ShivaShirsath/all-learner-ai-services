@@ -13,6 +13,7 @@ import {
   ParseArrayPipe,
   UseGuards,
   Req,
+  SetMetadata,
 } from '@nestjs/common';
 import { ScoresService } from './scores.service';
 import { CreateLearnerProfileDto } from './dto/CreateLearnerProfile.dto';
@@ -38,6 +39,7 @@ import or_config from './config/language/or';
 import hi_config from './config/language/hi';
 import kn_config from './config/language/kn';
 
+const Public = () => SetMetadata('isPublic', true);
 @ApiTags('scores')
 @UseGuards(JwtAuthGuard)
 @Controller('scores')
@@ -3832,7 +3834,8 @@ export class ScoresController {
     }
   }
 
-  @Get('/GetTargets/user')
+  @Public()
+  @Get('/GetTargets/user/:userId')
   @ApiOperation({ summary: 'Get Targets character by user id' })
   @ApiResponse({
     status: 200,
@@ -3862,10 +3865,10 @@ export class ScoresController {
   async GetTargetsbyUser(
     @Req() request: FastifyRequest,
     @Query('language') language: string,
+    @Query('user_id') user_id: string,
     @Res() response: FastifyReply,
   ) {
     try {
-      const user_id = (request as any).user.virtual_id.toString();
       const targetResult = await this.scoresService.getTargetsByUser(
         user_id,
         language,
