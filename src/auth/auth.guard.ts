@@ -10,14 +10,27 @@ import axios from 'axios';
 import { createHash } from 'crypto';
 import { Request } from 'express';
 import * as jose from 'jose';
+import { Reflector } from '@nestjs/core';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
   constructor(
-    private jwtService: JwtService
+    private jwtService: JwtService,
+    private reflector: Reflector, 
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+
+    // Check for public routs
+    const isPublic = this.reflector.get<boolean>(
+      'isPublic',
+      context.getHandler(),
+    );
+
+    if (isPublic) {
+      return true; 
+    }
+    
     const request = context.switchToHttp().getRequest<Request>();
     const authHeader = request.headers.authorization;
     if (!authHeader) {

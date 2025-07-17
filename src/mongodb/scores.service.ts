@@ -3237,7 +3237,8 @@ export class ScoresService {
     responseText: string,
     userId: string,
     contentType: string,
-    count: number
+    count: number,
+    level:string
   ): Promise<any> {
     const data = JSON.stringify({
       original_text: originalText,
@@ -3245,6 +3246,7 @@ export class ScoresService {
       user_id: userId,
       content_type: contentType,
       count: count,
+      level: level
     });
 
     const config = {
