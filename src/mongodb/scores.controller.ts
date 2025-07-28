@@ -3010,12 +3010,9 @@ export class ScoresController {
         if (process.env.IS_RECOMENDATION === "true") {
           const recomendation_cout = 5;
           this.scoresService.getRecommendation(
-            originalText,
-            responseText,
             user_id,
-            CreateLearnerProfileDto.contentType,
-            recomendation_cout,
             CreateLearnerProfileDto.milestone,
+            CreateLearnerProfileDto.contentType
           )
         }
       } catch (error) {
@@ -6462,6 +6459,37 @@ export class ScoresController {
         Famalarity: famalarity_Data,
       };
       return response.status(HttpStatus.OK).send(finalResponse);
+    } catch (err) {
+      return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
+        status: 'error',
+        message: 'Server error - ' + err,
+      });
+    }
+  }
+
+  @Post('/getRecommendation')
+  async getRecommendation(
+    @Req() request:FastifyRequest,
+    @Res() response: FastifyReply, 
+    @Body() data: any) {
+    try {
+      const user_id = (request as any).user.virtual_id.toString();
+      const language = (request.body as any).language;
+      const content_type = (request.body as any).content_type;
+      
+        let milestoneData: any = await this.scoresService.getlatestmilestone(
+          user_id,
+          language,
+        );
+        let milestone_level = milestoneData[0]?.milestone_level || 'm0';
+       
+        let recommendationData = await this.scoresService.getRecommendation(
+          user_id,
+          milestone_level,
+          content_type
+        )
+    
+      return response.status(HttpStatus.OK).send(recommendationData);
     } catch (err) {
       return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
         status: 'error',
