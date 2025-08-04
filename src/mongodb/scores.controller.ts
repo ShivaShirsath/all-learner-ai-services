@@ -4208,8 +4208,8 @@ export class ScoresController {
         });
       }
 
-      const url = process.env.ALL_CONTENT_SERVICE_API;
-
+      const url = process.env.ALL_CONTENT_SERVICE_API ;
+     
       // Add the check for the limit
       if (contentlimit < 5) {
         contentlimit = 5;
@@ -4372,7 +4372,7 @@ export class ScoresController {
         }
       }
 
-      const url = process.env.ALL_CONTENT_SERVICE_API;
+      const url = process.env.ALL_CONTENT_SERVICE_API ;
 
       // Add the check for the limit
       if (contentlimit > 20) {
@@ -4552,7 +4552,7 @@ export class ScoresController {
         }
       }
 
-      const url = process.env.ALL_CONTENT_SERVICE_API;
+      const url = process.env.ALL_CONTENT_SERVICE_API ;
 
       // Add the check for the limit
       if (contentlimit > 20) {
@@ -4723,7 +4723,7 @@ export class ScoresController {
         }
       }
 
-      const url = process.env.ALL_CONTENT_SERVICE_API;
+      const url = process.env.ALL_CONTENT_SERVICE_API ;
 
       // Add the check for the limit
       if (contentlimit < 5) {
