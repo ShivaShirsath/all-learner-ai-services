@@ -45,13 +45,16 @@ export class TowreService {
     return createdWords;
   }
 
-  async getLatestCorrectWords(user_id: string, authHeader?: string): Promise<any[]> {
+  async getLatestCorrectWords(
+    user_id: string,
+    authHeader?: string,
+    limit: number = 5
+  ): Promise<any[]> {
     const latestWords = await this.correctPracticeWordModel
       .find({ user_id })
       .sort({ createdAt: -1 })
-      .limit(5)
+      .limit(limit)
       .exec();
-
     // Extract content IDs from the latest words
     const contentIds = latestWords.map(word => word.content_id);
 
@@ -61,14 +64,14 @@ export class TowreService {
 
     try {
       // Make API call to get content data
-      const contentApiUrl = this.configService.get<string>('ALL_CONTENT_API');
+      const contentApiUrl = process.env.ALL_CONTENT_API + 'getByIds';
       const contentIdsString = contentIds.join(',');
       const response = await this.httpService.axiosRef.get(
-        `${contentApiUrl}${contentIdsString}`,
+        `${contentApiUrl}?ids=${contentIdsString}`,
         {
           headers: {
-            'Authorization': authHeader
-          }
+            Authorization: authHeader,
+          },
         }
       );
 
