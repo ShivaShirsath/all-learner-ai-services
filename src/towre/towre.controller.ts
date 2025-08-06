@@ -7,6 +7,7 @@ import {
   HttpStatus,
   Param,
   Post,
+  Query,
   Req,
   Res,
   UseGuards,
@@ -17,6 +18,7 @@ import {
   ApiForbiddenResponse,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
@@ -32,7 +34,7 @@ import { FastifyReply, FastifyRequest } from 'fastify';
 @ApiTags('towre')
 @Controller('/api/towre')
 export class TowreController {
-  constructor(private readonly towreService: TowreService) {}
+  constructor(private readonly towreService: TowreService) { }
 
   @Post('/addRecord')
   @ApiOperation({ summary: 'Add a new TOWRE record' })
@@ -52,7 +54,7 @@ export class TowreController {
             {
               title: 'good',
               isCorrect: true,
-            },    
+            },
           ],
           audio_file_path: '/audio/user123.wav',
           session_id: 'sess456',
@@ -123,7 +125,7 @@ export class TowreController {
       });
     }
   }
-  
+
   // Add correct data api.
   @Post('/addCorrectWord')
   @ApiOperation({ summary: 'Add correct practice words' })
@@ -160,7 +162,8 @@ export class TowreController {
   }
 
   @Get('/getCorrectWords')
-  @ApiOperation({ summary: 'Get latest 5 correct practice words' })
+  @ApiOperation({ summary: 'Get latest correct practice words with optional limit' })
+  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Number of latest correct words to fetch (default: 5)' })
   @ApiResponse({
     status: 200,
     description: 'Latest correct practice words retrieved successfully',
@@ -172,11 +175,17 @@ export class TowreController {
   async getCorrectWords(
     @Req() request: FastifyRequest,
     @Res() response: FastifyReply,
+    @Query('limit') limit?: string
   ) {
     try {
       const user_id = (request as any).user.virtual_id.toString();
       const authHeader = request.headers.authorization;
-      const latestWords = await this.towreService.getLatestCorrectWords(user_id, authHeader);
+
+      const parsedLimit = parseInt(limit);
+      const finalLimit = !isNaN(parsedLimit) && parsedLimit > 0 ? parsedLimit : 5;
+
+      const latestWords = await this.towreService.getLatestCorrectWords(user_id, authHeader, finalLimit);
+
       return response.status(HttpStatus.OK).send({
         status: 'success',
         message: 'Latest correct practice words retrieved successfully',
