@@ -220,7 +220,7 @@ export class ScoresController {
           pause_count = CreateLearnerProfileDto.pause_count;
         }
 
-         // add the vocabulary logic
+        // add the vocabulary logic
         await this.scoresService.vocabularyCount(
           user_id,
           originalText,
@@ -599,7 +599,7 @@ export class ScoresController {
 
         responseText = CreateLearnerProfileDto.output[0].source;
 
-         // add the vocabulary logic
+        // add the vocabulary logic
         await this.scoresService.vocabularyCount(
           user_id,
           originalText,
@@ -977,8 +977,8 @@ export class ScoresController {
 
         responseText = CreateLearnerProfileDto.output[0].source;
 
-         // add the vocabulary logic
-         const vocabulary = await this.scoresService.vocabularyCount(
+        // add the vocabulary logic
+        const vocabulary = await this.scoresService.vocabularyCount(
           user_id,
           originalText,
           responseText,
@@ -1355,9 +1355,9 @@ export class ScoresController {
         }
 
         responseText = CreateLearnerProfileDto.output[0].source;
-        responseText = await this.scoresService.mergeResponseWordsUsingOriginal(originalText,responseText);
+        responseText = await this.scoresService.mergeResponseWordsUsingOriginal(originalText, responseText);
 
-         // add the vocabulary logic
+        // add the vocabulary logic
         await this.scoresService.vocabularyCount(
           user_id,
           originalText,
@@ -1792,7 +1792,7 @@ export class ScoresController {
           responseText = CreateLearnerProfileDto.response_text;
           pause_count = CreateLearnerProfileDto.pause_count;
         }
-         // add the vocabulary logic
+        // add the vocabulary logic
         await this.scoresService.vocabularyCount(
           user_id,
           originalText,
@@ -3004,7 +3004,7 @@ export class ScoresController {
         CreateLearnerProfileDto.sub_session_id,
         CreateLearnerProfileDto.language,
       );
-    
+
       // Recomendation api call
       try {
         if (process.env.IS_RECOMENDATION === "true") {
@@ -4208,8 +4208,8 @@ export class ScoresController {
         });
       }
 
-      const url = process.env.ALL_CONTENT_SERVICE_API ;
-     
+      const url = process.env.ALL_CONTENT_SERVICE_API;
+
       // Add the check for the limit
       if (contentlimit < 5) {
         contentlimit = 5;
@@ -4305,6 +4305,7 @@ export class ScoresController {
     @Req() request: FastifyRequest,
     @Query('language') language: string,
     @Query('contentlimit') contentlimit: number,
+    @Query('multilingual') multilingual: string,
     @Query() { gettargetlimit = 5 },
     @Query(
       'tags',
@@ -4372,7 +4373,7 @@ export class ScoresController {
         }
       }
 
-      const url = process.env.ALL_CONTENT_SERVICE_API ;
+      const url = process.env.ALL_CONTENT_SERVICE_API;
 
       // Add the check for the limit
       if (contentlimit > 20) {
@@ -4384,6 +4385,7 @@ export class ScoresController {
         language: language || 'ta',
         contentType: 'Word',
         limit: contentlimit || 5,
+        multilingual: multilingual,
         tags: tags || [],
         cLevel: contentLevel,
         complexityLevel: complexityLevel,
@@ -4419,6 +4421,14 @@ export class ScoresController {
         contentForTokenArr = newContent.data.contentForToken;
       } else {
         contentForTokenArr = [];
+      }
+
+      // Filter out multilingual data if multilingual is false
+      if (multilingual !== 'true') {
+        contentArr = contentArr.map((contentObject) => {
+          const { multilingual, ...contentWithoutMultilingual } = contentObject;
+          return contentWithoutMultilingual;
+        });
       }
 
       // Total Syllable count added
@@ -4552,7 +4562,7 @@ export class ScoresController {
         }
       }
 
-      const url = process.env.ALL_CONTENT_SERVICE_API ;
+      const url = process.env.ALL_CONTENT_SERVICE_API;
 
       // Add the check for the limit
       if (contentlimit > 20) {
@@ -4723,7 +4733,7 @@ export class ScoresController {
         }
       }
 
-      const url = process.env.ALL_CONTENT_SERVICE_API ;
+      const url = process.env.ALL_CONTENT_SERVICE_API;
 
       // Add the check for the limit
       if (contentlimit < 5) {
@@ -5004,7 +5014,7 @@ export class ScoresController {
         if (['en', 'kn'].includes(getSetResult.language.toLowerCase()) && userLevelNum < 10) {
           // Determine pass threshold based on milestone level.
           // For M4+ (e.g. level >= 4) threshold is 3.0; otherwise, 2.6.
-          
+
           const passThreshold = userLevelNum >= 4 ? 3.0 : 2.6;
 
           // Retrieve all audio records for the given sub-session and language 'en' or kn
