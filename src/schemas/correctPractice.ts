@@ -21,8 +21,14 @@ export class correct_practice_word extends Document {
   @Prop({ required: true })
   session_id: string;
 
-  @Prop({ required: true })
-  subsession_id: string;
+  @Prop({ required: false, default: false})
+  practiced?: boolean; 
+
+  @Prop({ required: false, default: false})
+  learned?: boolean; 
+
+  @Prop({ required: false, default: false})
+  understood?: boolean; 
 
   @Prop({ default: Date.now })
   createdAt: Date;

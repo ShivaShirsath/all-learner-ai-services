@@ -36,7 +36,7 @@ export class TowreService {
     );
   }
 
-  async addCorrectWords(user_id: string, data: CreateCorrectPracticeWordDto): Promise<correct_practice_word[]> {
+  async addCorrectWords(user_id: string, data: CreateCorrectPracticeWordDto): Promise<correct_practice_wordDocument[]> {
     const wordsWithUserId = data.correctPracticeWords.map(word => ({
       ...word,
       user_id
@@ -48,14 +48,25 @@ export class TowreService {
   async getLatestCorrectWords(
     user_id: string,
     authHeader?: string,
-    limit: number = 5
+    limit: number = 5,
+    filters?: { practiced?: boolean; learned?: boolean; understood?: boolean }
   ): Promise<any[]> {
+    const query: any = { user_id };
+
+    if (filters) {
+      if (filters.practiced !== undefined) query.practiced = filters.practiced;
+      if (filters.learned !== undefined) query.learned = filters.learned;
+      if (filters.understood !== undefined) query.understood = filters.understood;
+    }
     const latestWords = await this.correctPracticeWordModel
-      .find({ user_id })
-      .sort({ createdAt: -1 })
-      .limit(limit)
+      .aggregate([
+        { $match: query },
+        { $sort: { createdAt: -1 } },
+        { $group: { _id: '$content_id', latestRecord: { $first: '$$ROOT' } } },
+        { $replaceRoot: { newRoot: '$latestRecord' } },
+        { $limit: limit }
+      ])
       .exec();
-    // Extract content IDs from the latest words
     const contentIds = latestWords.map(word => word.content_id);
 
     if (contentIds.length === 0) {
@@ -63,25 +74,22 @@ export class TowreService {
     }
 
     try {
-      // Make API call to get content data
       const contentApiUrl = process.env.ALL_CONTENT_API + 'getByIds';
       const contentIdsString = contentIds.join(',');
       const response = await this.httpService.axiosRef.get(
         `${contentApiUrl}?ids=${contentIdsString}`,
         {
-          headers: {
-            Authorization: authHeader,
-          },
+          headers: { Authorization: authHeader },
         }
       );
 
-      const contentData = response.data?.contents || []
-      return contentData;
+      return response.data?.contents || [];
     } catch (error) {
       console.error('Error fetching content data:', error);
       return latestWords;
     }
   }
+
 
   async addCorrectVocabularyWord(user_id: string, data: CreateCorrectVocabularyWordDto) {
     const wordsWithUserId = data.correctVocabularyWords.map(word => ({
@@ -90,5 +98,33 @@ export class TowreService {
     }));
     const createdWords = await this.correctVocabularyWordModel.insertMany(wordsWithUserId);
     return createdWords;
+  }
+
+  async bulkUpdateCorrectWords(
+    user_id: string,
+    updates: Array<{ content_id: string; practiced?: boolean; learned?: boolean; understood?: boolean }>
+  ): Promise<{ updatedContentIds: string[] }> {
+    const updatedContentIds: string[] = [];
+
+    for (const update of updates) {
+      const updateData: any = {};
+
+      if (update.practiced !== undefined) updateData.practiced = update.practiced;
+      if (update.learned !== undefined) updateData.learned = update.learned;
+      if (update.understood !== undefined) updateData.understood = update.understood;
+
+      if (Object.keys(updateData).length > 0) {
+        const result = await this.correctPracticeWordModel.updateMany(
+          { user_id, content_id: update.content_id },
+          { $set: updateData }
+        );
+
+        if (result.modifiedCount > 0) {
+          updatedContentIds.push(update.content_id);
+        }
+      }
+    }
+
+    return { updatedContentIds };
   }
 }

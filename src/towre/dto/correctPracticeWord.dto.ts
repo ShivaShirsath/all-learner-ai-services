@@ -1,6 +1,6 @@
-import { IsString, IsOptional, IsArray, ValidateNested, IsDateString } from 'class-validator';
+import { IsString, IsOptional, IsArray, ValidateNested, IsDateString, IsBoolean } from 'class-validator';
 import { Type } from 'class-transformer';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class CorrectPracticeWordDto {
   @ApiProperty()
@@ -23,9 +23,17 @@ export class CorrectPracticeWordDto {
   @IsString()
   session_id: string;
 
-  @ApiProperty()
-  @IsString()
-  subsession_id: string;
+  @IsOptional()
+  @IsBoolean()
+  practiced?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  learned?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  understood?: boolean;
 
 }
 

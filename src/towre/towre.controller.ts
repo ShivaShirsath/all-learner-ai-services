@@ -7,6 +7,7 @@ import {
   HttpStatus,
   Param,
   Post,
+  Put,
   Query,
   Req,
   Res,
@@ -162,8 +163,11 @@ export class TowreController {
   }
 
   @Get('/getCorrectWords')
-  @ApiOperation({ summary: 'Get latest correct practice words with optional limit' })
+  @ApiOperation({ summary: 'Get latest correct practice words with optional limit and filters' })
   @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Number of latest correct words to fetch (default: 5)' })
+  @ApiQuery({ name: 'practiced', required: false, type: Boolean, description: 'Filter by practiced status' })
+  @ApiQuery({ name: 'learned', required: false, type: Boolean, description: 'Filter by learned status' })
+  @ApiQuery({ name: 'understood', required: false, type: Boolean, description: 'Filter by understood status' })
   @ApiResponse({
     status: 200,
     description: 'Latest correct practice words retrieved successfully',
@@ -175,7 +179,10 @@ export class TowreController {
   async getCorrectWords(
     @Req() request: FastifyRequest,
     @Res() response: FastifyReply,
-    @Query('limit') limit?: string
+    @Query('limit') limit?: string,
+    @Query('practiced') practiced?: string,
+    @Query('learned') learned?: string,
+    @Query('understood') understood?: string
   ) {
     try {
       const user_id = (request as any).user.virtual_id.toString();
@@ -184,7 +191,14 @@ export class TowreController {
       const parsedLimit = parseInt(limit);
       const finalLimit = !isNaN(parsedLimit) && parsedLimit > 0 ? parsedLimit : 5;
 
-      const latestWords = await this.towreService.getLatestCorrectWords(user_id, authHeader, finalLimit);
+      // Parse boolean filters
+      const filters = {
+        practiced: practiced === 'true' ? true : practiced === 'false' ? false : undefined,
+        learned: learned === 'true' ? true : learned === 'false' ? false : undefined,
+        understood: understood === 'true' ? true : understood === 'false' ? false : undefined,
+      };
+
+      const latestWords = await this.towreService.getLatestCorrectWords(user_id, authHeader, finalLimit, filters);
 
       return response.status(HttpStatus.OK).send({
         status: 'success',
@@ -224,6 +238,68 @@ export class TowreController {
         status: 'success',
         message: 'Correct recalled words added successfully',
         data: savedWords,
+      });
+    } catch (err) {
+      return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
+        status: 'error',
+        message: 'Server error - ' + err.message,
+      });
+    }
+  }
+
+  @Put('/updateCorrectWords')
+  @ApiOperation({ summary: 'Bulk update practiced, learned, and understood status for multiple content IDs' })
+  @ApiBody({
+    description: 'Bulk update payload with content IDs and their status updates',
+    schema: {
+      example: {
+        updates: [
+          {
+            content_id: 'content123',
+            practiced: true,
+            learned: false,
+            understood: true
+          },
+          {
+            content_id: 'content456',
+            practiced: true,
+            learned: true,
+            understood: true
+          }
+        ]
+      }
+    }
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Bulk update completed successfully',
+    schema: {
+      example: {
+        status: 'success',
+        message: 'Bulk update completed successfully',
+        data: {
+          updatedContentIds: ['content123', 'content456']
+        }
+      }
+    }
+  })
+  @ApiResponse({
+    status: 500,
+    description: 'Internal server error',
+  })
+  async bulkUpdateCorrectWords(
+    @Req() request: FastifyRequest,
+    @Res() response: FastifyReply,
+    @Body() body: { updates: Array<{ content_id: string; practiced?: boolean; learned?: boolean; understood?: boolean }> }
+  ) {
+    try {
+      const user_id = (request as any).user.virtual_id.toString();
+      const result = await this.towreService.bulkUpdateCorrectWords(user_id, body.updates);
+      
+      return response.status(HttpStatus.OK).send({
+        status: 'success',
+        message: 'Bulk update completed successfully',
+        data: result,
       });
     } catch (err) {
       return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
