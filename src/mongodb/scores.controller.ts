@@ -3136,6 +3136,8 @@ export class ScoresController {
       let DenoisedresponseText;
       let asrOutBeforeDenoised;
 
+      let highSimilarityThreshold = 0.6
+
       let telguVowelSignArr = [
         'ా',
         'ి',
@@ -3296,6 +3298,47 @@ export class ScoresController {
           //if the response has higher then response will be same as ASR output
           responseText = CreateLearnerProfileDto.output[0].source;
         }
+
+        // Update scores after final responseText is determined (only for Word content type)
+        if (CreateLearnerProfileDto.contentType.toLowerCase() === 'word') {
+        
+          // Check if original text and final response text are the same or very similar
+          const isSameText = CreateLearnerProfileDto.original_text === responseText.replace(/\s+/g, '');
+          const similarityScore = await this.scoresService.getTextSimilarity(
+            CreateLearnerProfileDto.original_text,
+            responseText
+          );
+          const isHighSimilarity = similarityScore >= highSimilarityThreshold; 
+              
+          if (isSameText || isHighSimilarity) {
+            // Update scores in the selected output
+            if (CreateLearnerProfileDto.output[0]?.nBestTokens) {
+              CreateLearnerProfileDto.output[0].nBestTokens.forEach((element: any) => {
+                element.tokens.forEach((token: any) => {
+                  const char = Object.keys(token)[0];
+                  const originalScore = Object.values(token)[0] as number;
+                  
+                  // Update score: 0.7 + original score (make it >= 0.7 so it's not a target)
+                  const updatedScore = 0.7 + (originalScore / 100);
+                  token[char] = updatedScore;
+                });
+              });
+            }
+            
+            // Also update scores in tokenArr if it exists
+            if (tokenArr && tokenArr.length > 0) {
+              tokenArr.forEach((tokenObj: any) => {
+                const char = Object.keys(tokenObj)[0];
+                const originalScore = Object.values(tokenObj)[0] as number;
+                
+                // Update score: 0.7 + original score (make it >= 0.7 so it's not a target)
+                const updatedScore = 0.7 + (originalScore / 100);
+                tokenObj[char] = updatedScore;
+              });
+            }
+          }
+        }
+
         let constructText = '';
 
         // Get All hexcode for this selected language
@@ -3502,6 +3545,7 @@ export class ScoresController {
           let score: any = value.charvalue;
 
           let identification_status = 0;
+
           if (score >= 0.9) {
             identification_status = 1;
           } else if (score >= 0.4) {
@@ -3642,12 +3686,11 @@ export class ScoresController {
         let wer = textEvalMatrices.wer;
         let cercal = textEvalMatrices.cer * 2;
         let charCount = Math.abs(
-          CreateLearnerProfileDto.original_text.length -
-          CreateLearnerProfileDto.output[0].source.length,
+          CreateLearnerProfileDto.original_text.length - responseText.length,
         );
         let wordCount = Math.abs(
           CreateLearnerProfileDto.original_text.split(' ').length -
-          CreateLearnerProfileDto.output[0].source.split(' ').length,
+          responseText.split(' ').length,
         );
         let repetitions = reptitionCount;
         let pauseCount = pause_count;
@@ -3694,11 +3737,11 @@ export class ScoresController {
             count_diff: {
               character: Math.abs(
                 CreateLearnerProfileDto.original_text.length -
-                CreateLearnerProfileDto.output[0].source.length,
+                responseText.length,
               ),
               word: Math.abs(
                 CreateLearnerProfileDto.original_text.split(' ').length -
-                CreateLearnerProfileDto.output[0].source.split(' ').length,
+                responseText.split(' ').length,
               ),
             },
             eucledian_distance: {
@@ -4942,7 +4985,7 @@ export class ScoresController {
       } else {
         totalSyllables = totalTargets + familiarity.length;
       }
-
+        
       let targetsPercentage = Math.min(
         Math.floor((totalTargets / totalSyllables) * 100),
       );
