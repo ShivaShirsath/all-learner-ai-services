@@ -3299,9 +3299,7 @@ export class ScoresController {
           responseText = CreateLearnerProfileDto.output[0].source;
         }
 
-        // Update scores after final responseText is determined (only for Word content type)
-        if (CreateLearnerProfileDto.contentType.toLowerCase() === 'word') {
-        
+        // Update scores after final responseText is determined
           // Check if original text and final response text are the same or very similar
           const isSameText = CreateLearnerProfileDto.original_text === responseText.replace(/\s+/g, '');
           const similarityScore = await this.scoresService.getTextSimilarity(
@@ -3319,7 +3317,7 @@ export class ScoresController {
                   const originalScore = Object.values(token)[0] as number;
                   
                   // Update score: 0.7 + original score (make it >= 0.7 so it's not a target)
-                  const updatedScore = 0.7 + (originalScore / 100);
+                  const updatedScore = parseFloat((0.7 + (originalScore / 100)).toFixed(4));
                   token[char] = updatedScore;
                 });
               });
@@ -3332,12 +3330,12 @@ export class ScoresController {
                 const originalScore = Object.values(tokenObj)[0] as number;
                 
                 // Update score: 0.7 + original score (make it >= 0.7 so it's not a target)
-                const updatedScore = 0.7 + (originalScore / 100);
+                const updatedScore = parseFloat((0.7 + (originalScore / 100)).toFixed(4));
                 tokenObj[char] = updatedScore;
               });
             }
           }
-        }
+        
 
         let constructText = '';
 
