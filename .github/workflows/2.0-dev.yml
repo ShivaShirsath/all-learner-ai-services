@@ -3,7 +3,7 @@ name: Dev Deployment
 on:
   push:
     branches:
-      - release-2.0-dev
+      - lais-v2.2
 jobs:
    deploy:
     runs-on: ubuntu-latest
