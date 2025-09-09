@@ -3236,11 +3236,13 @@ export class ScoresService {
     userId: string,
     level:string,
     contentType: string,
+    token_value: string
   ): Promise<any> {
     const data = JSON.stringify({
       user_id: userId,
       level: level,
       content_type: contentType,
+      token_value: token_value
     });
 
     const config = {

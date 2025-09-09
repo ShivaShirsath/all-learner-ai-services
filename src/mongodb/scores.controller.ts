@@ -3005,21 +3005,7 @@ export class ScoresController {
         CreateLearnerProfileDto.language,
       );
 
-      // Recomendation api call
-      try {
-        if (process.env.IS_RECOMENDATION === "true") {
-          const recomendation_cout = 5;
-          this.scoresService.getRecommendation(
-            user_id,
-            CreateLearnerProfileDto.milestone,
-            CreateLearnerProfileDto.contentType
-          )
-        }
-      } catch (error) {
-        console.log('errro from the recomendation-Module');
-      }
-
-      // Recomendation api call
+      // Voice auth api call
       try {
         if (process.env.VOICE_AUTH_ENABLE === "true") {
           this.scoresService.voiceAuth(
@@ -6528,6 +6514,9 @@ export class ScoresController {
       const language = (request.body as any).language;
       const content_type = (request.body as any).content_type;
 
+      const authHeader = request.headers['authorization'];
+      const token = authHeader?.split(' ')[1];
+      
       if (!language || !content_type) {
         return response.status(HttpStatus.BAD_REQUEST).send({
           status: 'error',
@@ -6544,7 +6533,8 @@ export class ScoresController {
       let recommendationData = await this.scoresService.getRecommendation(
         user_id,
         milestone_level,
-        content_type
+        content_type,
+        token
       )
 
       return response.status(HttpStatus.OK).send(recommendationData);
