@@ -5817,7 +5817,7 @@ export class ScoresController {
         prosodyResult = undefined;
       }
 
-      // log the responce data into the collection
+      // log the responce data into collection
       try {
         await this.scoresService.addGetSetResultLog({
           userId: user_id,
