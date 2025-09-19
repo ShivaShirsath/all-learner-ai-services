@@ -5858,7 +5858,7 @@ export class ScoresController {
         prosodyResult = undefined;
       }
 
-      // log the responce data into collection
+      // log the responce data into collection log
       try {
         await this.scoresService.addGetSetResultLog({
           userId: user_id,
@@ -5873,7 +5873,7 @@ export class ScoresController {
           percentage: passingPercentage || 0,
           fluencyResult: fluencyResult,
           prosodyResult: prosodyResult,
-          targetsPercentage: targetsPercentage,
+          targetsPercentage: isNaN(targetsPercentage) ? 0 : targetsPercentage,
           langauge: getSetResult.language,
           totalCorrectnessScore:
             (correct_score[0]?.total_correctness_score ?? 0) / contentLimit,
