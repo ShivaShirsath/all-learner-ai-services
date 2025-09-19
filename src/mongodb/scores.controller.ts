@@ -5820,7 +5820,7 @@ export class ScoresController {
       // log the responce data into the collection
       try {
         await this.scoresService.addGetSetResultLog({
-          userId: getSetResult.user_id,
+          userId: user_id,
           sessionId: getSetResult.session_id,
           subSessionId: getSetResult.sub_session_id,
           sessionResult: sessionResult,
