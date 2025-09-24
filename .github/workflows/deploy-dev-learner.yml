@@ -1,4 +1,4 @@
-name: Deploy Dev - All Learner AI
+name: Deploy Dev - Learner AI Service
 
 on:
   push:
@@ -18,6 +18,5 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.PORT }}
           script: |
-            export BRANCH=lais-v2.2-RE
-            cd /home/sudeepr/git/all-learner-ai
+            cd /home/${{ secrets.USERNAME }}/all-services/all-learner-ais-deploy
             ./deploy.sh
