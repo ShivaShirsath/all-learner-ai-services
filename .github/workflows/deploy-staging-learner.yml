@@ -1,9 +1,9 @@
-name: Deploy Staging - All Learner AI
+name: Deploy Staging - Learner AI Service
 
 on:
   push:
     branches:
-      - lais-v2.2-RE
+      - lais-v2.2
 
 jobs:
   deploy:
@@ -18,6 +18,5 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.PORT }}
           script: |
-            export BRANCH=lais-v2.2-RE
-            cd /home/all-staging-user/all-services/all-learner-ais-deploy
+            cd /home/${{ secrets.USERNAME }}/all-services/all-learner-ais-deploy
             ./deploy.sh
