@@ -4542,6 +4542,7 @@ export class ScoresController {
       new ParseArrayPipe({ items: String, separator: ',', optional: true }),
     )
     CEFR_level: string[],
+    @Query('multilingual') multilingual: string,
     @Res() response: FastifyReply,
   ) {
     try {
@@ -4604,7 +4605,7 @@ export class ScoresController {
       }
 
       const url = process.env.ALL_CONTENT_SERVICE_API;
-
+     
       // Add the check for the limit
       if (contentlimit > 20) {
         contentlimit = 20;
@@ -4623,6 +4624,7 @@ export class ScoresController {
         level_competency: level_competency || [],
         CEFR_level: CEFR_level || [],
         story_mode: story_mode || false,
+        multilingual: multilingual,
       };
 
       const newContent = await lastValueFrom(
