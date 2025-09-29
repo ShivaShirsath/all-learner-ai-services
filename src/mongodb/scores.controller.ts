@@ -4708,7 +4708,7 @@ export class ScoresController {
       }
 
       const url = process.env.ALL_CONTENT_SERVICE_API;
-
+     
       // Add the check for the limit
       if (contentlimit > 20) {
         contentlimit = 20;
