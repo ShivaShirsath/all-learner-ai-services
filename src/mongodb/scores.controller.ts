@@ -4658,28 +4658,6 @@ export class ScoresController {
         contentForTokenArr = [];
       }
 
-      // Filter content by tags if tags are provided
-      if (tags && tags.length > 0) {
-        const originalContentCount = contentArr.length;
-        
-        contentArr = contentArr.filter((contentItem) => {
-          // Check if content item has tags and if any of the provided tags match
-          if (contentItem.tags && Array.isArray(contentItem.tags)) {
-            return tags.some(filterTag => 
-              contentItem.tags.some(contentTag => 
-                contentTag === filterTag
-              )
-            );
-          }
-          return false; // If no tags in content item, exclude it when tags are specified
-        });
-      }
-
-      // Limit final response to requested content limit
-      const finalLimit = Number(contentlimit) || 5;
-      if (contentArr.length > finalLimit) {
-        contentArr = contentArr.slice(0, finalLimit);
-      }
 
       // Total Syllable count added
       let totalSyllableCount = 0;
