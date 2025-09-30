@@ -4615,7 +4615,7 @@ export class ScoresController {
         tokenArr: getGetTargetCharArr,
         language: language || 'ta',
         contentType: 'Sentence',
-        limit: tags && tags.length > 0 ? Math.min((Number(contentlimit) || 5) * 3, 20) : (Number(contentlimit) || 5),
+        limit: Number(contentlimit) || 5,
         tags: tags || [],
         cLevel: contentLevel,
         complexityLevel: complexityLevel,
