@@ -17,6 +17,7 @@ import { getSetResult, getSetResultDocument } from './schemas/getSetResult';
 import { filterBadWords } from '@tekdi/multilingual-profanity-filter';
 import { TowreDocument } from 'src/schemas/towre.schema';
 import { VocabularyDocument } from './schemas/vocabularySchema';
+import { correct_practice_word, correct_practice_wordDocument } from '../schemas/correctPractice';
 
 @Injectable()
 export class ScoresService {
@@ -36,6 +37,8 @@ export class ScoresService {
     private towreModel: Model<TowreDocument>,
     @InjectModel('vocabulary') 
     private vocabularyModel: Model<VocabularyDocument>,
+    @InjectModel('correct_practice_word')
+    private correctPracticeWordModel: Model<correct_practice_wordDocument>,
     private readonly cacheService: CacheService,
     private readonly httpService: HttpService,
   ) { }
@@ -3391,6 +3394,35 @@ export class ScoresService {
       return response.data;
     } catch (error) {
       console.error('Error in Voice auth api:', error.response?.data || error.message);
+      throw error;
+    }
+  }
+
+  async getVocabularyStats(userId: string): Promise<{ learned_words_count: number; understood_words_count: number }> {
+    try {
+      const vocabularyStats = await this.correctPracticeWordModel.aggregate([
+        {
+          $match: { user_id: userId }
+        },
+        {
+          $group: {
+            _id: null,
+            learned_words_count: {
+              $sum: { $cond: [{ $eq: ["$learned", true] }, 1, 0] }
+            },
+            understood_words_count: {
+              $sum: { $cond: [{ $eq: ["$understood", true] }, 1, 0] }
+            }
+          }
+        }
+      ]);
+
+      return {
+        learned_words_count: vocabularyStats[0]?.learned_words_count || 0,
+        understood_words_count: vocabularyStats[0]?.understood_words_count || 0
+      };
+    } catch (error) {
+      console.error('Error getting vocabulary stats:', error);
       throw error;
     }
   }

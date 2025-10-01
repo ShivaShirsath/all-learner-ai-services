@@ -15,6 +15,7 @@ import { llmOutputLogsSchema } from './schemas/llmOutputLogs';
 import { getSetResultSchema } from './schemas/getSetResult';
 import { TowreSchema } from 'src/schemas/towre.schema';
 import { VocabularySchema } from './schemas/vocabularySchema';
+import { correct_practice_wordSchema } from '../schemas/correctPractice';
 
 
 @Module({
@@ -46,7 +47,8 @@ import { VocabularySchema } from './schemas/vocabularySchema';
       { name: 'llmOutputLogs', schema: llmOutputLogsSchema },
       { name: 'getSetResult', schema: getSetResultSchema },
       { name: 'towre', schema: TowreSchema},
-      { name: 'vocabulary', schema: VocabularySchema}
+      { name: 'vocabulary', schema: VocabularySchema},
+      { name: 'correct_practice_word', schema: correct_practice_wordSchema}
     ]),
     CacheModule.register()
   ],
