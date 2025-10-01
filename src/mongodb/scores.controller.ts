@@ -159,7 +159,17 @@ export class ScoresController {
       let constructText = '';
 
       let pause_count = 0;
+      let avg_pause = 0;
 
+      let pitch_classification = '';
+      let pitch_mean = 0;
+      let pitch_std = 0;
+      let intensity_classification = '';
+      let intensity_mean = 0;
+      let intensity_std = 0;
+      let expression_classification = '';
+      let smoothness_classification = '';
+      
       /* Condition to check whether content type is char or not. If content type is char
       dont process it from ASR and other processing related with text evalution matrices and scoring mechanism
       */
@@ -185,6 +195,15 @@ export class ScoresController {
             asrOutBeforeDenoised =
               audioOutput.asrOutBeforeDenoised?.output || '';
             pause_count = audioOutput.pause_count || 0;
+            avg_pause = audioOutput.avg_pause;
+            pitch_classification = audioOutput.pitch_classification;
+            pitch_mean = audioOutput.pitch_mean;
+            pitch_std = audioOutput.pitch_std;
+            intensity_classification = audioOutput.intensity_classification;
+            intensity_mean = audioOutput.intensity_mean;
+            intensity_std = audioOutput.intensity_std;
+            expression_classification = audioOutput.expression_classification;
+            smoothness_classification = audioOutput.smoothness_classification;
 
             similarityDenoisedText = await this.scoresService.getTextSimilarity(
               originalText,
@@ -289,6 +308,10 @@ export class ScoresController {
           language,
           CreateLearnerProfileDto.audio.toString('base64'),
         );
+        let tempo_classification = textEvalMatrices.tempo_classification;
+        let pause_count_textEval = textEvalMatrices.pause_count;
+        let words_per_minute = textEvalMatrices.words_per_minute;
+        let rate_classification = textEvalMatrices.rate_classification;
         if (mode !== 'offline' && process.env.denoiserEnabled === 'true') {
           let improved = false;
 
@@ -329,6 +352,11 @@ export class ScoresController {
         );
 
         let createdAt = new Date().toISOString().replace('Z', '+00:00');
+        let accuracy_classification =
+        this.scoresService.getAccuracyClassification(
+          CreateLearnerProfileDto.contentType,
+          fluencyScore,
+        );
 
         createScoreData = {
           user_id: user_id, // userid sent by client
@@ -380,6 +408,37 @@ export class ScoresController {
             silence_Pause: {
               total_duration: 0,
               count: pause_count,
+            },
+            prosody_fluency: {
+              pitch: {
+                pitch_classification: pitch_classification,
+                pitch_mean: pitch_mean,
+                pitch_std: pitch_std,
+              },
+              intensity: {
+                intensity_classification: intensity_classification,
+                intensity_mean: intensity_mean,
+                intensity_std: intensity_std,
+              },
+              tempo: {
+                tempo_classification: tempo_classification,
+                words_per_minute: words_per_minute,
+                pause_count: pause_count_textEval,
+              },
+              expression_classification: expression_classification,
+              smoothness: {
+                smoothness_classification: smoothness_classification,
+                pause_count: pause_count,
+                avg_pause: avg_pause,
+              },
+              rate: {
+                rate_classification: rate_classification,
+                words_per_minute: words_per_minute,
+              },
+              accuracy: {
+                accuracy_classification: accuracy_classification,
+                fluencyScore: fluencyScore.toFixed(3),
+              },
             },
             reptitionsCount: reptitionCount,
             asrOutput: JSON.stringify(CreateLearnerProfileDto.output),
@@ -543,6 +602,16 @@ export class ScoresController {
       let constructText = '';
 
       let pause_count = 0;
+      let avg_pause = 0;
+
+      let pitch_classification = '';
+      let pitch_mean = 0;
+      let pitch_std = 0;
+      let intensity_classification = '';
+      let intensity_mean = 0;
+      let intensity_std = 0;
+      let expression_classification = '';
+      let smoothness_classification = '';
 
       /* Condition to check whether content type is char or not. If content type is char
       dont process it from ASR and other processing related with text evalution matrices and scoring mechanism
@@ -567,6 +636,15 @@ export class ScoresController {
           asrOutDenoised = audioOutput.asrOutDenoisedOutput?.output || '';
           asrOutBeforeDenoised = audioOutput.asrOutBeforeDenoised?.output || '';
           pause_count = audioOutput.pause_count || 0;
+          avg_pause = audioOutput.avg_pause;
+          pitch_classification = audioOutput.pitch_classification;
+          pitch_mean = audioOutput.pitch_mean;
+          pitch_std = audioOutput.pitch_std;
+          intensity_classification = audioOutput.intensity_classification;
+          intensity_mean = audioOutput.intensity_mean;
+          intensity_std = audioOutput.intensity_std;
+          expression_classification = audioOutput.expression_classification;
+          smoothness_classification = audioOutput.smoothness_classification;
 
           similarityDenoisedText = await this.scoresService.getTextSimilarity(
             originalText,
@@ -667,6 +745,10 @@ export class ScoresController {
           language,
           CreateLearnerProfileDto.audio.toString('base64'),
         );
+        let tempo_classification = textEvalMatrices.tempo_classification;
+        let pause_count_textEval = textEvalMatrices.pause_count;
+        let words_per_minute = textEvalMatrices.words_per_minute;
+        let rate_classification = textEvalMatrices.rate_classification;
         if (process.env.denoiserEnabled === 'true') {
           let improved = false;
 
@@ -708,6 +790,11 @@ export class ScoresController {
         );
 
         let createdAt = new Date().toISOString().replace('Z', '+00:00');
+        let accuracy_classification =
+        this.scoresService.getAccuracyClassification(
+          CreateLearnerProfileDto.contentType,
+          fluencyScore,
+        );
 
         createScoreData = {
           user_id: user_id, // userid sent by client
@@ -759,6 +846,37 @@ export class ScoresController {
             silence_Pause: {
               total_duration: 0,
               count: pause_count,
+            },
+            prosody_fluency: {
+              pitch: {
+                pitch_classification: pitch_classification,
+                pitch_mean: pitch_mean,
+                pitch_std: pitch_std,
+              },
+              intensity: {
+                intensity_classification: intensity_classification,
+                intensity_mean: intensity_mean,
+                intensity_std: intensity_std,
+              },
+              tempo: {
+                tempo_classification: tempo_classification,
+                words_per_minute: words_per_minute,
+                pause_count: pause_count_textEval,
+              },
+              expression_classification: expression_classification,
+              smoothness: {
+                smoothness_classification: smoothness_classification,
+                pause_count: pause_count,
+                avg_pause: avg_pause,
+              },
+              rate: {
+                rate_classification: rate_classification,
+                words_per_minute: words_per_minute,
+              },
+              accuracy: {
+                accuracy_classification: accuracy_classification,
+                fluencyScore: fluencyScore.toFixed(3),
+              },
             },
             reptitionsCount: reptitionCount,
             asrOutput: JSON.stringify(CreateLearnerProfileDto.output),
@@ -921,6 +1039,16 @@ export class ScoresController {
       let constructText = '';
 
       let pause_count = 0;
+      let avg_pause = 0;
+
+      let pitch_classification = '';
+      let pitch_mean = 0;
+      let pitch_std = 0;
+      let intensity_classification = '';
+      let intensity_mean = 0;
+      let intensity_std = 0;
+      let expression_classification = '';
+      let smoothness_classification = '';
 
       /* Condition to check whether content type is char or not. If content type is char
       dont process it from ASR and other processing related with text evalution matrices and scoring mechanism
@@ -945,6 +1073,15 @@ export class ScoresController {
           asrOutDenoised = audioOutput.asrOutDenoisedOutput?.output || '';
           asrOutBeforeDenoised = audioOutput.asrOutBeforeDenoised?.output || '';
           pause_count = audioOutput.pause_count || 0;
+          avg_pause = audioOutput.avg_pause;
+          pitch_classification = audioOutput.pitch_classification;
+          pitch_mean = audioOutput.pitch_mean;
+          pitch_std = audioOutput.pitch_std;
+          intensity_classification = audioOutput.intensity_classification;
+          intensity_mean = audioOutput.intensity_mean;
+          intensity_std = audioOutput.intensity_std;
+          expression_classification = audioOutput.expression_classification;
+          smoothness_classification = audioOutput.smoothness_classification;
 
           similarityDenoisedText = await this.scoresService.getTextSimilarity(
             originalText,
@@ -1044,6 +1181,10 @@ export class ScoresController {
           language,
           CreateLearnerProfileDto.audio.toString('base64'),
         );
+        let tempo_classification = textEvalMatrices.tempo_classification;
+        let pause_count_textEval = textEvalMatrices.pause_count;
+        let words_per_minute = textEvalMatrices.words_per_minute;
+        let rate_classification = textEvalMatrices.rate_classification;
         if (process.env.denoiserEnabled === 'true') {
           let improved = false;
 
@@ -1085,6 +1226,11 @@ export class ScoresController {
         );
 
         let createdAt = new Date().toISOString().replace('Z', '+00:00');
+        let accuracy_classification =
+          this.scoresService.getAccuracyClassification(
+            CreateLearnerProfileDto.contentType,
+            fluencyScore,
+          );
 
         createScoreData = {
           user_id: user_id, // userid sent by client
@@ -1133,6 +1279,37 @@ export class ScoresController {
             silence_Pause: {
               total_duration: 0,
               count: pause_count,
+            },
+            prosody_fluency: {
+              pitch: {
+                pitch_classification: pitch_classification,
+                pitch_mean: pitch_mean,
+                pitch_std: pitch_std,
+              },
+              intensity: {
+                intensity_classification: intensity_classification,
+                intensity_mean: intensity_mean,
+                intensity_std: intensity_std,
+              },
+              tempo: {
+                tempo_classification: tempo_classification,
+                words_per_minute: words_per_minute,
+                pause_count: pause_count_textEval,
+              },
+              expression_classification: expression_classification,
+              smoothness: {
+                smoothness_classification: smoothness_classification,
+                pause_count: pause_count,
+                avg_pause: avg_pause,
+              },
+              rate: {
+                rate_classification: rate_classification,
+                words_per_minute: words_per_minute,
+              },
+              accuracy: {
+                accuracy_classification: accuracy_classification,
+                fluencyScore: fluencyScore.toFixed(3),
+              },
             },
             reptitionsCount: reptitionCount,
             asrOutput: JSON.stringify(CreateLearnerProfileDto.output),
@@ -1286,6 +1463,15 @@ export class ScoresController {
       let responseText = '';
       let constructText = '';
       let pause_count = 0;
+      let avg_pause = 0;
+      let pitch_classification = '';
+      let pitch_mean = 0;
+      let pitch_std = 0;
+      let intensity_classification = '';
+      let intensity_mean = 0;
+      let intensity_std = 0;
+      let expression_classification = '';
+      let smoothness_classification = '';
       let similarityNonDenoisedText = 0;
       let similarityDenoisedText = 0;
       let nonDenoisedresponseText = '';
@@ -1323,6 +1509,15 @@ export class ScoresController {
           asrOutDenoised = audioOutput.asrOutDenoisedOutput?.output || '';
           asrOutBeforeDenoised = audioOutput.asrOutBeforeDenoised?.output || '';
           pause_count = audioOutput.pause_count || 0;
+          avg_pause = audioOutput.avg_pause;
+          pitch_classification = audioOutput.pitch_classification;
+          pitch_mean = audioOutput.pitch_mean;
+          pitch_std = audioOutput.pitch_std;
+          intensity_classification = audioOutput.intensity_classification;
+          intensity_mean = audioOutput.intensity_mean;
+          intensity_std = audioOutput.intensity_std;
+          expression_classification = audioOutput.expression_classification;
+          smoothness_classification = audioOutput.smoothness_classification;
 
           similarityDenoisedText = await this.scoresService.getTextSimilarity(
             originalText,
@@ -1426,7 +1621,10 @@ export class ScoresController {
             ? CreateLearnerProfileDto.audio.toString('base64')
             : CreateLearnerProfileDto.audio,
         );
-
+        let tempo_classification = textEvalMatrices.tempo_classification;
+        let pause_count_textEval = textEvalMatrices.pause_count;
+        let words_per_minute = textEvalMatrices.words_per_minute;
+        let rate_classification = textEvalMatrices.rate_classification;
         if (process.env.denoiserEnabled === 'true') {
           const improved = similarityDenoisedText > similarityNonDenoisedText;
 
@@ -1458,6 +1656,11 @@ export class ScoresController {
         );
 
         const createdAt = new Date().toISOString().replace('Z', '+00:00');
+        let accuracy_classification =
+        this.scoresService.getAccuracyClassification(
+          CreateLearnerProfileDto.contentType,
+          fluencyScore,
+        );
 
         const createScoreData = {
           user_id: user_id,
@@ -1505,6 +1708,37 @@ export class ScoresController {
             silence_Pause: {
               total_duration: 0,
               count: pause_count,
+            },
+            prosody_fluency: {
+              pitch: {
+                pitch_classification: pitch_classification,
+                pitch_mean: pitch_mean,
+                pitch_std: pitch_std,
+              },
+              intensity: {
+                intensity_classification: intensity_classification,
+                intensity_mean: intensity_mean,
+                intensity_std: intensity_std,
+              },
+              tempo: {
+                tempo_classification: tempo_classification,
+                words_per_minute: words_per_minute,
+                pause_count: pause_count_textEval,
+              },
+              expression_classification: expression_classification,
+              smoothness: {
+                smoothness_classification: smoothness_classification,
+                pause_count: pause_count,
+                avg_pause: avg_pause,
+              },
+              rate: {
+                rate_classification: rate_classification,
+                words_per_minute: words_per_minute,
+              },
+              accuracy: {
+                accuracy_classification: accuracy_classification,
+                fluencyScore: fluencyScore.toFixed(3),
+              },
             },
             reptitionsCount: reptitionCount,
             asrOutput: JSON.stringify(CreateLearnerProfileDto.output),
@@ -3168,6 +3402,16 @@ export class ScoresController {
       let constructTokenArr = [];
 
       let pause_count = 0;
+      let avg_pause = 0;
+
+      let pitch_classification = '';
+      let pitch_mean = 0;
+      let pitch_std = 0;
+      let intensity_classification = '';
+      let intensity_mean = 0;
+      let intensity_std = 0;
+      let expression_classification = '';
+      let smoothness_classification = '';
 
       // This code block used to create tamil compound consonents from text strings
       for (let originalTextELE of originalText.split('')) {
@@ -3212,6 +3456,15 @@ export class ScoresController {
           asrOutDenoised = audioOutput.asrOutDenoisedOutput?.output || '';
           asrOutBeforeDenoised = audioOutput.asrOutBeforeDenoised?.output || '';
           pause_count = audioOutput.pause_count || 0;
+          avg_pause = audioOutput.avg_pause;
+          pitch_classification = audioOutput.pitch_classification;
+          pitch_mean = audioOutput.pitch_mean;
+          pitch_std = audioOutput.pitch_std;
+          intensity_classification = audioOutput.intensity_classification;
+          intensity_mean = audioOutput.intensity_mean;
+          intensity_std = audioOutput.intensity_std;
+          expression_classification = audioOutput.expression_classification;
+          smoothness_classification = audioOutput.smoothness_classification;
 
           if (
             (await this.scoresService.getTextSimilarity(
@@ -3641,6 +3894,10 @@ export class ScoresController {
               }),
             ),
         );
+        let tempo_classification = textEvalMatrices.tempo_classification;
+        let pause_count_textEval = textEvalMatrices.pause_count;
+        let words_per_minute = textEvalMatrices.words_per_minute;
+        let rate_classification = textEvalMatrices.rate_classification;
 
         if (process.env.denoiserEnabled === 'true') {
           let improved = false;
@@ -3709,6 +3966,11 @@ export class ScoresController {
           100;
 
         let createdAt = new Date().toISOString().replace('Z', '+00:00');
+        let accuracy_classification =
+        this.scoresService.getAccuracyClassification(
+          CreateLearnerProfileDto.contentType,
+          fluencyScore,
+        );
 
         createScoreData = {
           user_id: user_id, // userid sent by client
@@ -3760,6 +4022,37 @@ export class ScoresController {
             silence_Pause: {
               total_duration: 0,
               count: textEvalMatrices.pause_count,
+            },
+            prosody_fluency: {
+              pitch: {
+                pitch_classification: pitch_classification,
+                pitch_mean: pitch_mean,
+                pitch_std: pitch_std,
+              },
+              intensity: {
+                intensity_classification: intensity_classification,
+                intensity_mean: intensity_mean,
+                intensity_std: intensity_std,
+              },
+              tempo: {
+                tempo_classification: tempo_classification,
+                words_per_minute: words_per_minute,
+                pause_count: pause_count_textEval,
+              },
+              expression_classification: expression_classification,
+              smoothness: {
+                smoothness_classification: smoothness_classification,
+                pause_count: pause_count,
+                avg_pause: avg_pause,
+              },
+              rate: {
+                rate_classification: rate_classification,
+                words_per_minute: words_per_minute,
+              },
+              accuracy: {
+                accuracy_classification: accuracy_classification,
+                fluencyScore: fluencyScore.toFixed(3),
+              },
             },
             reptitionsCount: reptitionCount,
             asrOutput: JSON.stringify(CreateLearnerProfileDto.output),
@@ -4415,7 +4708,7 @@ export class ScoresController {
       }
 
       const url = process.env.ALL_CONTENT_SERVICE_API;
-
+     
       // Add the check for the limit
       if (contentlimit > 20) {
         contentlimit = 20;
@@ -5048,20 +5341,20 @@ export class ScoresController {
           sessionResult = 'fail';
         }
       }
-      // NEW: Compute fluencyResult only for English showcase.
+      // NEW: Compute fluencyResult.
       let fluencyResult: string;
       if (
         !getSetResult.hasOwnProperty('collectionId') ||
         !getSetResult.collectionId
       ) {
         const userLevelNum = parseInt(previous_level?.replace('m', ''), 10);
-        if (['en', 'kn'].includes(getSetResult.language.toLowerCase()) && userLevelNum < 10) {
+        if (['en', 'kn','te','hi','ta','or','gu'].includes(getSetResult.language.toLowerCase()) && userLevelNum < 10) {
           // Determine pass threshold based on milestone level.
           // For M4+ (e.g. level >= 4) threshold is 3.0; otherwise, 2.6.
 
           const passThreshold = userLevelNum >= 4 ? 3.0 : 2.6;
 
-          // Retrieve all audio records for the given sub-session and language 'en' or kn
+          // Retrieve all audio records for the given sub-session and languages.
 
           const allAudioRecords = await this.scoresService.getSubSessionScores(
             getSetResult.sub_session_id,
@@ -5157,7 +5450,7 @@ export class ScoresController {
         !getSetResult.hasOwnProperty('collectionId') ||
         !getSetResult.collectionId
       ) {
-        if (['en', 'kn'].includes(getSetResult.language.toLowerCase())) {
+        if (['en', 'kn','te','hi','ta','or','gu'].includes(getSetResult.language.toLowerCase())) {
           const userLevelNum = previous_level
             ? parseInt(previous_level.replace('m', ''), 10)
             : 0;
@@ -5860,8 +6153,7 @@ export class ScoresController {
       }
       if (
         !(
-          (getSetResult.language.toLowerCase() === 'en' ||
-            getSetResult.language.toLowerCase() === 'kn') &&
+          (['en','kn','te','hi','ta','or','gu'].includes(getSetResult.language.toLowerCase())) &&
           (!getSetResult.hasOwnProperty('collectionId') ||
             !getSetResult.collectionId)
         )
