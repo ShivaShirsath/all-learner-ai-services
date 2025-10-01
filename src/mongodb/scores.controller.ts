@@ -6271,7 +6271,10 @@ export class ScoresController {
       const vocabulary_count = await this.scoresService.getVocabularyCount(
         id,
         language,
-      )
+      );
+      // Get vocabulary statistics (learned and understood words count)
+      const vocabularyStats = await this.scoresService.getVocabularyStats(id);
+      
       // milestone data
       const milestone_level = recordData[0]?.milestone_level || 'm0';
       return response.status(HttpStatus.CREATED).send({
@@ -6280,7 +6283,9 @@ export class ScoresController {
           milestone_level: milestone_level,
           extra: {
             latest_towre_data,
-            vocabulary_count: vocabulary_count
+            vocabulary_count: vocabulary_count,
+            learned_voc_count: vocabularyStats.learned_words_count,
+            understood_voc_count: vocabularyStats.understood_words_count
           }
         },
       });
