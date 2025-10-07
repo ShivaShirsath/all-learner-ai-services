@@ -1,0 +1,22 @@
+name: Deploy Dev - Learner AI Service
+
+on:
+  push:
+    branches:
+      - lais-v2.2-RE
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - name: Deploy to Dev Server
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.PORT }}
+          script: |
+            cd /home/sudeepr/git/all-learner-ai
+            ./deploy.sh

@@ -3236,20 +3236,16 @@ export class ScoresService {
 
   
   async getRecommendation(
-    originalText: string,
-    responseText: string,
     userId: string,
+    level:string,
     contentType: string,
-    count: number,
-    level:string
+    token_value: string
   ): Promise<any> {
     const data = JSON.stringify({
-      original_text: originalText,
-      response_text: responseText,
       user_id: userId,
+      level: level,
       content_type: contentType,
-      count: count,
-      level: level
+      token_value: token_value
     });
 
     const config = {

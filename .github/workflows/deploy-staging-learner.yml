@@ -1,0 +1,22 @@
+name: Deploy Staging - Learner AI Service
+
+on:
+  push:
+    branches:
+      - lais-v2.2
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Deploy to Staging Server
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.PORT }}
+          script: |
+            cd /home/${{ secrets.USERNAME }}/all-services/all-learner-ais-deploy
+            ./deploy.sh
