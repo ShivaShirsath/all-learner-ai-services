@@ -3,7 +3,7 @@ name: Deploy Dev - Learner AI Service
 on:
   push:
     branches:
-      - lais-v2.2-RE
+      - lais-v2.3
 
 jobs:
   deploy:
