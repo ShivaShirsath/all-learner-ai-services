@@ -124,6 +124,7 @@ export class Score {
         },
         isRetry: { type: Boolean, required: false },
         mode: { type: String, required: false },
+        ansSelectionStatus: { type: Object, required: false },
       },
     ],
     required: true,
@@ -234,6 +235,7 @@ export class Score {
     createdAt: Date;
     isRetry: boolean;
     mode: string;
+    ansSelectionStatus: { [key: string]: boolean };
   }[];
 
   @Prop({

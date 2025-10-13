@@ -2759,11 +2759,12 @@ export class ScoresController {
       let correctness_score = 0;
       let is_correct_choice = CreateLearnerProfileDto.is_correct_choice;
       let comprehension;
+      let createdAt = new Date().toISOString().replace('Z', '+00:00');
 
       /* Condition to check whether content type is char or not. If content type is char
       dont process it from ASR and other processing related with text evalution matrices and scoring mechanism
       */
-
+      
       if (CreateLearnerProfileDto['contentType'].toLowerCase() !== 'char') {
         let audioFile;
 
@@ -3097,7 +3098,7 @@ export class ScoresController {
           responseText,
           pause_count,
         );
-        let createdAt = new Date().toISOString().replace('Z', '+00:00');
+        
         let accuracy_classification =
           this.scoresService.getAccuracyClassification(
             CreateLearnerProfileDto.contentType,
@@ -3222,6 +3223,39 @@ export class ScoresController {
 
         // Store Array to DB
         const data = await this.scoresService.create(createScoreData);
+
+         // Voice auth api call
+          try {
+            if (process.env.VOICE_AUTH_ENABLE === "true") {
+              this.scoresService.voiceAuth(
+                CreateLearnerProfileDto.audio.toString('base64'),
+                user_id
+              )
+            }
+          } catch (error) {
+            console.log('errro from the voice-auth-Module');
+          }
+      }else{
+        console.log("not a content");
+
+        createScoreData = {
+          user_id: user_id, 
+          session: {
+            session_id: CreateLearnerProfileDto.session_id, 
+            sub_session_id: CreateLearnerProfileDto.sub_session_id || '', 
+            contentType: CreateLearnerProfileDto.contentType, 
+            contentId: CreateLearnerProfileDto.contentId || '',
+            createdAt: createdAt,
+            language: language,
+            original_text: originalText,
+            response_text: responseText,
+            ansSelectionStatus: CreateLearnerProfileDto.ansSelectionStatus,
+          },
+        };
+
+        // Store Array to DB
+        const data = await this.scoresService.create(createScoreData);
+
       }
 
       // Cal the subsessionWise and content_id wise target.
@@ -3239,18 +3273,7 @@ export class ScoresController {
         CreateLearnerProfileDto.language,
       );
 
-      // Voice auth api call
-      try {
-        if (process.env.VOICE_AUTH_ENABLE === "true") {
-          this.scoresService.voiceAuth(
-            CreateLearnerProfileDto.audio.toString('base64'),
-            user_id
-          )
-        }
-      } catch (error) {
-        console.log('errro from the voice-auth-Module');
-      }
-
+     
       return response.status(HttpStatus.CREATED).send({
         status: 'success',
         msg: 'Successfully stored data to learner profile',
@@ -5207,6 +5230,7 @@ export class ScoresController {
       let overallScore, isComprehension;
       let sessionResult = 'No Result';
       let max_level = getSetResult.max_level;
+      let hasAnsSelectionStatus = false;
 
       let targets = await this.scoresService.getTargetsBysubSession(
         user_id,
@@ -5239,6 +5263,23 @@ export class ScoresController {
           sessionResult = 'pass';
         } else {
           sessionResult = 'fail';
+        }
+      }
+
+      // For the B milestone
+      if (getSetResult.contentType.toLowerCase() === 'char') {
+        try {
+          const ansSelectionResult = await this.scoresService.calculateAnsSelectionResult(
+            user_id,
+            getSetResult.session_id,
+            getSetResult.sub_session_id,
+            getSetResult.language
+          );
+          
+          sessionResult = ansSelectionResult ? 'pass' : 'fail';
+          hasAnsSelectionStatus = true;
+        } catch (error) {
+          hasAnsSelectionStatus = false;
         }
       }
 
@@ -5290,7 +5331,8 @@ export class ScoresController {
         targetPerThreshold = 5;
       }
 
-      if (!isComprehension) {
+      // Skip normal evaluation logic for char content type
+      if (!isComprehension && !(getSetResult.contentType.toLowerCase() === 'char' && hasAnsSelectionStatus)) {
         if (targetsPercentage <= targetPerThreshold) {
           // Add logic for the study the pic mechnics
           if (is_mechanics) {
@@ -5525,13 +5567,27 @@ export class ScoresController {
         getSetResult.collectionId === '' ||
         getSetResult?.collectionId === undefined
       ) {
-        let previous_level_id =
-          previous_level === undefined
-            ? 0
-            : parseInt(previous_level.replace('m', ''));
+        let previous_level_id;
+        if (previous_level === undefined) {
+          previous_level_id = 0;
+        } else if (previous_level === 'B') {
+          previous_level_id = 0; // Treat 'B' as equivalent to m0 for progression logic
+        } else {
+          previous_level_id = parseInt(previous_level.replace('m', ''));
+        }
 
-        if (sessionResult === 'pass') {
-          if (
+        if (sessionResult === 'pass') { 
+          if (getSetResult.contentType.toLowerCase() === 'char' && hasAnsSelectionStatus) {
+            // For char content type, if user passes, proceed to next level
+            if (previous_level === 'B') {
+              milestone_level = 'm1';
+            } else {
+              milestone_level = 'm' + (previous_level_id + 1);
+            }
+          } else if (previous_level === 'B') {
+            // If user is at 'B' and passes non-char content, move to m1
+            milestone_level = 'm1';
+          } else if (
             getSetResult.language === en_config.language_code &&
             previous_level_id >= en_config.max_milestone_level &&
             max_level == undefined
@@ -5554,6 +5610,16 @@ export class ScoresController {
             milestone_level = 'm' + ta_config.max_milestone_level;
           } else {
             milestone_level = 'm' + (previous_level_id + 1);
+          }
+        } else {
+          // Special handling for char content type with ansSelectionStatus - fail case
+          if (getSetResult.contentType.toLowerCase() === 'char' && hasAnsSelectionStatus) {
+            // For char content type FAIL, only m0 goes to 'B', others stay at current level
+            if (previous_level === 'm0' || previous_level === undefined) {
+              milestone_level = 'B';
+            } else {
+              milestone_level = previous_level;
+            }
           }
         }
       } else {
@@ -6110,6 +6176,17 @@ export class ScoresController {
 
       let currentLevel = milestone_level;
 
+      if (
+        !(
+          (['en','kn','te','hi','ta','or','gu'].includes(getSetResult.language.toLowerCase())) &&
+          (!getSetResult.hasOwnProperty('collectionId') ||
+            !getSetResult.collectionId)
+        )
+      ) {
+        fluencyResult = undefined;
+        prosodyResult = undefined;
+      }
+
       if (milestoneEntry) {
         await this.scoresService
           .createMilestoneRecord({
@@ -6134,21 +6211,11 @@ export class ScoresController {
             }
           });
       }
-      if (
-        !(
-          (['en','kn','te','hi','ta','or','gu'].includes(getSetResult.language.toLowerCase())) &&
-          (!getSetResult.hasOwnProperty('collectionId') ||
-            !getSetResult.collectionId)
-        )
-      ) {
-        fluencyResult = undefined;
-        prosodyResult = undefined;
-      }
 
       // log the responce data into the collection
       try {
         await this.scoresService.addGetSetResultLog({
-          userId: getSetResult.user_id,
+          userId: user_id,
           sessionId: getSetResult.session_id,
           subSessionId: getSetResult.sub_session_id,
           sessionResult: sessionResult,

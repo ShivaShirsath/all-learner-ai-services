@@ -71,6 +71,9 @@ export class CreateLearnerProfileDto {
 
   @ApiPropertyOptional()
   milestone: string;
+
+  @ApiPropertyOptional()
+  ansSelectionStatus?: { [key: string]: boolean };
 }
 
 export class OutputDTO {
