@@ -5612,14 +5612,28 @@ export class ScoresController {
             milestone_level = 'm' + (previous_level_id + 1);
           }
         } else {
+          // Fail logic - user must stay at current level until they pass
           // Special handling for char content type with ansSelectionStatus - fail case
           if (getSetResult.contentType.toLowerCase() === 'char' && hasAnsSelectionStatus) {
             // For char content type FAIL, only m0 goes to 'B', others stay at current level
             if (previous_level === 'm0' || previous_level === undefined) {
               milestone_level = 'B';
             } else {
-              milestone_level = previous_level;
+              milestone_level = previous_level; // Stay at current level
             }
+          }
+          // Special handling for word content type - fail case
+          else if (getSetResult.contentType.toLowerCase() === 'word') {
+            // For word content type FAIL, only m0 goes to 'B', others stay at current level
+            if (previous_level === 'm0' || previous_level === undefined) {
+              milestone_level = 'B';
+            } else {
+              milestone_level = previous_level; // Stay at current level - no progression on fail
+            }
+          }
+          // For all other content types - stay at current level on fail
+          else {
+            milestone_level = previous_level; // No progression allowed on fail
           }
         }
       } else {
@@ -6174,6 +6188,21 @@ export class ScoresController {
         }
       }
 
+      // Apply content type specific milestone logic for collectionId cases
+      if (sessionResult === 'fail') {
+        const isM0OrUndefined = previous_level === 'm0' || previous_level === undefined;
+        
+        if (getSetResult.contentType.toLowerCase() === 'word' && isM0OrUndefined) {
+          milestone_level = 'B';
+        } else if (getSetResult.contentType.toLowerCase() === 'word') {
+          // For word content type at other levels - stay at current level on fail
+          milestone_level = previous_level;
+        } else {
+          // For all other content types - stay at current level on fail (no progression)
+          milestone_level = previous_level;
+        }
+      }
+
       let currentLevel = milestone_level;
 
       if (
@@ -6252,7 +6281,7 @@ export class ScoresController {
           targetsPercentage: targetsPercentage || 0,
           total_correctness_score:
             correct_score[0]?.total_correctness_score / contentLimit || 0,
-          comprehensionScore: overallScore,
+          comprehensionScore: overallScore
         },
       });
     } catch (err) {
