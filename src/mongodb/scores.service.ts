@@ -3423,53 +3423,40 @@ export class ScoresService {
     }
   }
 
-  async calculateAnsSelectionResult(
-    userId: string, 
-    sessionId: string, 
-    subSessionId: string, 
-    language: string
-  ): Promise<boolean> {
-    try {
-      // Find sessions with ansSelectionStatus for the given parameters
-      const userScores = await this.scoreModel.findOne({
-        user_id: userId,
-        'sessions.session_id': sessionId,
-        'sessions.sub_session_id': subSessionId,
-        'sessions.language': language,
-        'sessions.ansSelectionStatus': { $exists: true, $ne: null }
-      }).exec();
-
-      if (!userScores) {
-        throw new Error('No ansSelectionStatus data found for the given parameters');
+  async calculateAnsSelectionResult(userId: string, sessionId: string, subSessionId: string, language: string): Promise<boolean | null> {
+  try {
+    const user = await this.scoreModel.findOne({
+      user_id: userId,
+      sessions: {
+        $elemMatch: {
+          session_id: sessionId,
+          sub_session_id: subSessionId,
+          language,
+          ansSelectionStatus: { $exists: true, $ne: null }
+        }
       }
+    }).exec();
 
-      // Find the specific session
-      const session = userScores.sessions.find(s => 
-        s.session_id === sessionId && 
-        s.sub_session_id === subSessionId && 
-        s.language === language &&
-        s.ansSelectionStatus
-      );
+    if (!user) return null;
 
-      if (!session || !session.ansSelectionStatus) {
-        throw new Error('ansSelectionStatus not found for the specified session');
-      }
+    const session = user.sessions.find(s =>
+      s.session_id === sessionId &&
+      s.sub_session_id === subSessionId &&
+      s.language === language &&
+      s.ansSelectionStatus
+    );
+    if (!session) return null;
 
-      const ansSelectionStatus = session.ansSelectionStatus;
-      const totalQuestions = Object.keys(ansSelectionStatus).length;
-      const correctAnswers = Object.values(ansSelectionStatus).filter(value => value === true).length;
-      
-      if (totalQuestions === 0) {
-        throw new Error('No questions found in ansSelectionStatus');
-      }
+    const values = Object.values(session.ansSelectionStatus);
+    const percentage = (values.filter(Boolean).length / values.length) * 100;
 
-      const percentage = (correctAnswers / totalQuestions) * 100;
-      return percentage >= 80;
-    } catch (error) {
-      console.error('Error calculating ansSelectionStatus result:', error);
-      throw error;
-    }
+    return values.length ? percentage >= 80 : null;
+  } catch (err) {
+    console.error('Error calculating ansSelectionResult:', err);
+    return null;
   }
+}
+
 }
 
   
