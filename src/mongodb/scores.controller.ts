@@ -5266,23 +5266,6 @@ export class ScoresController {
         }
       }
 
-      // For the B milestone
-      if (getSetResult.contentType.toLowerCase() === 'char') {
-        try {
-          const ansSelectionResult = await this.scoresService.calculateAnsSelectionResult(
-            user_id,
-            getSetResult.session_id,
-            getSetResult.sub_session_id,
-            getSetResult.language
-          );
-          
-          sessionResult = ansSelectionResult ? 'pass' : 'fail';
-          hasAnsSelectionStatus = true;
-        } catch (error) {
-          hasAnsSelectionStatus = false;
-        }
-      }
-
       if (getSetResult.language != 'en') {
 
         originalTextSyllables = await this.scoresService.getSubsessionOriginalTextSyllables(user_id, getSetResult.sub_session_id);
@@ -5304,9 +5287,9 @@ export class ScoresController {
         totalSyllables = totalTargets + familiarity.length;
       }
         
-      let targetsPercentage = Math.min(
-        Math.floor((totalTargets / totalSyllables) * 100),
-      );
+      let targetsPercentage = totalSyllables > 0 
+        ? Math.min(Math.floor((totalTargets / totalSyllables) * 100))
+        : 0;
       let passingPercentage = Math.floor(100 - targetsPercentage);
       targetsPercentage = targetsPercentage < 0 ? 0 : targetsPercentage;
       passingPercentage = passingPercentage < 0 ? 0 : passingPercentage;
@@ -5316,6 +5299,30 @@ export class ScoresController {
         getSetResult.language,
       );
       let previous_level = recordData[0]?.milestone_level || undefined;
+
+      // Handle ansSelectionStatus evaluation for char content type (B milestone logic ONLY)
+      if (getSetResult.contentType.toLowerCase() === 'char') {
+        // Char content should only be used at milestone B
+        if (previous_level !== 'B') {
+          console.log(`Warning: Char content used at level ${previous_level}, but char is only for milestone B`);
+        }
+        
+        const ansSelectionResult = await this.scoresService.calculateAnsSelectionResult(
+          user_id,
+          getSetResult.session_id,
+          getSetResult.sub_session_id,
+          getSetResult.language
+        );
+        
+        
+        if (ansSelectionResult !== null) {
+          sessionResult = ansSelectionResult ? 'pass' : 'fail';
+          hasAnsSelectionStatus = true;
+        } else {
+          sessionResult = 'fail';
+          hasAnsSelectionStatus = false;
+        }
+      }
 
       if (totalSyllables <= 100) {
         targetPerThreshold = 30;
@@ -5331,8 +5338,8 @@ export class ScoresController {
         targetPerThreshold = 5;
       }
 
-      // Skip normal evaluation logic for char content type
-      if (!isComprehension && !(getSetResult.contentType.toLowerCase() === 'char' && hasAnsSelectionStatus)) {
+      // Skip normal evaluation logic only for char content type at milestone B (uses ansSelectionStatus)
+      if (!isComprehension && !(getSetResult.contentType.toLowerCase() === 'char' && previous_level === 'B')) {
         if (targetsPercentage <= targetPerThreshold) {
           // Add logic for the study the pic mechnics
           if (is_mechanics) {
@@ -5363,9 +5370,16 @@ export class ScoresController {
             }
           }
         } else {
+          // High target percentage - fail for all content types
           sessionResult = 'fail';
         }
       }
+
+      // For char content type, if no ansSelectionStatus was found, default to fail
+      if (getSetResult.contentType.toLowerCase() === 'char' && !hasAnsSelectionStatus && sessionResult === 'No Result') {
+        sessionResult = 'fail';
+      }
+
       // NEW: Compute fluencyResult.
       let fluencyResult: string;
       if (
@@ -5551,15 +5565,18 @@ export class ScoresController {
       }
 
       // If fluencyResult is computed and is 'fail', enforce overall sessionResult to 'fail'
+      // But don't override ansSelectionStatus results for char content type
       if (
-        (typeof fluencyResult !== 'undefined' && fluencyResult === 'fail') ||
-        (typeof prosodyResult !== 'undefined' && prosodyResult === 'fail')
+        !hasAnsSelectionStatus && // Only apply fluency override if we don't have ansSelectionStatus
+        ((typeof fluencyResult !== 'undefined' && fluencyResult === 'fail') ||
+        (typeof prosodyResult !== 'undefined' && prosodyResult === 'fail'))
       ) {
         sessionResult = 'fail';
       }
 
       let milestone_level = previous_level;
 
+      
       // For Showcase, We are not sending collectionId based on this are calculating milestone
 
       if (
@@ -5571,22 +5588,19 @@ export class ScoresController {
         if (previous_level === undefined) {
           previous_level_id = 0;
         } else if (previous_level === 'B') {
-          previous_level_id = 0; // Treat 'B' as equivalent to m0 for progression logic
+          previous_level_id = 0;
         } else {
           previous_level_id = parseInt(previous_level.replace('m', ''));
         }
 
         if (sessionResult === 'pass') { 
-          if (getSetResult.contentType.toLowerCase() === 'char' && hasAnsSelectionStatus) {
-            // For char content type, if user passes, proceed to next level
-            if (previous_level === 'B') {
-              milestone_level = 'm1';
-            } else {
-              milestone_level = 'm' + (previous_level_id + 1);
-            }
-          } else if (previous_level === 'B') {
+          if (getSetResult.contentType.toLowerCase() === 'char' && hasAnsSelectionStatus && previous_level === 'B') {
+            // For char content type at milestone B, if user passes, move to m1
+            milestone_level = 'm1';
+            
             // If user is at 'B' and passes non-char content, move to m1
             milestone_level = 'm1';
+          
           } else if (
             getSetResult.language === en_config.language_code &&
             previous_level_id >= en_config.max_milestone_level &&
@@ -5615,25 +5629,25 @@ export class ScoresController {
           // Fail logic - user must stay at current level until they pass
           // Special handling for char content type with ansSelectionStatus - fail case
           if (getSetResult.contentType.toLowerCase() === 'char' && hasAnsSelectionStatus) {
-            // For char content type FAIL, only m0 goes to 'B', others stay at current level
+            // For char content type FAIL, only m0/undefined goes to 'B', others stay at current level
             if (previous_level === 'm0' || previous_level === undefined) {
               milestone_level = 'B';
             } else {
-              milestone_level = previous_level; // Stay at current level
+              milestone_level = previous_level; // Stay at current level (including 'B')
             }
           }
           // Special handling for word content type - fail case
           else if (getSetResult.contentType.toLowerCase() === 'word') {
-            // For word content type FAIL, only m0 goes to 'B', others stay at current level
+            // For word content type FAIL, only m0/undefined goes to 'B', others stay at current level
             if (previous_level === 'm0' || previous_level === undefined) {
               milestone_level = 'B';
             } else {
-              milestone_level = previous_level; // Stay at current level - no progression on fail
+              milestone_level = previous_level; // Stay at current level (including 'B')
             }
           }
-          // For all other content types - stay at current level on fail
+          // For all other content types (including char without ansSelectionStatus) - stay at current level on fail
           else {
-            milestone_level = previous_level; // No progression allowed on fail
+            milestone_level = previous_level; // Stay at current level (including 'B')
           }
         }
       } else {
@@ -6188,6 +6202,8 @@ export class ScoresController {
         }
       }
 
+      console.log(`After milestone calculation: milestone_level=${milestone_level}, sessionResult=${sessionResult}`);
+
       // Apply content type specific milestone logic for collectionId cases
       if (sessionResult === 'fail') {
         const isM0OrUndefined = previous_level === 'm0' || previous_level === undefined;
@@ -6195,10 +6211,10 @@ export class ScoresController {
         if (getSetResult.contentType.toLowerCase() === 'word' && isM0OrUndefined) {
           milestone_level = 'B';
         } else if (getSetResult.contentType.toLowerCase() === 'word') {
-          // For word content type at other levels - stay at current level on fail
+          // For word content type at other levels (including 'B') - stay at current level on fail
           milestone_level = previous_level;
         } else {
-          // For all other content types - stay at current level on fail (no progression)
+          // For all other content types and levels - stay at current level on fail (no progression)
           milestone_level = previous_level;
         }
       }
