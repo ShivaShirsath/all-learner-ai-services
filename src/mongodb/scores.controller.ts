@@ -3236,8 +3236,7 @@ export class ScoresController {
             console.log('errro from the voice-auth-Module');
           }
       }else{
-        console.log("not a content");
-
+      
         createScoreData = {
           user_id: user_id, 
           session: {
@@ -6201,9 +6200,6 @@ export class ScoresController {
           }
         }
       }
-
-      console.log(`After milestone calculation: milestone_level=${milestone_level}, sessionResult=${sessionResult}`);
-
       // Apply content type specific milestone logic for collectionId cases
       if (sessionResult === 'fail') {
         const isM0OrUndefined = previous_level === 'm0' || previous_level === undefined;
