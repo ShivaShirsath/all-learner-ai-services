@@ -155,6 +155,8 @@ export class ScoresController {
         language,
       );
 
+      let createdAt = new Date().toISOString().replace('Z', '+00:00');
+      let ansSelectionStatus = CreateLearnerProfileDto.ansSelectionStatus;
       let responseText = '';
       let constructText = '';
 
@@ -351,7 +353,6 @@ export class ScoresController {
           pause_count,
         );
 
-        let createdAt = new Date().toISOString().replace('Z', '+00:00');
         let accuracy_classification =
         this.scoresService.getAccuracyClassification(
           CreateLearnerProfileDto.contentType,
@@ -453,6 +454,25 @@ export class ScoresController {
 
         // Store Array to DB
         const data = await this.scoresService.create(createScoreData);
+      }else{
+        createScoreData = {
+          user_id: user_id, 
+          session: {
+            session_id: CreateLearnerProfileDto.session_id, 
+            sub_session_id: CreateLearnerProfileDto.sub_session_id || '', 
+            contentType: CreateLearnerProfileDto.contentType, 
+            contentId: CreateLearnerProfileDto.contentId || '',
+            createdAt: createdAt,
+            language: language,
+            original_text: originalText,
+            response_text: responseText,
+            ansSelectionStatus: ansSelectionStatus,
+          },
+        };
+
+        // Store Array to DB
+        const data = await this.scoresService.create(createScoreData);
+
       }
 
       // Cal the subsessionWise and content_id wise target.
@@ -481,6 +501,7 @@ export class ScoresController {
         responseText: responseText,
         subsessionTargetsCount: totalTargets,
         subsessionFluency: parseFloat(fluency.toFixed(2)),
+        ansSelectionStatus: ansSelectionStatus ? ansSelectionStatus : {}
       });
     } catch (err) {
       return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
@@ -598,6 +619,9 @@ export class ScoresController {
         vowelSignArr,
         language,
       );
+      let createdAt = new Date().toISOString().replace('Z', '+00:00');
+      let ansSelectionStatus = CreateLearnerProfileDto.ansSelectionStatus;
+
       let responseText = '';
       let constructText = '';
 
@@ -789,7 +813,6 @@ export class ScoresController {
           pause_count,
         );
 
-        let createdAt = new Date().toISOString().replace('Z', '+00:00');
         let accuracy_classification =
         this.scoresService.getAccuracyClassification(
           CreateLearnerProfileDto.contentType,
@@ -892,6 +915,25 @@ export class ScoresController {
 
         // Store Array to DB
         const data = await this.scoresService.create(createScoreData);
+      }else{
+        createScoreData = {
+          user_id: user_id, 
+          session: {
+            session_id: CreateLearnerProfileDto.session_id, 
+            sub_session_id: CreateLearnerProfileDto.sub_session_id || '', 
+            contentType: CreateLearnerProfileDto.contentType, 
+            contentId: CreateLearnerProfileDto.contentId || '',
+            createdAt: createdAt,
+            language: language,
+            original_text: originalText,
+            response_text: responseText,
+            ansSelectionStatus: ansSelectionStatus,
+          },
+        };
+
+        // Store Array to DB
+        const data = await this.scoresService.create(createScoreData);
+
       }
 
       // Cal the subsessionWise and content_id wise target.
@@ -921,6 +963,7 @@ export class ScoresController {
         responseText: responseText,
         subsessionTargetsCount: totalTargets,
         subsessionFluency: parseFloat(fluency.toFixed(2)),
+        ansSelectionStatus: ansSelectionStatus ? ansSelectionStatus : {}
       });
     } catch (err) {
       return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
@@ -1035,6 +1078,10 @@ export class ScoresController {
         vowelSignArr,
         language,
       );
+
+      let createdAt = new Date().toISOString().replace('Z', '+00:00');
+      let ansSelectionStatus = CreateLearnerProfileDto.ansSelectionStatus;
+
       let responseText = '';
       let constructText = '';
 
@@ -1225,7 +1272,6 @@ export class ScoresController {
           pause_count,
         );
 
-        let createdAt = new Date().toISOString().replace('Z', '+00:00');
         let accuracy_classification =
           this.scoresService.getAccuracyClassification(
             CreateLearnerProfileDto.contentType,
@@ -1325,6 +1371,25 @@ export class ScoresController {
 
         // Store Array to DB
         const data = await this.scoresService.create(createScoreData);
+      }else{
+        createScoreData = {
+          user_id: user_id, 
+          session: {
+            session_id: CreateLearnerProfileDto.session_id, 
+            sub_session_id: CreateLearnerProfileDto.sub_session_id || '', 
+            contentType: CreateLearnerProfileDto.contentType, 
+            contentId: CreateLearnerProfileDto.contentId || '',
+            createdAt: createdAt,
+            language: language,
+            original_text: originalText,
+            response_text: responseText,
+            ansSelectionStatus: ansSelectionStatus,
+          },
+        };
+
+        // Store Array to DB
+        const data = await this.scoresService.create(createScoreData);
+
       }
 
       // Cal the subsessionWise and content_id wise target.
@@ -1355,6 +1420,7 @@ export class ScoresController {
         responseText: responseText,
         subsessionTargetsCount: totalTargets,
         subsessionFluency: parseFloat(fluency.toFixed(2)),
+        ansSelectionStatus: ansSelectionStatus ? ansSelectionStatus : {}
       });
     } catch (err) {
       return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
@@ -1438,6 +1504,7 @@ export class ScoresController {
   ) {
     try {
       const user_id = (request as any).user.virtual_id.toString();
+      let createScoreData;
       if (
         CreateLearnerProfileDto['output'] === undefined &&
         CreateLearnerProfileDto.audio !== undefined
@@ -1489,6 +1556,8 @@ export class ScoresController {
         vowelSignArr,
         language,
       );
+      let createdAt = new Date().toISOString().replace('Z', '+00:00');
+      let ansSelectionStatus = CreateLearnerProfileDto.ansSelectionStatus;
 
       if (CreateLearnerProfileDto['contentType'].toLowerCase() !== 'char') {
         if (
@@ -1655,14 +1724,13 @@ export class ScoresController {
           pause_count,
         );
 
-        const createdAt = new Date().toISOString().replace('Z', '+00:00');
         let accuracy_classification =
         this.scoresService.getAccuracyClassification(
           CreateLearnerProfileDto.contentType,
           fluencyScore,
         );
 
-        const createScoreData = {
+        createScoreData = {
           user_id: user_id,
           session: {
             session_id: CreateLearnerProfileDto.session_id,
@@ -1747,6 +1815,25 @@ export class ScoresController {
         };
 
         await this.scoresService.create(createScoreData);
+      }else{
+        createScoreData = {
+          user_id: user_id, 
+          session: {
+            session_id: CreateLearnerProfileDto.session_id, 
+            sub_session_id: CreateLearnerProfileDto.sub_session_id || '', 
+            contentType: CreateLearnerProfileDto.contentType, 
+            contentId: CreateLearnerProfileDto.contentId || '',
+            createdAt: createdAt,
+            language: language,
+            original_text: originalText,
+            response_text: responseText,
+            ansSelectionStatus: ansSelectionStatus,
+          },
+        };
+
+        // Store Array to DB
+        const data = await this.scoresService.create(createScoreData);
+
       }
 
       const retryAttempt = await this.scoresService.getRetryStatus(
@@ -1785,6 +1872,7 @@ export class ScoresController {
         responseText,
         subsessionTargetsCount: targets.length,
         subsessionFluency: parseFloat(fluency.toFixed(2)),
+        ansSelectionStatus: ansSelectionStatus ? ansSelectionStatus : {}
       });
     } catch (err) {
       return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
@@ -1919,6 +2007,9 @@ export class ScoresController {
       let tokenArrandAnamolyArrdefine = false;
       let tokenArr = [];
       let anamolyTokenArr = [];
+
+      let createdAt = new Date().toISOString().replace('Z', '+00:00');
+      let ansSelectionStatus = CreateLearnerProfileDto.ansSelectionStatus;
 
       if (CreateLearnerProfileDto['contentType'].toLowerCase() !== 'char') {
         if (mode == 'online' || mode == undefined) {
@@ -2495,7 +2586,6 @@ export class ScoresController {
             sub * 5) /
           100;
 
-        const createdAt = new Date().toISOString().replace('Z', '+00:00');
         let accuracy_classification =
           this.scoresService.getAccuracyClassification(
             CreateLearnerProfileDto.contentType,
@@ -2606,6 +2696,25 @@ export class ScoresController {
           );
           return result?.hexcode || '';
         }
+      }else{
+        createScoreData = {
+          user_id: user_id, 
+          session: {
+            session_id: CreateLearnerProfileDto.session_id, 
+            sub_session_id: CreateLearnerProfileDto.sub_session_id || '', 
+            contentType: CreateLearnerProfileDto.contentType, 
+            contentId: CreateLearnerProfileDto.contentId || '',
+            createdAt: createdAt,
+            language: language,
+            original_text: originalText,
+            response_text: responseText,
+            ansSelectionStatus: ansSelectionStatus,
+          },
+        };
+
+        // Store Array to DB
+        const data = await this.scoresService.create(createScoreData);
+
       }
 
       // Cal the subsessionWise and content_id wise target.
@@ -2634,6 +2743,7 @@ export class ScoresController {
         responseText: responseText,
         subsessionTargetsCount: totalTargets,
         subsessionFluency: parseFloat(fluency.toFixed(2)),
+        ansSelectionStatus : ansSelectionStatus ? ansSelectionStatus : {}
       });
     } catch (err) {
       return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
@@ -3364,6 +3474,10 @@ export class ScoresController {
     try {
       const user_id = (request as any).user.virtual_id.toString();
       let originalText = CreateLearnerProfileDto.original_text;
+
+      let createdAt = new Date().toISOString().replace('Z', '+00:00');
+      let ansSelectionStatus = CreateLearnerProfileDto.ansSelectionStatus;
+
       let createScoreData;
 
       let correctTokens = [];
@@ -3970,7 +4084,6 @@ export class ScoresController {
             sub * 5) /
           100;
 
-        let createdAt = new Date().toISOString().replace('Z', '+00:00');
         let accuracy_classification =
         this.scoresService.getAccuracyClassification(
           CreateLearnerProfileDto.contentType,
@@ -4078,7 +4191,28 @@ export class ScoresController {
           let result = tokenHexcodeDataArr.find((item) => item.token === token);
           return result?.hexcode || '';
         }
+      }else{
+      
+        createScoreData = {
+          user_id: user_id, 
+          session: {
+            session_id: CreateLearnerProfileDto.session_id, 
+            sub_session_id: CreateLearnerProfileDto.sub_session_id || '', 
+            contentType: CreateLearnerProfileDto.contentType, 
+            contentId: CreateLearnerProfileDto.contentId || '',
+            createdAt: createdAt,
+            language: language,
+            original_text: originalText,
+            response_text: responseText,
+            ansSelectionStatus: CreateLearnerProfileDto.ansSelectionStatus,
+          },
+        };
+
+        // Store Array to DB
+        const data = await this.scoresService.create(createScoreData);
+
       }
+
       // Cal the subsessionWise and content_id wise target.
       let targets = await this.scoresService.getTargetsBysubSession(
         user_id,
@@ -4110,6 +4244,7 @@ export class ScoresController {
         responseText: responseText,
         subsessionTargetsCount: totalTargets,
         subsessionFluency: parseFloat(fluency.toFixed(2)),
+        ansSelectionStatus: ansSelectionStatus ? ansSelectionStatus : {}
       });
     } catch (err) {
       return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
