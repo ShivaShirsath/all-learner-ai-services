@@ -5013,6 +5013,7 @@ export class ScoresController {
       new ParseArrayPipe({ items: String, separator: ',', optional: true }),
     )
     tags: string[],
+    @Query('multilingual') multilingual: string,
     @Res() response: FastifyReply,
   ) {
 
@@ -5093,6 +5094,7 @@ export class ScoresController {
         cLevel: contentLevel,
         complexityLevel: complexityLevel,
         graphemesMappedObj: graphemesMappedObj,
+        multilingual: multilingual,
       };
 
       const newContent = await lastValueFrom(
