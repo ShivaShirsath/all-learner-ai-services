@@ -5720,24 +5720,18 @@ export class ScoresController {
         getSetResult.collectionId === '' ||
         getSetResult?.collectionId === undefined
       ) {
-        let previous_level_id;
-        if (previous_level === undefined) {
-          previous_level_id = 0;
-        } else if (previous_level === 'B') {
-          previous_level_id = 0;
-        } else {
-          previous_level_id = parseInt(previous_level.replace('m', ''));
-        }
+        // Handle B → M1 progression: If user is at B and passes, go to M1
+        if (previous_level === 'B' && sessionResult === 'pass') {
+          milestone_level = 'm1';
+        } else if (sessionResult === 'pass') {
+          let previous_level_id =
+            previous_level === undefined
+              ? 0
+              : previous_level === 'B'
+              ? 0 // Treat B as equivalent to m0 for progression calculation
+              : parseInt(previous_level.replace('m', ''));
 
-        if (sessionResult === 'pass') { 
-          if (getSetResult.contentType.toLowerCase() === 'char' && hasAnsSelectionStatus && previous_level === 'B') {
-            // For char content type at milestone B, if user passes, move to m1
-            milestone_level = 'm1';
-            
-            // If user is at 'B' and passes non-char content, move to m1
-            milestone_level = 'm1';
-          
-          } else if (
+          if (
             getSetResult.language === en_config.language_code &&
             previous_level_id >= en_config.max_milestone_level &&
             max_level == undefined
@@ -5759,31 +5753,19 @@ export class ScoresController {
           ) {
             milestone_level = 'm' + ta_config.max_milestone_level;
           } else {
-            milestone_level = 'm' + (previous_level_id + 1);
-          }
-        } else {
-          // Fail logic - user must stay at current level until they pass
-          // Special handling for char content type with ansSelectionStatus - fail case
-          if (getSetResult.contentType.toLowerCase() === 'char' && hasAnsSelectionStatus) {
-            // For char content type FAIL, only m0/undefined goes to 'B', others stay at current level
-            if (previous_level === 'm0' || previous_level === undefined) {
+            // Calculate next milestone (would be m1 from m0 or undefined)
+            const nextMilestone = 'm' + (previous_level_id + 1);
+            
+            // If transitioning from M0 (or undefined) to M1, check is_B_enable
+            if (
+              nextMilestone === 'm1' &&
+              (previous_level === 'm0' || previous_level === undefined) &&
+              getSetResult.is_B_enable === true
+            ) {
               milestone_level = 'B';
             } else {
-              milestone_level = previous_level; // Stay at current level (including 'B')
+              milestone_level = nextMilestone;
             }
-          }
-          // Special handling for word content type - fail case
-          else if (getSetResult.contentType.toLowerCase() === 'word') {
-            // For word content type FAIL, only m0/undefined goes to 'B', others stay at current level
-            if (previous_level === 'm0' || previous_level === undefined) {
-              milestone_level = 'B';
-            } else {
-              milestone_level = previous_level; // Stay at current level (including 'B')
-            }
-          }
-          // For all other content types (including char without ansSelectionStatus) - stay at current level on fail
-          else {
-            milestone_level = previous_level; // Stay at current level (including 'B')
           }
         }
       } else {
@@ -6337,19 +6319,16 @@ export class ScoresController {
           }
         }
       }
-      // Apply content type specific milestone logic for collectionId cases
-      if (sessionResult === 'fail') {
-        const isM0OrUndefined = previous_level === 'm0' || previous_level === undefined;
-        
-        if (getSetResult.contentType.toLowerCase() === 'word' && isM0OrUndefined) {
-          milestone_level = 'B';
-        } else if (getSetResult.contentType.toLowerCase() === 'word') {
-          // For word content type at other levels (including 'B') - stay at current level on fail
-          milestone_level = previous_level;
-        } else {
-          // For all other content types and levels - stay at current level on fail (no progression)
-          milestone_level = previous_level;
-        }
+
+      // Check if is_B_enable is true, then route to milestone B instead of M1
+      // Only apply when transitioning from M0 (or undefined) to M1
+      // This handles collectionId-based cases where M1 might be set
+      if (
+        getSetResult.is_B_enable === true &&
+        milestone_level === 'm1' &&
+        (previous_level === 'm0' || previous_level === undefined || previous_level === null)
+      ) {
+        milestone_level = 'B';
       }
 
       let currentLevel = milestone_level;
