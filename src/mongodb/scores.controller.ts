@@ -4350,6 +4350,10 @@ export class ScoresController {
     tags: string[],
     @Res() response: FastifyReply,
   ) {
+    console.log('==================== GetContent/word API CALLED ====================');
+    console.log('GetContent/word - Request Query Params:', request.query);
+    console.log('GetContent/word - contentlimit param:', contentlimit, 'Type:', typeof contentlimit);
+    
     try {
       const id = (request as any).user.virtual_id.toString();
       const graphemesMappedObj = {};
