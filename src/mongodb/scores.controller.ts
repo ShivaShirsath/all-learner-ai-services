@@ -4411,23 +4411,36 @@ export class ScoresController {
 
       const url = process.env.ALL_CONTENT_SERVICE_API;
 
-      // Add the check for the limit
-      if (contentlimit < 5) {
-        contentlimit = 5;
-      } else if (contentlimit > 20) {
-        contentlimit = 20;
+      // Log incoming contentlimit parameter
+      console.log('GetContent/word - Raw contentlimit:', contentlimit, 'Type:', typeof contentlimit);
+
+      // Ensure contentlimit is a valid positive integer for MongoDB $sample
+      let validContentLimit = parseInt(String(contentlimit), 10);
+      if (isNaN(validContentLimit) || validContentLimit <= 0) {
+        console.log('GetContent/word - Invalid contentlimit, using default value 5');
+        validContentLimit = 5; // default value
       }
+      // Add the check for the limit
+      if (validContentLimit < 5) {
+        validContentLimit = 5;
+      } else if (validContentLimit > 20) {
+        validContentLimit = 20;
+      }
+
+      console.log('GetContent/word - Final validContentLimit:', validContentLimit);
 
       const textData = {
         tokenArr: getGetTargetCharArr,
         language: language || 'ta',
         contentType: 'Word',
-        limit: contentlimit || 5,
+        limit: validContentLimit,
         tags: tags || [],
         cLevel: contentLevel,
         complexityLevel: complexityLevel,
         graphemesMappedObj: graphemesMappedObj,
       };
+
+      console.log('GetContent/word - Sending to content service with limit:', textData.limit);
 
       const newContent = await lastValueFrom(
         this.httpService
@@ -4440,10 +4453,14 @@ export class ScoresController {
           .pipe(
             map((resp) => resp.data),
             catchError((error: AxiosError) => {
+              console.error('GetContent/word - Content service API error:', error.message);
+              console.error('GetContent/word - Error response data:', error.response?.data);
               throw 'Error at Content service API Call -' + error;
             }),
           ),
       );
+
+      console.log('GetContent/word - Content service response received successfully');
 
       let contentArr;
       let contentForTokenArr;
@@ -4474,6 +4491,8 @@ export class ScoresController {
         });
       }
 
+      console.log('GetContent/word - Returning success response with', contentArr.length, 'items');
+
       return response.status(HttpStatus.OK).send({
         content: contentArr,
         contentForToken: contentForTokenArr,
@@ -4482,6 +4501,7 @@ export class ScoresController {
         totalSyllableCount: totalSyllableCount,
       });
     } catch (err) {
+      console.error('GetContent/word - Caught error:', err);
       return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
         status: 'error',
         message: 'Server error - ' + err,
