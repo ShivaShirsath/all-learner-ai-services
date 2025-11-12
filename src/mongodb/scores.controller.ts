@@ -4444,11 +4444,12 @@ export class ScoresController {
         graphemesMappedObj: graphemesMappedObj,
       };
 
-      console.log('GetContent/word - Sending to content service with limit:', textData.limit);
+      console.log('GetContent/word - textData.limit value:', textData.limit, 'Type:', typeof textData.limit);
+      console.log('GetContent/word - Full textData:', JSON.stringify(textData, null, 2));
 
       const newContent = await lastValueFrom(
         this.httpService
-          .post(url, JSON.stringify(textData), {
+          .post(url, textData, {
             headers: {
               'Content-Type': 'application/json',
               Authorization: request.headers.authorization,
