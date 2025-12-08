@@ -25,6 +25,7 @@ import {
   ApiForbiddenResponse,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
@@ -50,58 +51,77 @@ export class ScoresController {
   ) { }
 
   @ApiBody({
-    description: 'Request body for storing data to the learner profile',
+    description: 'Request body for storing Tamil language learner profile data. Processes audio through ASR and evaluates pronunciation accuracy.',
     schema: {
       type: 'object',
       properties: {
-        original_text: { type: 'string', example: 'நேர்மை நிறைந்த தீர்ப்பு' },
+        original_text: {
+          type: 'string',
+          example: 'நேர்மை நிறைந்த தீர்ப்பு',
+          description: 'The original Tamil text that the learner is attempting to read',
+        },
         audio: {
           type: 'string',
-          example: 'Add hindi Wav file base64 string here',
+          example: 'base64_encoded_audio_string',
+          description: 'Base64 encoded WAV audio file of the learner reading the text',
         },
-        user_id: { type: 'string', example: '8819167684' },
         session_id: {
           type: 'string',
           example: 'IYmeBW1g3GpJb1AE0fOpHCPhKxJG4zq6',
+          description: 'Unique session identifier',
         },
-        language: { type: 'string', example: 'ta' },
+        language: {
+          type: 'string',
+          example: 'ta',
+          description: 'Language code (ta for Tamil)',
+        },
         date: {
           type: 'string',
           format: 'date-time',
           example: '2024-05-07T12:24:51.779Z',
+          description: 'Timestamp of the recording',
         },
         sub_session_id: {
           type: 'string',
           example: '4TsVQ28LWibb8Yi2uJg4DtLK3svIbIHe',
+          description: 'Unique sub-session identifier for grouping related attempts',
         },
         contentId: {
           type: 'string',
           example: 'b70af0e5-0d74-4287-9548-4d491c714b0d',
+          description: 'Unique identifier for the content being practiced',
         },
-        contentType: { type: 'string', example: 'Sentence' },
+        contentType: {
+          type: 'string',
+          example: 'Sentence',
+          description: 'Type of content (Char, Word, Sentence, Paragraph)',
+        },
+        mode: {
+          type: 'string',
+          example: 'online',
+          description: 'Processing mode (online/offline)',
+        },
       },
+      required: ['original_text', 'session_id', 'sub_session_id', 'contentId', 'contentType'],
     },
   })
   @ApiResponse({
     status: 201,
-    description: 'Success message when data is stored to the learner profile',
+    description: 'Successfully processed and stored learner profile data',
     schema: {
       type: 'object',
       properties: {
         status: { type: 'string', example: 'success' },
-        msg: {
-          type: 'string',
-          example: 'Successfully stored data to learner profile',
-        },
-        responseText: { type: 'string', example: 'நீர்மை நிறந்த தீரு' },
-        subsessionTargetsCount: { type: 'number', example: 17 },
-        subsessionFluency: { type: 'number', example: 1.54 },
+        msg: { type: 'string', example: 'Successfully stored data to learner profile' },
+        responseText: { type: 'string', example: 'நீர்மை நிறந்த தீரு', description: 'ASR recognized text' },
+        subsessionTargetsCount: { type: 'number', example: 17, description: 'Number of target characters in sub-session' },
+        subsessionFluency: { type: 'number', example: 1.54, description: 'Fluency score for the sub-session' },
       },
     },
   })
   @ApiResponse({
     status: 500,
-    description: 'Error while data is being stored to the learner profile',
+    description: 'Error while processing or storing learner profile data',
     schema: {
       type: 'object',
       properties: {
@@ -112,8 +132,8 @@ export class ScoresController {
   })
   @ApiForbiddenResponse({ description: 'Forbidden.' })
   @ApiOperation({
-    summary:
-      'Store students learner ai profile, from the ASR output for a given wav file. This API will work for Tamil',
+    summary: 'Update learner profile for Tamil language',
+    description: 'Processes audio input through ASR (Automatic Speech Recognition) for Tamil language, evaluates pronunciation accuracy, calculates character-level scores, and stores the results in the learner profile. Supports both online and offline processing modes.',
   })
   @Post('/updateLearnerProfile/ta')
   async updateLearnerProfileTa(
@@ -512,58 +532,77 @@ export class ScoresController {
   }
 
   @ApiBody({
-    description: 'Request body for storing data to the learner profile',
+    description: 'Request body for storing Gujarati language learner profile data. Processes audio through ASR and evaluates pronunciation accuracy.',
     schema: {
       type: 'object',
       properties: {
-        original_text: { type: 'string', example: 'ગોલુને ફરવુ ગમે છે.' },
+        original_text: {
+          type: 'string',
+          example: 'ગોલુને ફરવુ ગમે છે.',
+          description: 'The original Gujarati text that the learner is attempting to read',
+        },
         audio: {
           type: 'string',
-          example: 'Add gujarati Wav file base64 string here',
+          example: 'base64_encoded_audio_string',
+          description: 'Base64 encoded WAV audio file of the learner reading the text',
         },
-        user_id: { type: 'string', example: '8819167684' },
         session_id: {
           type: 'string',
           example: 'IYmeBW1g3GpJb1AE0fOpHCPhKxJG4zq6',
+          description: 'Unique session identifier',
         },
-        language: { type: 'string', example: 'gu' },
+        language: {
+          type: 'string',
+          example: 'gu',
+          description: 'Language code (gu for Gujarati)',
+        },
         date: {
           type: 'string',
           format: 'date-time',
           example: '2024-05-07T12:24:51.779Z',
+          description: 'Timestamp of the recording',
         },
         sub_session_id: {
           type: 'string',
           example: '4TsVQ28LWibb8Yi2uJg4DtLK3svIbIHe',
+          description: 'Unique sub-session identifier for grouping related attempts',
         },
         contentId: {
           type: 'string',
           example: 'b70af0e5-0d74-4287-9548-4d491c714b0d',
+          description: 'Unique identifier for the content being practiced',
         },
-        contentType: { type: 'string', example: 'Sentence' },
+        contentType: {
+          type: 'string',
+          example: 'Sentence',
+          description: 'Type of content (Char, Word, Sentence, Paragraph)',
+        },
+        mode: {
+          type: 'string',
+          example: 'online',
+          description: 'Processing mode (online/offline)',
+        },
       },
+      required: ['original_text', 'session_id', 'sub_session_id', 'contentId', 'contentType'],
     },
   })
   @ApiResponse({
     status: 201,
-    description: 'Success message when data is stored to the learner profile',
+    description: 'Successfully processed and stored learner profile data',
     schema: {
       type: 'object',
       properties: {
         status: { type: 'string', example: 'success' },
-        msg: {
-          type: 'string',
-          example: 'Successfully stored data to learner profile',
-        },
-        responseText: { type: 'string', example: 'ગોલુને ફરવુ ગમે' },
-        subsessionTargetsCount: { type: 'number', example: 17 },
-        subsessionFluency: { type: 'number', example: 1.54 },
+        msg: { type: 'string', example: 'Successfully stored data to learner profile' },
+        responseText: { type: 'string', example: 'ગોલુને ફરવુ ગમે', description: 'ASR recognized text' },
+        subsessionTargetsCount: { type: 'number', example: 17, description: 'Number of target characters in sub-session' },
+        subsessionFluency: { type: 'number', example: 1.54, description: 'Fluency score for the sub-session' },
       },
     },
   })
   @ApiResponse({
     status: 500,
-    description: 'Error while data is being stored to the learner profile',
+    description: 'Error while processing or storing learner profile data',
     schema: {
       type: 'object',
       properties: {
@@ -574,8 +613,8 @@ export class ScoresController {
   })
   @ApiForbiddenResponse({ description: 'Forbidden.' })
   @ApiOperation({
-    summary:
-      'Store students learner ai profile, from the ASR output for a given wav file. This API will work for Gujarati',
+    summary: 'Update learner profile for Gujarati language',
+    description: 'Processes audio input through ASR (Automatic Speech Recognition) for Gujarati language, evaluates pronunciation accuracy, calculates character-level scores, and stores the results in the learner profile. Supports both online and offline processing modes.',
   })
   @Post('/updateLearnerProfile/gu')
   async updateLearnerProfileGu(
@@ -974,58 +1013,77 @@ export class ScoresController {
   }
 
   @ApiBody({
-    description: 'Request body for storing data to the learner profile',
+    description: 'Request body for storing Odia language learner profile data. Processes audio through ASR and evaluates pronunciation accuracy.',
     schema: {
       type: 'object',
       properties: {
-        original_text: { type: 'string', example: 'ବିଲେଇ' },
+        original_text: {
+          type: 'string',
+          example: 'ବିଲେଇ',
+          description: 'The original Odia text that the learner is attempting to read',
+        },
         audio: {
           type: 'string',
-          example: 'Add odiya Wav file base64 string here',
+          example: 'base64_encoded_audio_string',
+          description: 'Base64 encoded WAV audio file of the learner reading the text',
         },
-        user_id: { type: 'string', example: '8819167684' },
         session_id: {
           type: 'string',
           example: 'IYmeBW1g3GpJb1AE0fOpHCPhKxJG4zq6',
+          description: 'Unique session identifier',
         },
-        language: { type: 'string', example: 'or' },
+        language: {
+          type: 'string',
+          example: 'or',
+          description: 'Language code (or for Odia)',
+        },
         date: {
           type: 'string',
           format: 'date-time',
           example: '2024-05-07T12:24:51.779Z',
+          description: 'Timestamp of the recording',
         },
         sub_session_id: {
           type: 'string',
           example: '4TsVQ28LWibb8Yi2uJg4DtLK3svIbIHe',
+          description: 'Unique sub-session identifier for grouping related attempts',
         },
         contentId: {
           type: 'string',
           example: 'b70af0e5-0d74-4287-9548-4d491c714b0d',
+          description: 'Unique identifier for the content being practiced',
         },
-        contentType: { type: 'string', example: 'word' },
+        contentType: {
+          type: 'string',
+          example: 'Word',
+          description: 'Type of content (Char, Word, Sentence, Paragraph)',
+        },
+        mode: {
+          type: 'string',
+          example: 'online',
+          description: 'Processing mode (online/offline)',
+        },
       },
+      required: ['original_text', 'session_id', 'sub_session_id', 'contentId', 'contentType'],
     },
   })
   @ApiResponse({
     status: 201,
-    description: 'Success message when data is stored to the learner profile',
+    description: 'Successfully processed and stored learner profile data',
     schema: {
       type: 'object',
       properties: {
         status: { type: 'string', example: 'success' },
-        msg: {
-          type: 'string',
-          example: 'Successfully stored data to learner profile',
-        },
-        responseText: { type: 'string', example: 'ବିଲେଇ' },
-        subsessionTargetsCount: { type: 'number', example: 17 },
-        subsessionFluency: { type: 'number', example: 1.54 },
+        msg: { type: 'string', example: 'Successfully stored data to learner profile' },
+        responseText: { type: 'string', example: 'ବିଲେଇ', description: 'ASR recognized text' },
+        subsessionTargetsCount: { type: 'number', example: 17, description: 'Number of target characters in sub-session' },
+        subsessionFluency: { type: 'number', example: 1.54, description: 'Fluency score for the sub-session' },
       },
     },
   })
   @ApiResponse({
     status: 500,
-    description: 'Error while data is being stored to the learner profile',
+    description: 'Error while processing or storing learner profile data',
     schema: {
       type: 'object',
       properties: {
@@ -1036,8 +1094,8 @@ export class ScoresController {
   })
   @ApiForbiddenResponse({ description: 'Forbidden.' })
   @ApiOperation({
-    summary:
-      'Store students learner ai profile, from the ASR output for a given wav file. This API will work for odiya',
+    summary: 'Update learner profile for Odia language',
+    description: 'Processes audio input through ASR (Automatic Speech Recognition) for Odia language, evaluates pronunciation accuracy, calculates character-level scores, and stores the results in the learner profile. Supports both online and offline processing modes.',
   })
   @Post('/updateLearnerProfile/or')
   async updateLearnerProfileOr(
@@ -1431,58 +1489,77 @@ export class ScoresController {
   }
 
   @ApiBody({
-    description: 'Request body for storing data to the learner profile',
+    description: 'Request body for storing Hindi language learner profile data. Processes audio through ASR and evaluates pronunciation accuracy.',
     schema: {
       type: 'object',
       properties: {
-        original_text: { type: 'string', example: 'आपसे मिलकर अच्छा लगा' },
+        original_text: {
+          type: 'string',
+          example: 'आपसे मिलकर अच्छा लगा',
+          description: 'The original Hindi text that the learner is attempting to read',
+        },
         audio: {
           type: 'string',
-          example: 'Add hindi Wav file base64 string here',
+          example: 'base64_encoded_audio_string',
+          description: 'Base64 encoded WAV audio file of the learner reading the text',
         },
-        user_id: { type: 'string', example: '8819167684' },
         session_id: {
           type: 'string',
           example: 'IYmeBW1g3GpJb1AE0fOpHCPhKxJG4zq6',
+          description: 'Unique session identifier',
         },
-        language: { type: 'string', example: 'hi' },
+        language: {
+          type: 'string',
+          example: 'hi',
+          description: 'Language code (hi for Hindi)',
+        },
         date: {
           type: 'string',
           format: 'date-time',
           example: '2024-05-07T12:24:51.779Z',
+          description: 'Timestamp of the recording',
         },
         sub_session_id: {
           type: 'string',
           example: '4TsVQ28LWibb8Yi2uJg4DtLK3svIbIHe',
+          description: 'Unique sub-session identifier for grouping related attempts',
         },
         contentId: {
           type: 'string',
           example: 'b70af0e5-0d74-4287-9548-4d491c714b0d',
+          description: 'Unique identifier for the content being practiced',
         },
-        contentType: { type: 'string', example: 'Sentence' },
+        contentType: {
+          type: 'string',
+          example: 'Sentence',
+          description: 'Type of content (Char, Word, Sentence, Paragraph)',
+        },
+        mode: {
+          type: 'string',
+          example: 'online',
+          description: 'Processing mode (online/offline)',
+        },
       },
+      required: ['original_text', 'session_id', 'sub_session_id', 'contentId', 'contentType'],
     },
   })
   @ApiResponse({
     status: 201,
-    description: 'Success message when data is stored to the learner profile',
+    description: 'Successfully processed and stored learner profile data',
     schema: {
       type: 'object',
       properties: {
         status: { type: 'string', example: 'success' },
-        msg: {
-          type: 'string',
-          example: 'Successfully stored data to learner profile',
-        },
-        responseText: { type: 'string', example: 'आपसे मिलकर अच्छा लगा' },
-        subsessionTargetsCount: { type: 'number', example: 17 },
-        subsessionFluency: { type: 'number', example: 1.54 },
+        msg: { type: 'string', example: 'Successfully stored data to learner profile' },
+        responseText: { type: 'string', example: 'आपसे मिलकर अच्छा लगा', description: 'ASR recognized text' },
+        subsessionTargetsCount: { type: 'number', example: 17, description: 'Number of target characters in sub-session' },
+        subsessionFluency: { type: 'number', example: 1.54, description: 'Fluency score for the sub-session' },
       },
     },
   })
   @ApiResponse({
     status: 500,
-    description: 'Error while data is being stored to the learner profile',
+    description: 'Error while processing or storing learner profile data',
     schema: {
       type: 'object',
       properties: {
@@ -1493,8 +1570,8 @@ export class ScoresController {
   })
   @ApiForbiddenResponse({ description: 'Forbidden.' })
   @ApiOperation({
-    summary:
-      'Store students learner ai profile, from the ASR output for a given wav file. This API will work for Hindi',
+    summary: 'Update learner profile for Hindi language',
+    description: 'Processes audio input through ASR (Automatic Speech Recognition) for Hindi language, evaluates pronunciation accuracy, calculates character-level scores, and stores the results in the learner profile. Supports both online and offline processing modes.',
   })
   @Post('/updateLearnerProfile/hi')
   async updateLearnerProfileHi(
@@ -1883,64 +1960,77 @@ export class ScoresController {
   }
 
   @ApiBody({
-    description: 'Request body for storing data to the learner profile',
+    description: 'Request body for storing Kannada language learner profile data. Processes audio through ASR and evaluates pronunciation accuracy.',
     schema: {
       type: 'object',
       properties: {
         original_text: {
           type: 'string',
           example: 'ಆಕಾಶನ ಮನೆಯು ಅಂಗಡಿಯ ಹತ್ತಿರ ಇದೆ',
+          description: 'The original Kannada text that the learner is attempting to read',
         },
         audio: {
           type: 'string',
-          example: 'Add kannada Wav file base64 string here',
+          example: 'base64_encoded_audio_string',
+          description: 'Base64 encoded WAV audio file of the learner reading the text',
         },
-        user_id: { type: 'string', example: '8819167684' },
         session_id: {
           type: 'string',
           example: 'IYmeBW1g3GpJb1AE0fOpHCPhKxJG4zq6',
+          description: 'Unique session identifier',
         },
-        language: { type: 'string', example: 'hi' },
+        language: {
+          type: 'string',
+          example: 'kn',
+          description: 'Language code (kn for Kannada)',
+        },
         date: {
           type: 'string',
           format: 'date-time',
           example: '2024-05-07T12:24:51.779Z',
+          description: 'Timestamp of the recording',
         },
         sub_session_id: {
           type: 'string',
           example: '4TsVQ28LWibb8Yi2uJg4DtLK3svIbIHe',
+          description: 'Unique sub-session identifier for grouping related attempts',
         },
         contentId: {
           type: 'string',
           example: 'b70af0e5-0d74-4287-9548-4d491c714b0d',
+          description: 'Unique identifier for the content being practiced',
         },
-        contentType: { type: 'string', example: 'Sentence' },
+        contentType: {
+          type: 'string',
+          example: 'Sentence',
+          description: 'Type of content (Char, Word, Sentence, Paragraph)',
+        },
+        mode: {
+          type: 'string',
+          example: 'online',
+          description: 'Processing mode (online/offline)',
+        },
       },
+      required: ['original_text', 'session_id', 'sub_session_id', 'contentId', 'contentType'],
     },
   })
   @ApiResponse({
     status: 201,
-    description: 'Success message when data is stored to the learner profile',
+    description: 'Successfully processed and stored learner profile data',
     schema: {
       type: 'object',
       properties: {
         status: { type: 'string', example: 'success' },
-        msg: {
-          type: 'string',
-          example: 'Successfully stored data to learner profile',
-        },
-        responseText: {
-          type: 'string',
-          example: 'ಆಕಾಶನ ಮನೆಯು ಅಂಗಡಿಯ ಹತ್ತಿರ ಇದೆ',
-        },
-        subsessionTargetsCount: { type: 'number', example: 17 },
-        subsessionFluency: { type: 'number', example: 1.54 },
+        msg: { type: 'string', example: 'Successfully stored data to learner profile' },
+        responseText: { type: 'string', example: 'ಆಕಾಶನ ಮನೆಯು ಅಂಗಡಿಯ ಹತ್ತಿರ ಇದೆ', description: 'ASR recognized text' },
+        subsessionTargetsCount: { type: 'number', example: 17, description: 'Number of target characters in sub-session' },
+        subsessionFluency: { type: 'number', example: 1.54, description: 'Fluency score for the sub-session' },
       },
     },
   })
   @ApiResponse({
     status: 500,
-    description: 'Error while data is being stored to the learner profile',
+    description: 'Error while processing or storing learner profile data',
     schema: {
       type: 'object',
       properties: {
@@ -1951,8 +2041,8 @@ export class ScoresController {
   })
   @ApiForbiddenResponse({ description: 'Forbidden.' })
   @ApiOperation({
-    summary:
-      'Store students learner ai profile, from the ASR output for a given wav file. This API will work for Kannada',
+    summary: 'Update learner profile for Kannada language',
+    description: 'Processes audio input through ASR (Automatic Speech Recognition) for Kannada language, evaluates pronunciation accuracy, calculates character-level scores, and stores the results in the learner profile. Supports both online and offline processing modes.',
   })
   @Post('/updateLearnerProfile/kn')
   async updateLearnerProfileKn(
@@ -2754,61 +2844,77 @@ export class ScoresController {
   }
 
   @ApiBody({
-    description: 'Request body for storing data to the learner profile',
+    description: 'Request body for storing English language learner profile data. Processes audio through ASR and evaluates pronunciation accuracy using phoneme-level analysis.',
     schema: {
       type: 'object',
       properties: {
         original_text: {
           type: 'string',
           example: 'assisted language learning',
+          description: 'The original English text that the learner is attempting to read',
         },
         audio: {
           type: 'string',
-          example: 'Add english Wav file base64 string here',
+          example: 'base64_encoded_audio_string',
+          description: 'Base64 encoded WAV audio file of the learner reading the text',
         },
-        user_id: { type: 'string', example: '8819167684' },
         session_id: {
           type: 'string',
           example: 'IYmeBW1g3GpJb1AE0fOpHCPhKxJG4zq6',
+          description: 'Unique session identifier',
         },
-        language: { type: 'string', example: 'en' },
+        language: {
+          type: 'string',
+          example: 'en',
+          description: 'Language code (en for English)',
+        },
         date: {
           type: 'string',
           format: 'date-time',
           example: '2024-05-07T12:24:51.779Z',
+          description: 'Timestamp of the recording',
         },
         sub_session_id: {
           type: 'string',
           example: '4TsVQ28LWibb8Yi2uJg4DtLK3svIbIHe',
+          description: 'Unique sub-session identifier for grouping related attempts',
         },
         contentId: {
           type: 'string',
           example: 'b70af0e5-0d74-4287-9548-4d491c714b0d',
+          description: 'Unique identifier for the content being practiced',
         },
-        contentType: { type: 'string', example: 'Sentence' },
+        contentType: {
+          type: 'string',
+          example: 'Sentence',
+          description: 'Type of content (Char, Word, Sentence, Paragraph)',
+        },
+        mode: {
+          type: 'string',
+          example: 'online',
+          description: 'Processing mode (online/offline)',
+        },
       },
+      required: ['original_text', 'session_id', 'sub_session_id', 'contentId', 'contentType'],
     },
   })
   @ApiResponse({
     status: 201,
-    description: 'Success message when data is stored to the learner profile',
+    description: 'Successfully processed and stored learner profile data',
     schema: {
       type: 'object',
       properties: {
         status: { type: 'string', example: 'success' },
-        msg: {
-          type: 'string',
-          example: 'Successfully stored data to learner profile',
-        },
-        responseText: { type: 'string', example: 'assisted language learning' },
-        subsessionTargetsCount: { type: 'number', example: 17 },
-        subsessionFluency: { type: 'number', example: 1.54 },
+        msg: { type: 'string', example: 'Successfully stored data to learner profile' },
+        responseText: { type: 'string', example: 'assisted language learning', description: 'ASR recognized text' },
+        subsessionTargetsCount: { type: 'number', example: 17, description: 'Number of target phonemes in sub-session' },
+        subsessionFluency: { type: 'number', example: 1.54, description: 'Fluency score for the sub-session' },
       },
     },
   })
   @ApiResponse({
     status: 500,
-    description: 'Error while data is being stored to the learner profile',
+    description: 'Error while processing or storing learner profile data',
     schema: {
       type: 'object',
       properties: {
@@ -2819,8 +2925,8 @@ export class ScoresController {
   })
   @ApiForbiddenResponse({ description: 'Forbidden.' })
   @ApiOperation({
-    summary:
-      'Store students learner ai profile, from the ASR output for a given wav file. This API will work for English',
+    summary: 'Update learner profile for English language',
+    description: 'Processes audio input through ASR (Automatic Speech Recognition) for English language, evaluates pronunciation accuracy at the phoneme level, calculates grapheme-phoneme scores, and stores the results in the learner profile. Supports both online and offline processing modes.',
   })
   @Post('/updateLearnerProfile/en')
   async updateLearnerProfileEn(
@@ -3400,58 +3506,77 @@ export class ScoresController {
   }
 
   @ApiBody({
-    description: 'Request body for storing data to the learner profile',
+    description: 'Request body for storing Telugu language learner profile data. Processes audio through ASR and evaluates pronunciation accuracy.',
     schema: {
       type: 'object',
       properties: {
-        original_text: { type: 'string', example: 'షాపు దగ్గరే ఆకాశ ఇల్లు' },
+        original_text: {
+          type: 'string',
+          example: 'షాపు దగ్గరే ఆకాశ ఇల్లు',
+          description: 'The original Telugu text that the learner is attempting to read',
+        },
         audio: {
           type: 'string',
-          example: 'Add telgu Wav file base64 string here',
+          example: 'base64_encoded_audio_string',
+          description: 'Base64 encoded WAV audio file of the learner reading the text',
         },
-        user_id: { type: 'string', example: '8819167684' },
         session_id: {
           type: 'string',
           example: 'IYmeBW1g3GpJb1AE0fOpHCPhKxJG4zq6',
+          description: 'Unique session identifier',
         },
-        language: { type: 'string', example: 'en' },
+        language: {
+          type: 'string',
+          example: 'te',
+          description: 'Language code (te for Telugu)',
+        },
         date: {
           type: 'string',
           format: 'date-time',
           example: '2024-05-07T12:24:51.779Z',
+          description: 'Timestamp of the recording',
         },
         sub_session_id: {
           type: 'string',
           example: '4TsVQ28LWibb8Yi2uJg4DtLK3svIbIHe',
+          description: 'Unique sub-session identifier for grouping related attempts',
         },
         contentId: {
           type: 'string',
           example: 'b70af0e5-0d74-4287-9548-4d491c714b0d',
+          description: 'Unique identifier for the content being practiced',
         },
-        contentType: { type: 'string', example: 'Sentence' },
+        contentType: {
+          type: 'string',
+          example: 'Sentence',
+          description: 'Type of content (Char, Word, Sentence, Paragraph)',
+        },
+        mode: {
+          type: 'string',
+          example: 'online',
+          description: 'Processing mode (online/offline)',
+        },
       },
+      required: ['original_text', 'session_id', 'sub_session_id', 'contentId', 'contentType'],
     },
   })
   @ApiResponse({
     status: 201,
-    description: 'Success message when data is stored to the learner profile',
+    description: 'Successfully processed and stored learner profile data',
     schema: {
       type: 'object',
       properties: {
         status: { type: 'string', example: 'success' },
-        msg: {
-          type: 'string',
-          example: 'Successfully stored data to learner profile',
-        },
-        responseText: { type: 'string', example: 'షాపు దగ్గరే ఆకాశ ఇల్లు' },
-        subsessionTargetsCount: { type: 'number', example: 17 },
-        subsessionFluency: { type: 'number', example: 1.54 },
+        msg: { type: 'string', example: 'Successfully stored data to learner profile' },
+        responseText: { type: 'string', example: 'షాపు దగ్గరే ఆకాశ ఇల్లు', description: 'ASR recognized text' },
+        subsessionTargetsCount: { type: 'number', example: 17, description: 'Number of target characters in sub-session' },
+        subsessionFluency: { type: 'number', example: 1.54, description: 'Fluency score for the sub-session' },
       },
     },
   })
   @ApiResponse({
     status: 500,
-    description: 'Error while data is being stored to the learner profile',
+    description: 'Error while processing or storing learner profile data',
     schema: {
       type: 'object',
       properties: {
@@ -3462,8 +3587,8 @@ export class ScoresController {
   })
   @ApiForbiddenResponse({ description: 'Forbidden.' })
   @ApiOperation({
-    summary:
-      'Store students learner ai profile, from the ASR output for a given wav file. This API will work for telgu',
+    summary: 'Update learner profile for Telugu language',
+    description: 'Processes audio input through ASR (Automatic Speech Recognition) for Telugu language, evaluates pronunciation accuracy, calculates character-level scores, and stores the results in the learner profile. Supports both online and offline processing modes.',
   })
   @Post('/updateLearnerProfile/te')
   async updateLearnerProfileTe(
@@ -4256,12 +4381,19 @@ export class ScoresController {
 
   @ApiParam({
     name: 'sessionId',
+    description: 'The unique session identifier',
     example: '20200765061699008295109',
+  })
+  @ApiQuery({
+    name: 'language',
+    required: true,
+    description: 'Language code for the content (e.g., en, ta, hi, gu, or, kn, te)',
+    example: 'ta',
   })
   @Get('/GetTargets/session/:sessionId')
   @ApiResponse({
     status: 200,
-    description: 'Sending targets calculated in the whole session',
+    description: 'Successfully retrieved target characters for the session',
     schema: {
       type: 'array',
       items: {
@@ -4289,7 +4421,11 @@ export class ScoresController {
       },
     },
   })
-  @ApiOperation({ summary: 'Get Targets character by session id' })
+  @ApiForbiddenResponse({ description: 'Forbidden.' })
+  @ApiOperation({
+    summary: 'Get target characters by session ID',
+    description: 'Retrieves a list of target characters that the learner needs to practice, calculated based on performance data from the entire session.',
+  })
   async GetTargetsbySession(
     @Param('sessionId') id: string,
     @Query('language') language: string,
@@ -4311,10 +4447,30 @@ export class ScoresController {
 
   @Public()
   @Get('/GetTargets/user/:userId')
-  @ApiOperation({ summary: 'Get Targets character by user id' })
+  @ApiParam({
+    name: 'userId',
+    description: 'The unique user identifier',
+    example: '8819167684',
+  })
+  @ApiQuery({
+    name: 'language',
+    required: true,
+    description: 'Language code for the content (e.g., en, ta, hi, gu, or, kn, te)',
+    example: 'ta',
+  })
+  @ApiQuery({
+    name: 'user_id',
+    required: true,
+    description: 'The user ID to fetch targets for',
+    example: '8819167684',
+  })
+  @ApiOperation({
+    summary: 'Get target characters by user ID',
+    description: 'Retrieves a list of target characters that the learner needs to practice, calculated based on overall user performance data.',
+  })
   @ApiResponse({
     status: 200,
-    description: 'Sending targets calculated on the user basis',
+    description: 'Successfully retrieved target characters for the user',
     schema: {
       type: 'array',
       items: {
@@ -4359,19 +4515,29 @@ export class ScoresController {
 
   @ApiParam({
     name: 'subsessionId',
+    description: 'The unique sub-session identifier',
     example: '2020076506',
   })
+  @ApiQuery({
+    name: 'language',
+    required: true,
+    description: 'Language code for the content (e.g., en, ta, hi, gu, or, kn, te)',
+    example: 'ta',
+  })
   @Get('/GetTargets/subsession/:subsessionId')
-  @ApiOperation({ summary: 'Get Targets character by subsessionId' })
+  @ApiOperation({
+    summary: 'Get target characters by sub-session ID',
+    description: 'Retrieves a list of target characters that the learner needs to practice, calculated based on performance data from a specific sub-session.',
+  })
   @ApiResponse({
     status: 200,
-    description: 'Calculate the target on the basis of subsession_id',
+    description: 'Successfully retrieved target characters for the sub-session',
     schema: {
       type: 'array',
       items: {
         type: 'object',
         properties: {
-          character: { type: 'string', example: '*' },
+          character: { type: 'string', example: 'க' },
           latestScores: {
             type: 'array',
             items: { type: 'number', example: 0.1 },
@@ -4416,13 +4582,23 @@ export class ScoresController {
 
   @ApiParam({
     name: 'subsessionId',
+    description: 'The unique sub-session identifier',
     example: '2020076506',
   })
+  @ApiQuery({
+    name: 'language',
+    required: true,
+    description: 'Language code for the content (e.g., en, ta, hi, gu, or, kn, te)',
+    example: 'ta',
+  })
   @Get('/GetFamiliarity/subsession/:subsessionId')
-  @ApiOperation({ summary: 'Get familiarity character by sub session' })
+  @ApiOperation({
+    summary: 'Get familiarity characters by sub-session ID',
+    description: 'Retrieves a list of characters the learner is familiar with, calculated based on performance data from a specific sub-session.',
+  })
   @ApiResponse({
     status: 200,
-    description: 'Get familiarity character by sub session',
+    description: 'Successfully retrieved familiarity characters for the sub-session',
     schema: {
       type: 'array',
       items: {
@@ -4474,13 +4650,23 @@ export class ScoresController {
 
   @ApiParam({
     name: 'sessionId',
+    description: 'The unique session identifier',
     example: '20200765061699008295109',
   })
+  @ApiQuery({
+    name: 'language',
+    required: true,
+    description: 'Language code for the content (e.g., en, ta, hi, gu, or, kn, te)',
+    example: 'ta',
+  })
   @Get('/GetFamiliarity/session/:sessionId')
-  @ApiOperation({ summary: 'Get Familiarity of characters by session id' })
+  @ApiOperation({
+    summary: 'Get familiarity characters by session ID',
+    description: 'Retrieves a list of characters the learner is familiar with, calculated based on performance data from the entire session.',
+  })
   @ApiResponse({
     status: 200,
-    description: 'Get Familiarity of characters by session id',
+    description: 'Successfully retrieved familiarity characters for the session',
     schema: {
       type: 'array',
       items: {
@@ -4525,15 +4711,20 @@ export class ScoresController {
     }
   }
 
-  @ApiParam({
-    name: 'userId',
-    example: '2020076506',
+  @ApiQuery({
+    name: 'language',
+    required: true,
+    description: 'Language code for the content (e.g., en, ta, hi, gu, or, kn, te)',
+    example: 'ta',
   })
   @Get('/GetFamiliarity/user')
-  @ApiOperation({ summary: 'Get Familiarity of characters by user id' })
+  @ApiOperation({
+    summary: 'Get familiarity characters by authenticated user',
+    description: 'Retrieves a list of characters the authenticated learner is familiar with, calculated based on overall user performance data. User ID is extracted from the JWT token.',
+  })
   @ApiResponse({
     status: 200,
-    description: 'Response containing character score details',
+    description: 'Successfully retrieved familiarity characters for the user',
     schema: {
       type: 'array',
       items: {
@@ -4577,18 +4768,42 @@ export class ScoresController {
   }
 
   @Get('GetContent/char')
+  @ApiQuery({
+    name: 'language',
+    required: true,
+    description: 'Language code for the content (e.g., en, ta, hi, gu, or, kn, te)',
+    example: 'ta',
+  })
+  @ApiQuery({
+    name: 'contentlimit',
+    required: false,
+    description: 'Maximum number of content items to return (default: 5, min: 5, max: 20)',
+    example: 5,
+  })
+  @ApiQuery({
+    name: 'gettargetlimit',
+    required: false,
+    description: 'Maximum number of target characters to consider (default: 5)',
+    example: 5,
+  })
+  @ApiQuery({
+    name: 'tags',
+    required: false,
+    description: 'Comma-separated list of tags to filter content',
+    example: 'tag1,tag2',
+  })
   @ApiOperation({
-    summary:
-      'Get a set of chars for the user to practice, upon feeding the Get Target Chars to Content Algorithm by user id',
+    summary: 'Get character content for user practice',
+    description: 'Retrieves a set of characters for the user to practice, based on target characters identified from the learner AI profile and content algorithm.',
   })
   @ApiResponse({
     status: 200,
-    description:
-      'Success response with Get content and GetTarget chars for user id',
+    description: 'Successfully retrieved character content for the user',
     schema: {
+      type: 'object',
       properties: {
-        content: { type: 'string' },
-        getTargetChar: { type: 'string' },
+        content: { type: 'array', items: { type: 'object' }, description: 'Array of content items for practice' },
+        getTargetChar: { type: 'array', items: { type: 'string' }, description: 'Array of target characters' },
       },
     },
   })
@@ -4759,22 +4974,52 @@ export class ScoresController {
   }
 
   @Get('GetContent/word')
+  @ApiQuery({
+    name: 'language',
+    required: true,
+    description: 'Language code for the content (e.g., en, ta, hi, gu, or, kn, te)',
+    example: 'ta',
+  })
+  @ApiQuery({
+    name: 'contentlimit',
+    required: false,
+    description: 'Maximum number of content items to return (max: 20)',
+    example: 5,
+  })
+  @ApiQuery({
+    name: 'gettargetlimit',
+    required: false,
+    description: 'Maximum number of target characters to consider (default: 5)',
+    example: 5,
+  })
+  @ApiQuery({
+    name: 'multilingual',
+    required: false,
+    description: 'Flag to enable multilingual content',
+    example: 'true',
+  })
+  @ApiQuery({
+    name: 'tags',
+    required: false,
+    description: 'Comma-separated list of tags to filter content',
+    example: 'tag1,tag2',
+  })
   @ApiOperation({
-    summary:
-      'Get a set of words for the user to practice, upon feeding the Get Target Chars to Content Algorithm by user id',
+    summary: 'Get word content for user practice',
+    description: 'Retrieves a set of words for the user to practice, based on target characters identified from the learner AI profile and content algorithm.',
   })
   @ApiResponse({
     status: 200,
-    description:
-      'Success response with Get content and GetTarget chars for user id',
+    description: 'Successfully retrieved word content for the user',
     schema: {
+      type: 'object',
       properties: {
-        content: { type: 'string' },
-        getTargetChar: { type: 'string' },
+        content: { type: 'array', items: { type: 'object' }, description: 'Array of word content items for practice' },
+        getTargetChar: { type: 'array', items: { type: 'string' }, description: 'Array of target characters' },
+        totalTargets: { type: 'number', description: 'Total number of target characters' },
       },
     },
   })
-
   async GetContentWordbyUser(
     @Req() request: FastifyRequest,
     @Query('language') language: string,
@@ -4935,22 +5180,88 @@ export class ScoresController {
   }
 
   @Get('GetContent/sentence')
+  @ApiQuery({
+    name: 'language',
+    required: true,
+    description: 'Language code for the content (e.g., en, ta, hi, gu, or, kn, te)',
+    example: 'ta',
+  })
+  @ApiQuery({
+    name: 'contentlimit',
+    required: false,
+    description: 'Maximum number of content items to return (max: 20)',
+    example: 5,
+  })
+  @ApiQuery({
+    name: 'gettargetlimit',
+    required: false,
+    description: 'Maximum number of target characters to consider (default: 5)',
+    example: 5,
+  })
+  @ApiQuery({
+    name: 'tags',
+    required: false,
+    description: 'Comma-separated list of tags to filter content',
+    example: 'tag1,tag2',
+  })
+  @ApiQuery({
+    name: 'mechanics_id',
+    required: false,
+    description: 'Mechanics identifier for filtering content',
+    example: 'mechanics_001',
+  })
+  @ApiQuery({
+    name: 'level_competency',
+    required: false,
+    description: 'Comma-separated list of competency levels',
+    example: 'L1,L2',
+  })
+  @ApiQuery({
+    name: 'story_mode',
+    required: false,
+    description: 'Flag to enable story mode content',
+    example: 'true',
+  })
+  @ApiQuery({
+    name: 'category',
+    required: false,
+    description: 'Content category filter',
+    example: 'general',
+  })
+  @ApiQuery({
+    name: 'type_of_learner',
+    required: false,
+    description: 'Type of learner for personalized content',
+    example: 'beginner',
+  })
+  @ApiQuery({
+    name: 'CEFR_level',
+    required: false,
+    description: 'Comma-separated list of CEFR levels',
+    example: 'A1,A2',
+  })
+  @ApiQuery({
+    name: 'multilingual',
+    required: false,
+    description: 'Flag to enable multilingual content',
+    example: 'true',
+  })
   @ApiOperation({
-    summary:
-      'Get a set of sentences for the user to practice, upon feeding the Get Target Chars to Content Algorithm by user id',
+    summary: 'Get sentence content for user practice',
+    description: 'Retrieves a set of sentences for the user to practice, based on target characters identified from the learner AI profile and content algorithm. Supports various filters like mechanics, competency level, and CEFR level.',
   })
   @ApiResponse({
     status: 200,
-    description:
-      'Success response with Get content and GetTarget chars for user id',
+    description: 'Successfully retrieved sentence content for the user',
     schema: {
+      type: 'object',
       properties: {
-        content: { type: 'string' },
-        getTargetChar: { type: 'string' },
+        content: { type: 'array', items: { type: 'object' }, description: 'Array of sentence content items for practice' },
+        getTargetChar: { type: 'array', items: { type: 'string' }, description: 'Array of target characters' },
+        totalTargets: { type: 'number', description: 'Total number of target characters' },
       },
     },
   })
-
   async GetContentSentencebyUser(
     @Req() request: FastifyRequest,
     @Query('language') language,
@@ -5122,22 +5433,52 @@ export class ScoresController {
   }
 
   @Get('GetContent/paragraph')
+  @ApiQuery({
+    name: 'language',
+    required: true,
+    description: 'Language code for the content (e.g., en, ta, hi, gu, or, kn, te)',
+    example: 'ta',
+  })
+  @ApiQuery({
+    name: 'contentlimit',
+    required: false,
+    description: 'Maximum number of content items to return (default: 5)',
+    example: 5,
+  })
+  @ApiQuery({
+    name: 'gettargetlimit',
+    required: false,
+    description: 'Maximum number of target characters to consider (default: 5)',
+    example: 5,
+  })
+  @ApiQuery({
+    name: 'tags',
+    required: false,
+    description: 'Comma-separated list of tags to filter content',
+    example: 'tag1,tag2',
+  })
+  @ApiQuery({
+    name: 'multilingual',
+    required: false,
+    description: 'Flag to enable multilingual content',
+    example: 'true',
+  })
   @ApiOperation({
-    summary:
-      'Get a set of paragraphs for the user to practice, upon feeding the Get Target Chars to Content Algorithm by user id',
+    summary: 'Get paragraph content for user practice',
+    description: 'Retrieves a set of paragraphs for the user to practice, based on target characters identified from the learner AI profile and content algorithm.',
   })
   @ApiResponse({
     status: 200,
-    description:
-      'Success response with Get content and GetTarget chars for user id',
+    description: 'Successfully retrieved paragraph content for the user',
     schema: {
+      type: 'object',
       properties: {
-        content: { type: 'string' },
-        getTargetChar: { type: 'string' },
+        content: { type: 'array', items: { type: 'object' }, description: 'Array of paragraph content items for practice' },
+        getTargetChar: { type: 'array', items: { type: 'string' }, description: 'Array of target characters' },
+        totalTargets: { type: 'number', description: 'Total number of target characters' },
       },
     },
   })
-
   async GetContentParagraphbyUser(
     @Req() request: FastifyRequest,
     @Query('language') language,
@@ -5293,48 +5634,71 @@ export class ScoresController {
   }
 
   @ApiBody({
-    description: `Api request body include these schema properties.
-    Based on sub session id we will calculate targets and contenttype will prepare result.
-    Collection id will only used for to identify discovery set.Based on discovery set will update level`,
+    description: 'Request body for calculating session result based on sub-session performance. The result is calculated based on target characters and content type. Collection ID is used to identify discovery sets for milestone level updates.',
     schema: {
       type: 'object',
       properties: {
-        user_id: { type: 'string', example: '8635444062' },
-        session_id: { type: 'string', example: '86354440621701972584385' },
+        session_id: {
+          type: 'string',
+          example: '86354440621701972584385',
+          description: 'The session identifier',
+        },
         sub_session_id: {
           type: 'string',
           example: '86354440621701972584385',
-          description:
-            'This required as result is calculated based on sub session records targets',
+          description: 'The sub-session identifier (required for calculating targets)',
         },
-        contentType: { type: 'string', example: 'Sentence' },
+        language: {
+          type: 'string',
+          example: 'ta',
+          description: 'Language code (e.g., en, ta, hi, gu, or, kn, te)',
+        },
+        contentType: {
+          type: 'string',
+          example: 'Sentence',
+          description: 'Type of content (Char, Word, Sentence, Paragraph)',
+        },
         collectionId: {
           type: 'string',
           example: '5221f84c-8abb-4601-a9d0-f8d8dd496566',
-          description: 'Send collectionid only when you are doing discovery',
+          description: 'Collection ID for discovery sets (optional, used for milestone updates)',
+        },
+        totalSyllableCount: {
+          type: 'number',
+          example: 50,
+          description: 'Total syllable count for English language content (optional)',
+        },
+        is_mechanics: {
+          type: 'boolean',
+          example: false,
+          description: 'Flag to indicate if mechanics evaluation should be applied',
+        },
+        max_level: {
+          type: 'string',
+          example: 'm9',
+          description: 'Maximum milestone level allowed (optional)',
         },
       },
+      required: ['session_id', 'sub_session_id', 'language', 'contentType'],
     },
   })
   @ApiResponse({
     status: 201,
-    description: `This will provide you session result with targets
-    and also update level if level updation criteria matched`,
+    description: 'Successfully calculated session result with target information and milestone level updates',
     schema: {
       type: 'object',
       properties: {
         status: { type: 'string', example: 'success' },
-        sessionResult: { type: 'string', example: 'pass' },
-        totalTargets: { type: 'number', example: 14 },
-        currentLevel: { type: 'string', example: 'm3' },
-        previous_level: { type: 'string', example: 'm0' },
+        sessionResult: { type: 'string', example: 'pass', description: 'Result of the session (pass/fail)' },
+        totalTargets: { type: 'number', example: 14, description: 'Total number of target characters' },
+        currentLevel: { type: 'string', example: 'm3', description: 'Current milestone level after evaluation' },
+        previous_level: { type: 'string', example: 'm0', description: 'Previous milestone level before evaluation' },
       },
     },
   })
   @ApiResponse({
     status: 500,
-    description: `Error while data is being calculate sub-session result and
-    milestone level updation`,
+    description: 'Error while calculating sub-session result and milestone level update',
     schema: {
       type: 'object',
       properties: {
@@ -5345,8 +5709,8 @@ export class ScoresController {
   })
   @ApiForbiddenResponse({ description: 'Forbidden.' })
   @ApiOperation({
-    summary:
-      'This API will give pass or fail result with gettarget count for records performed in the subsession. Also this API perform milestone update for discovery and showcase.',
+    summary: 'Calculate session result and update milestone level',
+    description: 'Calculates pass/fail result based on target character performance in a sub-session. Also handles milestone level updates for discovery and showcase modes. Supports different evaluation criteria based on content type (Char, Word, Sentence, Paragraph) and mechanics.',
   })
   @Post('/getSetResult')
   async getSetResult(
@@ -6421,38 +6785,59 @@ export class ScoresController {
   }
 
 
-  @ApiParam({
-    name: 'userId',
-    example: '27519278861697549531193',
+  @ApiQuery({
+    name: 'language',
+    required: true,
+    description: 'Language code for the content (e.g., en, ta, hi, gu, or, kn, te)',
+    example: 'ta',
   })
   @ApiOperation({
-    summary: 'This API will give you current milestone level of user.',
+    summary: 'Get current milestone level of authenticated user',
+    description: 'Retrieves the current milestone level for the authenticated user along with additional data including TOWRE results and vocabulary statistics. User ID is extracted from the JWT token.',
   })
   @ApiResponse({
     status: 200,
-    description: 'Success response with current milestone level of user',
+    description: 'Successfully retrieved milestone level with additional user statistics',
     schema: {
+      type: 'object',
       properties: {
-        milestone_level: { type: 'string', example: 'm0' },
-        extra: {
+        status: { type: 'string', example: 'success' },
+        data: {
           type: 'object',
           properties: {
-            latest_towre_data: {
+            milestone_level: { type: 'string', example: 'm0', description: 'Current milestone level (m0-m9 or B)' },
+            extra: {
               type: 'object',
               properties: {
-                wordsPerMinute: { type: 'number', example: 144 },
-                correctWordsCount: { type: 'number', example: 8 },
-                unattemptedWordsCount: { type: 'number', example: 100 },
-                newWordsLearnt: { type: 'number', example: 8 },
-                incorrectWordCount: { type: 'number', example: 0 },
+                latest_towre_data: {
+                  type: 'object',
+                  description: 'Latest TOWRE (Test of Word Reading Efficiency) data',
+                  properties: {
+                    wordsPerMinute: { type: 'number', example: 144 },
+                    correctWordsCount: { type: 'number', example: 8 },
+                    unattemptedWordsCount: { type: 'number', example: 100 },
+                    newWordsLearnt: { type: 'number', example: 8 },
+                    incorrectWordCount: { type: 'number', example: 0 },
+                  },
+                },
+                vocabulary_count: { type: 'number', example: 0, description: 'Total vocabulary count' },
+                learned_voc_count: { type: 'number', example: 10, description: 'Number of learned words' },
+                understood_voc_count: { type: 'number', example: 5, description: 'Number of understood words' },
               },
-            },
-            vocabulary_count: {
-              type: 'number',
-              example: 0,
             },
           },
         },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 500,
+    description: 'Error while fetching milestone data',
+    schema: {
+      type: 'object',
+      properties: {
+        status: { type: 'string', example: 'error' },
+        message: { type: 'string', example: 'Server error - error message' },
       },
     },
   })
@@ -6611,8 +6996,7 @@ export class ScoresController {
 
 
   @ApiBody({
-    description: `Api request body include these schema properties.
-    Based on user id we will calculate targets.`,
+    description: 'Request body for fetching target characters for multiple users. Targets are characters the learner needs to practice based on their performance data.',
     schema: {
       type: 'object',
       properties: {
@@ -6622,42 +7006,45 @@ export class ScoresController {
             type: 'string',
             example: '8297454902',
           },
+          description: 'Array of user IDs to fetch targets for',
         },
         language: {
           type: 'string',
           example: 'en',
+          description: 'Language code (e.g., en, ta, hi, gu, or, kn, te)',
         },
       },
       required: ['userIds', 'language'],
     },
   })
   @ApiResponse({
-    status: 201,
-    description: 'This will provide you target data of users',
+    status: 200,
+    description: 'Successfully retrieved target data for all specified users',
     schema: {
       type: 'array',
       items: {
         type: 'object',
         properties: {
-          user_id: { type: 'string', example: '9131490212' },
+          user_id: { type: 'string', example: '9131490212', description: 'User identifier' },
           targetData: {
             type: 'array',
+            description: 'Array of target characters with their scores',
             items: {
               type: 'object',
               properties: {
-                character: { type: 'string', example: 'ளி' },
-                score: { type: 'number', example: 0.1 },
+                character: { type: 'string', example: 'ளி', description: 'Target character' },
+                score: { type: 'number', example: 0.1, description: 'Performance score for this character' },
               },
             },
           },
-          targetCount: { type: 'integer', example: 56 },
+          targetCount: { type: 'integer', example: 56, description: 'Total number of target characters' },
         },
       },
     },
   })
   @ApiResponse({
     status: 500,
-    description: `Error while fetching the users target data`,
+    description: 'Error while fetching the users target data',
     schema: {
       type: 'object',
       properties: {
@@ -6668,7 +7055,8 @@ export class ScoresController {
   })
   @ApiForbiddenResponse({ description: 'Forbidden.' })
   @ApiOperation({
-    summary: 'This API will give the users target',
+    summary: 'Get target characters for multiple users',
+    description: 'Retrieves target characters (characters that need practice) for multiple users at once. Useful for batch processing or dashboard views.',
   })
   @Post('/getUsersTargets')
   async GetUsersTargets(@Res() response: FastifyReply, @Body() data: any) {
@@ -6696,8 +7084,7 @@ export class ScoresController {
   }
 
   @ApiBody({
-    description: `Api request body include these schema properties.
-    Based on user id we will calculate familirity.`,
+    description: 'Request body for fetching familiarity characters for multiple users. Familiarity indicates characters the learner has mastered based on their performance data.',
     schema: {
       type: 'object',
       properties: {
@@ -6707,48 +7094,52 @@ export class ScoresController {
             type: 'string',
             example: '8297454902',
           },
+          description: 'Array of user IDs to fetch familiarity for',
         },
         language: {
           type: 'string',
           example: 'en',
+          description: 'Language code (e.g., en, ta, hi, gu, or, kn, te)',
         },
       },
       required: ['userIds', 'language'],
     },
   })
   @ApiResponse({
-    status: 201,
-    description: 'This will provide you familiarity of users',
+    status: 200,
+    description: 'Successfully retrieved familiarity data for all specified users',
     schema: {
       type: 'array',
       items: {
         type: 'object',
         properties: {
-          user_id: { type: 'string', example: '8297454902' },
+          user_id: { type: 'string', example: '8297454902', description: 'User identifier' },
           familiarityData: {
             type: 'array',
+            description: 'Array of familiar characters with performance metrics',
             items: {
               type: 'object',
               properties: {
-                character: { type: 'string', example: 'ɪ' },
+                character: { type: 'string', example: 'ɪ', description: 'Familiar character' },
                 latestScores: {
                   type: 'array',
                   items: { type: 'number', example: 0.99 },
+                  description: 'Recent performance scores',
                 },
-                countBelowThreshold: { type: 'integer', example: 1 },
-                countAboveThreshold: { type: 'integer', example: 4 },
-                score: { type: 'number', example: 0.812 },
+                countBelowThreshold: { type: 'integer', example: 1, description: 'Count of scores below threshold' },
+                countAboveThreshold: { type: 'integer', example: 4, description: 'Count of scores above threshold' },
+                score: { type: 'number', example: 0.812, description: 'Average familiarity score' },
               },
             },
           },
-          familiarityCount: { type: 'integer', example: 5 },
+          familiarityCount: { type: 'integer', example: 5, description: 'Total number of familiar characters' },
         },
       },
     },
   })
   @ApiResponse({
     status: 500,
-    description: `Error while fetching the users familiarity data`,
+    description: 'Error while fetching the users familiarity data',
     schema: {
       type: 'object',
       properties: {
@@ -6759,7 +7150,8 @@ export class ScoresController {
   })
   @ApiForbiddenResponse({ description: 'Forbidden.' })
   @ApiOperation({
-    summary: 'This API will give the users familiarity',
+    summary: 'Get familiarity characters for multiple users',
+    description: 'Retrieves familiarity characters (characters the learner has mastered) for multiple users at once. Useful for batch processing or dashboard views.',
   })
   @Post('/getUsersFamiliarity')
   async GetUsersFamiliarity(@Res() response: FastifyReply, @Body() data: any) {
@@ -6788,27 +7180,39 @@ export class ScoresController {
   }
 
   @ApiBody({
-    description: `Api request body include these schema properties.
-    Based on user id we will send the milestone level.`,
+    description: 'Request body for fetching milestone levels for multiple users. Milestone levels indicate the learning progress stage (m0-m9 or B) of each user.',
     schema: {
       type: 'object',
       properties: {
-        user_ids: { type: 'array', example: ['8635444062', '8635444063'] },
-        language: { type: 'string', example: 'ta' },
+        userIds: {
+          type: 'array',
+          items: { type: 'string' },
+          example: ['8635444062', '8635444063'],
+          description: 'Array of user IDs to fetch milestone levels for',
+        },
+        language: {
+          type: 'string',
+          example: 'ta',
+          description: 'Language code (e.g., en, ta, hi, gu, or, kn, te)',
+        },
       },
+      required: ['userIds', 'language'],
     },
   })
   @ApiResponse({
-    status: 201,
-    description: `This will provide you familiarity of users`,
+    status: 200,
+    description: 'Successfully retrieved milestone levels for all specified users',
     schema: {
-      type: 'object',
-      properties: {
-        user_id: { type: 'string', example: '8591582684' },
-        data: {
-          type: 'object',
-          example: {
-            milestone_level: { type: 'string', example: 'm0' },
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          user_id: { type: 'string', example: '8591582684', description: 'User identifier' },
+          data: {
+            type: 'object',
+            properties: {
+              milestone_level: { type: 'string', example: 'm0', description: 'Current milestone level (m0-m9 or B)' },
+            },
           },
         },
       },
@@ -6816,7 +7220,7 @@ export class ScoresController {
   })
   @ApiResponse({
     status: 500,
-    description: `Error while fetching the users milestone data`,
+    description: 'Error while fetching the users milestone data',
     schema: {
       type: 'object',
       properties: {
@@ -6827,7 +7231,8 @@ export class ScoresController {
   })
   @ApiForbiddenResponse({ description: 'Forbidden.' })
   @ApiOperation({
-    summary: 'This API will give the users milestone level',
+    summary: 'Get milestone levels for multiple users',
+    description: 'Retrieves current milestone levels for multiple users at once. Milestone levels represent learning progress stages from m0 (beginner) to m9 (advanced) or B (special beginner track).',
   })
   @Post('/getUsersMilestones')
   async getUsersMilestones(@Res() response: FastifyReply, @Body() data: any) {
@@ -6856,55 +7261,60 @@ export class ScoresController {
   }
 
   @ApiBody({
-    description: `Api request body include these schema properties.
-    Based on user id we will send the profile related data.`,
+    description: 'Request body for fetching comprehensive user profile data including targets and familiarity organized by sub-sessions.',
     schema: {
       type: 'object',
       properties: {
-        user_id: { type: 'string', example: '8635444062' },
-        language: { type: 'string', example: 'ta' },
+        userId: {
+          type: 'string',
+          example: '8635444062',
+          description: 'The user ID to fetch profile data for',
+        },
+        language: {
+          type: 'string',
+          example: 'ta',
+          description: 'Language code (e.g., en, ta, hi, gu, or, kn, te)',
+        },
       },
+      required: ['userId', 'language'],
     },
   })
   @ApiResponse({
-    status: 201,
-    description: 'This will provide you Target and Familiarity data of user',
+    status: 200,
+    description: 'Successfully retrieved comprehensive user profile with target and familiarity data organized by sub-sessions',
     schema: {
       type: 'object',
       properties: {
-        user_id: { type: 'string', example: 'pass' },
         Target: {
           type: 'array',
+          description: 'Target characters data organized by sub-session',
           items: {
             type: 'object',
             properties: {
-              subSessionId: { type: 'string', example: '8635444062' },
+              subSessionId: { type: 'string', example: '8635444062', description: 'Sub-session identifier' },
               createdAt: {
                 type: 'string',
                 format: 'date-time',
                 example: '2023-10-16T08:25:43.934Z',
+                description: 'Timestamp when the sub-session was created',
               },
               score: {
                 type: 'array',
+                description: 'Array of target character scores',
                 items: {
                   type: 'object',
                   properties: {
-                    character: { type: 'string', example: 'd' },
+                    character: { type: 'string', example: 'd', description: 'Target character' },
                     latestScores: {
                       type: 'array',
+                      description: 'Recent performance scores for this character',
                       items: {
                         type: 'object',
                         properties: {
                           score: { type: 'number', example: 0.1 },
-                          original_text: {
-                            type: 'string',
-                            example: 'நீலா பூந்தோ',
-                          },
-                          response_text: {
-                            type: 'string',
-                            example: 'நீலா பூந்தோ',
-                          },
-                          countBelowThreshold: { type: 'number', example: 0.1 },
+                          original_text: { type: 'string', example: 'நீலா பூந்தோ' },
+                          response_text: { type: 'string', example: 'நீலா பூந்தோ' },
+                          countBelowThreshold: { type: 'number', example: 1 },
                           countAboveThreshold: { type: 'number', example: 5 },
                           avgScore: { type: 'number', example: 0.1 },
                         },
@@ -6916,40 +7326,38 @@ export class ScoresController {
             },
           },
         },
-        Familiarity: {
+        Famalarity: {
           type: 'array',
+          description: 'Familiarity characters data organized by sub-session',
           items: {
             type: 'object',
             properties: {
-              subSessionId: { type: 'string', example: '8635444062' },
+              subSessionId: { type: 'string', example: '8635444062', description: 'Sub-session identifier' },
               createdAt: {
                 type: 'string',
                 format: 'date-time',
                 example: '2023-10-16T08:25:43.934Z',
+                description: 'Timestamp when the sub-session was created',
               },
               score: {
                 type: 'array',
+                description: 'Array of familiar character scores',
                 items: {
                   type: 'object',
                   properties: {
-                    character: { type: 'string', example: 'd' },
+                    character: { type: 'string', example: 'd', description: 'Familiar character' },
                     latestScores: {
                       type: 'array',
+                      description: 'Recent performance scores for this character',
                       items: {
                         type: 'object',
                         properties: {
-                          score: { type: 'number', example: 0.1 },
-                          original_text: {
-                            type: 'string',
-                            example: 'நீலா பூந்தோ',
-                          },
-                          response_text: {
-                            type: 'string',
-                            example: 'நீலா பூந்தோ',
-                          },
-                          countBelowThreshold: { type: 'number', example: 0.1 },
+                          score: { type: 'number', example: 0.9 },
+                          original_text: { type: 'string', example: 'நீலா பூந்தோ' },
+                          response_text: { type: 'string', example: 'நீலா பூந்தோ' },
+                          countBelowThreshold: { type: 'number', example: 0 },
                           countAboveThreshold: { type: 'number', example: 5 },
-                          avgScore: { type: 'number', example: 0.1 },
+                          avgScore: { type: 'number', example: 0.9 },
                         },
                       },
                     },
@@ -6964,7 +7372,7 @@ export class ScoresController {
   })
   @ApiResponse({
     status: 500,
-    description: `Error while fetching the users familiarity & Target data`,
+    description: 'Error while fetching the user profile data',
     schema: {
       type: 'object',
       properties: {
@@ -6975,7 +7383,8 @@ export class ScoresController {
   })
   @ApiForbiddenResponse({ description: 'Forbidden.' })
   @ApiOperation({
-    summary: 'This API will give the users familiarity & Target',
+    summary: 'Get comprehensive user profile with targets and familiarity',
+    description: 'Retrieves detailed learner profile data including target and familiarity characters organized by sub-sessions. Provides historical performance data for each character across different learning sessions.',
   })
   @Post('/getUserProfile')
   async GetUserProfile(@Res() response: FastifyReply, @Body() data: any) {
@@ -7028,6 +7437,73 @@ export class ScoresController {
     }
   }
 
+  @ApiBody({
+    description: 'Request body for getting content recommendations based on user milestone and content type',
+    schema: {
+      type: 'object',
+      properties: {
+        language: {
+          type: 'string',
+          example: 'en',
+          description: 'Language code for the content (e.g., en, ta, hi, gu, or, kn, te)',
+        },
+        content_type: {
+          type: 'string',
+          example: 'Word',
+          description: 'Type of content to recommend (e.g., Char, Word, Sentence, Paragraph)',
+        },
+      },
+      required: ['language', 'content_type'],
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Successfully retrieved content recommendations',
+    schema: {
+      type: 'object',
+      properties: {
+        status: { type: 'string', example: 'success' },
+        data: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              contentId: { type: 'string', example: 'b70af0e5-0d74-4287-9548-4d491c714b0d' },
+              content: { type: 'string', example: 'example content' },
+              contentType: { type: 'string', example: 'Word' },
+            },
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad request - missing required fields',
+    schema: {
+      type: 'object',
+      properties: {
+        status: { type: 'string', example: 'error' },
+        message: { type: 'string', example: 'Language and content_type are required fields' },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 500,
+    description: 'Internal server error while fetching recommendations',
+    schema: {
+      type: 'object',
+      properties: {
+        status: { type: 'string', example: 'error' },
+        message: { type: 'string', example: 'Server error - error message' },
+      },
+    },
+  })
+  @ApiForbiddenResponse({ description: 'Forbidden.' })
+  @ApiOperation({
+    summary: 'Get personalized content recommendations for a user based on their milestone level',
+    description: 'This API retrieves content recommendations tailored to the user\'s current learning milestone and specified content type. It uses the user\'s progress data to suggest appropriate learning materials.',
+  })
   @Post('/getRecommendation')
   async getRecommendation(
     @Req() request: FastifyRequest,
