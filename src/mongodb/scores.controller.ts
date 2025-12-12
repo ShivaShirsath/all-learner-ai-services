@@ -6753,6 +6753,7 @@ export class ScoresController {
           totalCorrectnessScore:
             (correct_score[0]?.total_correctness_score ?? 0) / contentLimit,
           comprehensionScore: overallScore,
+          collectionId: getSetResult.collectionId || ""
         });
       } catch (logError) {
         console.error('Failed to log session result:', logError);
