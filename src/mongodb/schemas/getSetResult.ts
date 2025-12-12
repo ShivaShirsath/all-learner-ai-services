@@ -53,6 +53,9 @@ export class getSetResult extends Document {
 
   @Prop({ default: Date.now })
   createdAt: Date;
+
+  @Prop()
+  collectionId: string;
 }
 
 export type getSetResultDocument = getSetResult & Document;
