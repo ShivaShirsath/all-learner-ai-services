@@ -121,7 +121,11 @@ export class ScoresService {
         },
       );
 
-      return updatedRecordData;
+      // Return both the update result and the actual milestone that was saved
+      return {
+        ...updatedRecordData,
+        savedMilestoneLevel: milestoneToSet,
+      };
     } catch (err) {
       return err;
     }
