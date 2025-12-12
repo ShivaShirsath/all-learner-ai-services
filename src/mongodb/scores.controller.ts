@@ -6716,9 +6716,14 @@ export class ScoresController {
             sub_session_id: getSetResult.sub_session_id,
             milestone_level: milestone_level,
             sub_milestone_level: '',
-            language: getSetResult.language, // Added for downgrade prevention check
+            language: getSetResult.language,
           })
-          .then(async () => {
+          .then(async (milestoneResult) => {
+  
+            if (milestoneResult?.savedMilestoneLevel) {
+              currentLevel = milestoneResult.savedMilestoneLevel;
+            }
+
             recordData = await this.scoresService.getlatestmilestone(
               user_id,
               getSetResult.language,
@@ -6729,7 +6734,7 @@ export class ScoresController {
             if (currentLevel === undefined) {
               currentLevel = previous_level;
             } else if (getSetResult.contentType.toLowerCase() === 'char') {
-              currentLevel = milestone_level;
+              currentLevel = milestoneResult?.savedMilestoneLevel || milestone_level;
             }
           });
       }
