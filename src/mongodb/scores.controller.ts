@@ -6716,6 +6716,7 @@ export class ScoresController {
             sub_session_id: getSetResult.sub_session_id,
             milestone_level: milestone_level,
             sub_milestone_level: '',
+            language: getSetResult.language, // Added for downgrade prevention check
           })
           .then(async () => {
             recordData = await this.scoresService.getlatestmilestone(
