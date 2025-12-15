@@ -65,12 +65,46 @@ export class ScoresService {
     }
   }
 
-  async createMilestoneRecord(createMilestoneRecord: any): Promise<any> {
+ async createMilestoneRecord(createMilestoneRecord: any): Promise<any> {
     try {
+      let milestoneToSet = createMilestoneRecord.milestone_level;
+      
+      if (createMilestoneRecord.language) {
+        const currentMilestoneData = await this.getlatestmilestone(
+          createMilestoneRecord.user_id,
+          createMilestoneRecord.language,
+        );
+        const currentMilestone = currentMilestoneData[0]?.milestone_level;
+
+        if (currentMilestone) {
+          const getMilestoneNum = (level: string): number => {
+            if (!level) return -1;
+            if (level === 'B') return 0;
+            if (level.startsWith('m')) {
+              const num = parseInt(level.replace('m', ''), 10);
+              return isNaN(num) ? -1 : num;
+            }
+            return -1;
+          };
+
+          const currentLevelNum = getMilestoneNum(currentMilestone);
+          const newLevelNum = getMilestoneNum(milestoneToSet);
+
+          // If new milestone is lower than current, prevent downgrade
+          if (newLevelNum >= 0 && currentLevelNum >= 0 && newLevelNum < currentLevelNum) {
+            console.log(
+              `Milestone downgrade prevented: User ${createMilestoneRecord.user_id} is at ${currentMilestone}, ` +
+              `attempted to set ${milestoneToSet}. Keeping ${currentMilestone}.`
+            );
+            milestoneToSet = currentMilestone;
+          }
+        }
+      }
+
       const insertData = {
         session_id: createMilestoneRecord.session_id,
         sub_session_id: createMilestoneRecord.sub_session_id,
-        milestone_level: createMilestoneRecord.milestone_level,
+        milestone_level: milestoneToSet,
         sub_milestone_level: createMilestoneRecord.sub_milestone_level,
         createdAt: new Date().toISOString().replace('Z', '+00:00'),
       };
@@ -84,7 +118,11 @@ export class ScoresService {
         },
       );
 
-      return updatedRecordData;
+      // Return both the update result and the actual milestone that was saved
+      return {
+        ...updatedRecordData,
+        savedMilestoneLevel: milestoneToSet,
+      };
     } catch (err) {
       return err;
     }
