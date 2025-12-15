@@ -6373,8 +6373,14 @@ export class ScoresController {
             sub_session_id: getSetResult.sub_session_id,
             milestone_level: milestone_level,
             sub_milestone_level: '',
+            language: getSetResult.language,
           })
-          .then(async () => {
+          .then(async (milestoneResult) => {
+           
+            if (milestoneResult?.savedMilestoneLevel) {
+              currentLevel = milestoneResult.savedMilestoneLevel;
+            }
+
             recordData = await this.scoresService.getlatestmilestone(
               user_id,
               getSetResult.language,
@@ -6385,7 +6391,7 @@ export class ScoresController {
             if (currentLevel === undefined) {
               currentLevel = previous_level;
             } else if (getSetResult.contentType.toLowerCase() === 'char') {
-              currentLevel = milestone_level;
+              currentLevel = milestoneResult?.savedMilestoneLevel || milestone_level;
             }
           });
       }
@@ -6410,6 +6416,7 @@ export class ScoresController {
           totalCorrectnessScore:
             (correct_score[0]?.total_correctness_score ?? 0) / contentLimit,
           comprehensionScore: overallScore,
+          collectionId: getSetResult.collectionId
         });
       } catch (logError) {
         console.error('Failed to log session result:', logError);
