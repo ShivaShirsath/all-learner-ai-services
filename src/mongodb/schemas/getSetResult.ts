@@ -43,6 +43,9 @@ export class getSetResult extends Document {
   prosodyResult: string;
 
   @Prop()
+  collectionId: string;
+
+  @Prop()
   targetsPercentage: number;
 
   @Prop()
