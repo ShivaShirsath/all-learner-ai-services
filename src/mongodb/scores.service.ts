@@ -18,6 +18,11 @@ import { filterBadWords } from '@tekdi/multilingual-profanity-filter';
 import { TowreDocument } from 'src/schemas/towre.schema';
 import { VocabularyDocument } from './schemas/vocabularySchema';
 import { correct_practice_word, correct_practice_wordDocument } from '../schemas/correctPractice';
+import { AssessmentTrackingDocument, AssessmentTrackingScoreDetailDocument } from './schemas/assessment-tracking.schema';
+import { CreateAssessmentTrackingDto } from './dto/create-assessment-tracking.dto';
+import { SearchAssessmentTrackingDto } from './dto/search-assessment-tracking.dto';
+import { EvaluationType } from './schemas/assessment-tracking.schema';
+import { randomUUID } from 'crypto';
 
 @Injectable()
 export class ScoresService {
@@ -39,6 +44,10 @@ export class ScoresService {
     private vocabularyModel: Model<VocabularyDocument>,
     @InjectModel('correct_practice_word')
     private correctPracticeWordModel: Model<correct_practice_wordDocument>,
+    @InjectModel('AssessmentTracking')
+    private readonly assessmentTrackingModel: Model<AssessmentTrackingDocument>,
+    @InjectModel('AssessmentTrackingScoreDetail')
+    private readonly assessmentTrackingScoreDetailModel: Model<AssessmentTrackingScoreDetailDocument>,
     private readonly cacheService: CacheService,
     private readonly httpService: HttpService,
   ) { }
@@ -3494,6 +3503,406 @@ export class ScoresService {
     return null;
   }
 }
+
+  async createAssessmentTracking(
+    createAssessmentTrackingDto: CreateAssessmentTrackingDto,
+    tenantId?: string,
+  ): Promise<any> {
+    try {
+      // Generate assessmentTrackingId if not provided
+      if (!createAssessmentTrackingDto.assessmentTrackingId) {
+        createAssessmentTrackingDto.assessmentTrackingId = randomUUID();
+      }
+
+      // Set default values
+      if (!createAssessmentTrackingDto.createdOn) {
+        createAssessmentTrackingDto.createdOn = new Date();
+      }
+
+      // Handle submitedBy and evaluatedBy
+      if (
+        !createAssessmentTrackingDto.submitedBy ||
+        createAssessmentTrackingDto.submitedBy === ''
+      ) {
+        createAssessmentTrackingDto.submitedBy = 'Online';
+      } else {
+        const allowedValues = ['AI', 'Online', 'Manual', 'AI Evaluator'];
+        if (createAssessmentTrackingDto.submitedBy === 'AI Evaluator') {
+          createAssessmentTrackingDto.submitedBy = 'AI';
+        }
+        if (!allowedValues.includes(createAssessmentTrackingDto.submitedBy)) {
+          createAssessmentTrackingDto.submitedBy = 'Online';
+        }
+      }
+
+      createAssessmentTrackingDto.evaluatedBy =
+        createAssessmentTrackingDto.submitedBy as EvaluationType;
+
+      // Add tenantId if provided
+      if (tenantId) {
+        createAssessmentTrackingDto.tenantId = tenantId;
+      }
+
+      // Handle Manual submission - update existing record if found
+      if (createAssessmentTrackingDto.submitedBy === 'Manual') {
+        const existingRecord = await this.assessmentTrackingModel.findOne({
+          userId: createAssessmentTrackingDto.userId,
+          contentId: createAssessmentTrackingDto.contentId,
+          courseId: createAssessmentTrackingDto.courseId,
+          unitId: createAssessmentTrackingDto.unitId,
+        });
+
+        if (existingRecord) {
+          // Update existing record
+          Object.assign(existingRecord, createAssessmentTrackingDto);
+          existingRecord.assessmentTrackingId = existingRecord.assessmentTrackingId;
+          existingRecord.updatedOn = new Date();
+          
+          const updatedRecord = await existingRecord.save();
+
+          // Delete existing score details
+          await this.assessmentTrackingScoreDetailModel.deleteMany({
+            assessmentTrackingId: existingRecord.assessmentTrackingId,
+          });
+
+          // Save new score details
+          await this.saveScoreDetails(
+            createAssessmentTrackingDto,
+            existingRecord.assessmentTrackingId,
+          );
+
+          return updatedRecord;
+        }
+      }
+
+      // Create new assessment tracking record
+      const assessmentTrackingData = {
+        assessmentTrackingId: createAssessmentTrackingDto.assessmentTrackingId,
+        userId: createAssessmentTrackingDto.userId,
+        courseId: createAssessmentTrackingDto.courseId,
+        contentId: createAssessmentTrackingDto.contentId,
+        attemptId: createAssessmentTrackingDto.attemptId,
+        createdOn: createAssessmentTrackingDto.createdOn,
+        lastAttemptedOn: createAssessmentTrackingDto.lastAttemptedOn,
+        assessmentSummary: createAssessmentTrackingDto.assessmentSummary,
+        totalMaxScore: createAssessmentTrackingDto.totalMaxScore,
+        totalScore: createAssessmentTrackingDto.totalScore,
+        updatedOn: new Date(),
+        timeSpent: createAssessmentTrackingDto.timeSpent,
+        unitId: createAssessmentTrackingDto.unitId,
+        tenantId: createAssessmentTrackingDto.tenantId,
+        showFlag: createAssessmentTrackingDto.showFlag !== undefined 
+          ? createAssessmentTrackingDto.showFlag 
+          : true,
+        evaluatedBy: createAssessmentTrackingDto.evaluatedBy,
+        submitedBy: createAssessmentTrackingDto.submitedBy,
+      };
+
+      const createdAssessment = new this.assessmentTrackingModel(
+        assessmentTrackingData,
+      );
+      const result = await createdAssessment.save();
+
+      // Save score details
+      await this.saveScoreDetails(
+        createAssessmentTrackingDto,
+        result.assessmentTrackingId,
+      );
+
+      return result;
+    } catch (err) {
+      console.error('Error creating assessment tracking:', err);
+      throw err;
+    }
+  }
+
+  private async saveScoreDetails(
+    createAssessmentTrackingDto: CreateAssessmentTrackingDto,
+    assessmentTrackingId: string,
+  ): Promise<void> {
+    try {
+      const score_detail = createAssessmentTrackingDto.assessmentSummary;
+      const scoreObj = [];
+
+      for (let i = 0; i < score_detail.length; i++) {
+        const section: any = score_detail[i];
+        const itemData = section?.data;
+        if (itemData) {
+          for (let j = 0; j < itemData.length; j++) {
+            const dataItem = itemData[j];
+            scoreObj.push({
+              userId: createAssessmentTrackingDto.userId,
+              assessmentTrackingId: assessmentTrackingId,
+              questionId: dataItem?.item?.id,
+              pass: dataItem?.pass,
+              sectionId: dataItem?.item?.sectionId,
+              resValue: dataItem?.resvalues
+                ? JSON.stringify(dataItem.resvalues)
+                : '',
+              duration: dataItem?.duration,
+              score: dataItem?.score,
+              maxScore: dataItem?.item?.maxscore,
+              queTitle: dataItem?.item?.title,
+              feedback: dataItem?.resvalues?.[0]?.AI_suggestion || '',
+            });
+          }
+        }
+      }
+
+      if (scoreObj.length > 0) {
+        await this.assessmentTrackingScoreDetailModel.insertMany(scoreObj);
+      }
+    } catch (e) {
+      console.error('Error in CreateScoreDetail:', e);
+      throw e;
+    }
+  }
+
+  public async searchAssessmentTracking(
+    searchDto: SearchAssessmentTrackingDto,
+    request: any,
+  ): Promise<any> {
+    try {
+      const query: any = {};
+
+      // Extract tenantId from request headers if available
+      const tenantId =
+        (request.headers as any)?.tenantId ||
+        (request.headers as any)?.tenantid ||
+        searchDto.tenantId ||
+        null;
+
+      // Apply tenantId filter if available
+      if (tenantId) {
+        query.tenantId = tenantId;
+      }
+
+      // Single value filters
+      if (searchDto.assessmentTrackingId) {
+        query.assessmentTrackingId = searchDto.assessmentTrackingId;
+      }
+
+      if (searchDto.userId) {
+        query.userId = searchDto.userId;
+      }
+
+      if (searchDto.courseId) {
+        query.courseId = searchDto.courseId;
+      }
+
+      if (searchDto.contentId) {
+        query.contentId = searchDto.contentId;
+      }
+
+      if (searchDto.attemptId) {
+        query.attemptId = searchDto.attemptId;
+      }
+
+      if (searchDto.unitId) {
+        query.unitId = searchDto.unitId;
+      }
+
+      if (searchDto.evaluatedBy) {
+        query.evaluatedBy = searchDto.evaluatedBy;
+      }
+
+      if (searchDto.showFlag !== undefined) {
+        query.showFlag = searchDto.showFlag;
+      }
+
+      if (searchDto.submitedBy) {
+        query.submitedBy = searchDto.submitedBy;
+      }
+
+      // Array filters (using $in operator)
+      if (searchDto.userIds && searchDto.userIds.length > 0) {
+        query.userId = { $in: searchDto.userIds };
+      }
+
+      if (searchDto.courseIds && searchDto.courseIds.length > 0) {
+        query.courseId = { $in: searchDto.courseIds };
+      }
+
+      if (searchDto.contentIds && searchDto.contentIds.length > 0) {
+        query.contentId = { $in: searchDto.contentIds };
+      }
+
+      // Date range filters
+      if (searchDto.createdOnStart || searchDto.createdOnEnd) {
+        query.createdOn = {};
+        if (searchDto.createdOnStart) {
+          query.createdOn.$gte = new Date(searchDto.createdOnStart);
+        }
+        if (searchDto.createdOnEnd) {
+          query.createdOn.$lte = new Date(searchDto.createdOnEnd);
+        }
+      }
+
+      if (searchDto.lastAttemptedOnStart || searchDto.lastAttemptedOnEnd) {
+        query.lastAttemptedOn = {};
+        if (searchDto.lastAttemptedOnStart) {
+          query.lastAttemptedOn.$gte = new Date(searchDto.lastAttemptedOnStart);
+        }
+        if (searchDto.lastAttemptedOnEnd) {
+          query.lastAttemptedOn.$lte = new Date(searchDto.lastAttemptedOnEnd);
+        }
+      }
+
+      // Score range filters
+      if (searchDto.minTotalScore !== undefined || searchDto.maxTotalScore !== undefined) {
+        query.totalScore = {};
+        if (searchDto.minTotalScore !== undefined) {
+          query.totalScore.$gte = searchDto.minTotalScore;
+        }
+        if (searchDto.maxTotalScore !== undefined) {
+          query.totalScore.$lte = searchDto.maxTotalScore;
+        }
+      }
+
+      if (searchDto.minTotalMaxScore !== undefined || searchDto.maxTotalMaxScore !== undefined) {
+        query.totalMaxScore = {};
+        if (searchDto.minTotalMaxScore !== undefined) {
+          query.totalMaxScore.$gte = searchDto.minTotalMaxScore;
+        }
+        if (searchDto.maxTotalMaxScore !== undefined) {
+          query.totalMaxScore.$lte = searchDto.maxTotalMaxScore;
+        }
+      }
+
+      // Time spent range filters
+      if (searchDto.minTimeSpent !== undefined || searchDto.maxTimeSpent !== undefined) {
+        query.timeSpent = {};
+        if (searchDto.minTimeSpent !== undefined) {
+          query.timeSpent.$gte = searchDto.minTimeSpent;
+        }
+        if (searchDto.maxTimeSpent !== undefined) {
+          query.timeSpent.$lte = searchDto.maxTimeSpent;
+        }
+      }
+
+      // Pagination
+      const page = searchDto.page || 1;
+      const limit = searchDto.limit || 10;
+      const skip = (page - 1) * limit;
+
+      // Sorting
+      const sortBy = searchDto.sortBy || 'createdOn';
+      const sortOrder = searchDto.sortOrder === 'asc' ? 1 : -1;
+      const sort: any = {};
+      sort[sortBy] = sortOrder;
+
+      // Execute query - remove pagination for grouping by level
+      const data = await this.assessmentTrackingModel
+        .find(query)
+        .sort(sort)
+        .lean();
+
+      // Transform data to match tracker microservice format exactly
+      const groupedData: any = {};
+      const unlockThreshold = 80;
+
+      // Group by contentId (level)
+      data.forEach((record: any) => {
+        const contentId = record.contentId;
+        if (!groupedData[contentId]) {
+          const levelMatch = contentId.match(/level(\d+)/i);
+          const levelNumber = levelMatch ? parseInt(levelMatch[1], 10) : 0;
+          groupedData[contentId] = {
+            levelNumber,
+            attempts: [],
+          };
+        }
+        groupedData[contentId].attempts.push(record);
+      });
+
+      const resultData: any = {};
+      let currentLevel = 0;
+
+      const sortedLevels = Object.keys(groupedData).sort((a, b) => {
+        return groupedData[a].levelNumber - groupedData[b].levelNumber;
+      });
+
+      sortedLevels.forEach((contentId) => {
+        const levelData = groupedData[contentId];
+        const attempts = levelData.attempts;
+
+        if (attempts.length === 0) {
+          return;
+        }
+
+        // Find highest score attempt
+        const highestAttempt = attempts.reduce((highest: any, current: any) => {
+          const highestScore = (highest.totalScore / highest.totalMaxScore) * 100;
+          const currentScore = (current.totalScore / current.totalMaxScore) * 100;
+          return currentScore > highestScore ? current : highest;
+        }, attempts[0]);
+
+        // Find most recent attempt
+        const recentAttempt = attempts.reduce((recent: any, current: any) => {
+          const recentDate = new Date(recent.createdOn || recent.createdAt);
+          const currentDate = new Date(current.createdOn || current.createdAt);
+          return currentDate > recentDate ? current : recent;
+        }, attempts[0]);
+
+        const scorePercentage = recentAttempt.totalMaxScore > 0
+          ? Math.round((recentAttempt.totalScore / recentAttempt.totalMaxScore) * 100)
+          : 0;
+
+        const isCompleted = scorePercentage >= unlockThreshold;
+
+        let isUnlocked = false;
+        if (levelData.levelNumber === 1) {
+          isUnlocked = true;
+        } else {
+          const prevLevelKey = sortedLevels.find(
+            (key) => groupedData[key].levelNumber === levelData.levelNumber - 1
+          );
+          if (prevLevelKey && resultData[prevLevelKey]) {
+            isUnlocked = resultData[prevLevelKey].metadata.isCompleted;
+          }
+        }
+
+        resultData[contentId] = {
+          levelNumber: levelData.levelNumber,
+          highest: {
+            totalScore: highestAttempt.totalScore,
+            totalMaxScore: highestAttempt.totalMaxScore,
+            createdOn: highestAttempt.createdOn || highestAttempt.createdAt,
+          },
+          recent: {
+            totalScore: recentAttempt.totalScore,
+            totalMaxScore: recentAttempt.totalMaxScore,
+            createdOn: recentAttempt.createdOn || recentAttempt.createdAt,
+          },
+          metadata: {
+            scorePercentage,
+            isCompleted,
+            isUnlocked,
+            color: 'white',
+          },
+        };
+
+        if (isCompleted && levelData.levelNumber > currentLevel) {
+          currentLevel = levelData.levelNumber;
+        }
+      });
+
+      return {
+        success: true,
+        message: 'success',
+        data: resultData,
+        metadata: {
+          currentLevel: currentLevel || 1,
+          unlockThreshold,
+        },
+      };
+    } catch (e) {
+      console.error('Error in searchAssessmentTracking:', e);
+      throw e;
+    }
+  }
+
+ 
 
 }
 
