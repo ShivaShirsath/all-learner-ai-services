@@ -18,6 +18,8 @@ import {
 import { ScoresService } from './scores.service';
 import { CreateLearnerProfileDto } from './dto/CreateLearnerProfile.dto';
 import { AssessmentInputDto } from './dto/AssessmentInput.dto';
+import { CreateAssessmentTrackingDto } from './dto/create-assessment-tracking.dto';
+import { SearchAssessmentTrackingDto } from './dto/search-assessment-tracking.dto';
 import { FastifyReply, FastifyRequest } from 'fastify';
 import {
   ApiBody,
@@ -7069,5 +7071,146 @@ export class ScoresController {
       });
     }
   }
+
+  @Post('/assessment/create')
+  @ApiOperation({ summary: 'Create a new assessment tracking record' })
+  @ApiBody({
+    description: 'Payload for creating an assessment tracking record',
+    type: CreateAssessmentTrackingDto,
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Assessment tracking record created successfully',
+    schema: {
+      example: {
+        status: 'success',
+        message: 'Assessment tracking record created successfully',
+        data: {
+          assessmentTrackingId: 'uuid-here',
+          userId: 'user-uuid',
+          courseId: 'course-id',
+          contentId: 'content-id',
+          totalScore: 85,
+          totalMaxScore: 100,
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 500,
+    description: 'Internal server error',
+    schema: {
+      example: {
+        status: 'error',
+        message: 'Server error - <error message>',
+      },
+    },
+  })
+  @Public()
+  async createAssessmentTracking(
+    @Req() request: FastifyRequest,
+    @Res() response: FastifyReply,
+    @Body() createAssessmentTrackingDto: CreateAssessmentTrackingDto,
+  ) {
+    try {
+      // Extract tenantId from request headers if available
+      const tenantId = 
+        (request.headers as any).tenantId || 
+        (request.headers as any).tenantid || 
+        null;
+
+      const savedRecord = await this.scoresService.createAssessmentTracking(
+        createAssessmentTrackingDto,
+        tenantId,
+      );
+
+      return response.status(HttpStatus.CREATED).send({
+        status: 'success',
+        message: 'Assessment tracking record created successfully',
+        data: {
+          assessmentTrackingId: savedRecord.assessmentTrackingId,
+        },
+      });
+    } catch (err) {
+      return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
+        status: 'error',
+        message: 'Server error - ' + err.message,
+      });
+    }
+  }
+
+  @Post('assessment/search')
+  @ApiOperation({
+    summary: 'Search assessment tracking records',
+    description: 'Search and filter assessment tracking records with various criteria. Returns data grouped by level (contentId) with highest and recent attempts.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Search successful',
+    schema: {
+      example: {
+        success: true,
+        message: 'success',
+        data: {
+          level1: {
+            levelNumber: 1,
+            highest: {
+              totalScore: 6,
+              totalMaxScore: 10,
+              createdOn: '2026-01-05T09:55:31.542Z',
+            },
+            recent: {
+              totalScore: 6,
+              totalMaxScore: 10,
+              createdOn: '2026-01-05T09:55:31.542Z',
+            },
+            metadata: {
+              scorePercentage: 60,
+              isCompleted: false,
+              isUnlocked: true,
+              color: 'white',
+            },
+          },
+        },
+        metadata: {
+          currentLevel: 1,
+          unlockThreshold: 80,
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 500,
+    description: 'Internal server error',
+    schema: {
+      example: {
+        success: false,
+        message: 'Internal Server Error',
+        data: {},
+      },
+    },
+  })
+  @Public()
+  async searchAssessmentTracking(
+    @Req() request: FastifyRequest,
+    @Res() response: FastifyReply,
+    @Body() searchDto: SearchAssessmentTrackingDto,
+  ) {
+    try {
+      const result = await this.scoresService.searchAssessmentTracking(
+        searchDto,
+        request,
+      );
+
+      return response.status(HttpStatus.OK).send(result);
+    } catch (err) {
+      return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
+        success: false,
+        message: 'Server error - ' + err.message,
+        data: {},
+      });
+    }
+  }
+  
 }
 
