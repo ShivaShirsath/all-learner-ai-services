@@ -3469,8 +3469,10 @@ export class ScoresService {
   async createAssessmentTracking(
     createAssessmentTrackingDto: CreateAssessmentTrackingDto,
     tenantId?: string,
+    userId?: string
   ): Promise<any> {
     try {
+      
       // Generate assessmentTrackingId if not provided
       if (!createAssessmentTrackingDto.assessmentTrackingId) {
         createAssessmentTrackingDto.assessmentTrackingId = randomUUID();
@@ -3508,7 +3510,7 @@ export class ScoresService {
       // Handle Manual submission - update existing record if found
       if (createAssessmentTrackingDto.submitedBy === 'Manual') {
         const existingRecord = await this.assessmentTrackingModel.findOne({
-          userId: createAssessmentTrackingDto.userId,
+          userId: userId,
           contentId: createAssessmentTrackingDto.contentId,
           courseId: createAssessmentTrackingDto.courseId,
           unitId: createAssessmentTrackingDto.unitId,
@@ -3518,6 +3520,7 @@ export class ScoresService {
           // Update existing record
           Object.assign(existingRecord, createAssessmentTrackingDto);
           existingRecord.assessmentTrackingId = existingRecord.assessmentTrackingId;
+          existingRecord.userId = userId;
           existingRecord.updatedOn = new Date();
           
           const updatedRecord = await existingRecord.save();
@@ -3531,6 +3534,7 @@ export class ScoresService {
           await this.saveScoreDetails(
             createAssessmentTrackingDto,
             existingRecord.assessmentTrackingId,
+            userId
           );
 
           return updatedRecord;
@@ -3540,7 +3544,7 @@ export class ScoresService {
       // Create new assessment tracking record
       const assessmentTrackingData = {
         assessmentTrackingId: createAssessmentTrackingDto.assessmentTrackingId,
-        userId: createAssessmentTrackingDto.userId,
+        userId: userId,
         courseId: createAssessmentTrackingDto.courseId,
         contentId: createAssessmentTrackingDto.contentId,
         attemptId: createAssessmentTrackingDto.attemptId,
@@ -3569,6 +3573,7 @@ export class ScoresService {
       await this.saveScoreDetails(
         createAssessmentTrackingDto,
         result.assessmentTrackingId,
+        userId
       );
 
       return result;
@@ -3581,6 +3586,7 @@ export class ScoresService {
   private async saveScoreDetails(
     createAssessmentTrackingDto: CreateAssessmentTrackingDto,
     assessmentTrackingId: string,
+    userId: string
   ): Promise<void> {
     try {
       const score_detail = createAssessmentTrackingDto.assessmentSummary;
@@ -3593,7 +3599,7 @@ export class ScoresService {
           for (let j = 0; j < itemData.length; j++) {
             const dataItem = itemData[j];
             scoreObj.push({
-              userId: createAssessmentTrackingDto.userId,
+              userId: userId,
               assessmentTrackingId: assessmentTrackingId,
               questionId: dataItem?.item?.id,
               pass: dataItem?.pass,
@@ -3625,7 +3631,9 @@ export class ScoresService {
     request: any,
   ): Promise<any> {
     try {
+      
       const query: any = {};
+      console.log("Search Dto object: ", searchDto);
 
       // Extract tenantId from request headers if available
       const tenantId =
@@ -3762,6 +3770,7 @@ export class ScoresService {
       // Transform data to match tracker microservice format exactly
       const groupedData: any = {};
       const unlockThreshold = 80;
+      let sessionResult = "pass";
 
       // Group by contentId (level)
       data.forEach((record: any) => {
@@ -3810,6 +3819,13 @@ export class ScoresService {
           ? Math.round((recentAttempt.totalScore / recentAttempt.totalMaxScore) * 100)
           : 0;
 
+        console.log("Score Percentage--------: ", scorePercentage);
+       
+        const passThreshold = 80;
+        if(scorePercentage < passThreshold) {
+          sessionResult = "fail";
+        }
+
         const isCompleted = scorePercentage >= unlockThreshold;
 
         let isUnlocked = false;
@@ -3848,18 +3864,19 @@ export class ScoresService {
           currentLevel = levelData.levelNumber;
         }
       });
-
+    
       return {
         success: true,
         message: 'success',
         data: resultData,
+        sessionResult: sessionResult,
         metadata: {
           currentLevel: currentLevel || 1,
           unlockThreshold,
         },
       };
     } catch (e) {
-      console.error('Error in searchAssessmentTracking:', e);
+      console.error('=== Error in searchAssessmentTracking ', e);
       throw e;
     }
   }

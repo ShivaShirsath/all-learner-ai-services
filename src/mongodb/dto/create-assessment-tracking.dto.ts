@@ -21,14 +21,6 @@ export class CreateAssessmentTrackingDto {
   @IsOptional()
   createdOn?: Date;
 
-  @ApiProperty({
-    type: () => String,
-    description: 'User Id',
-  })
-  @Expose()
-  @IsUUID(undefined, { message: 'User Id must be a valid UUID' })
-  @IsNotEmpty()
-  userId: string;
 
   @ApiPropertyOptional({
     type: () => String,

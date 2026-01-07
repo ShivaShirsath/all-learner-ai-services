@@ -7106,13 +7106,16 @@ export class ScoresController {
       },
     },
   })
-  @Public()
+  
   async createAssessmentTracking(
     @Req() request: FastifyRequest,
     @Res() response: FastifyReply,
     @Body() createAssessmentTrackingDto: CreateAssessmentTrackingDto,
   ) {
     try {
+      // Extract user_id from authenticated request
+      const user_id = (request as any).user.virtual_id.toString();
+      
       // Extract tenantId from request headers if available
       const tenantId = 
         (request.headers as any).tenantId || 
@@ -7122,6 +7125,7 @@ export class ScoresController {
       const savedRecord = await this.scoresService.createAssessmentTracking(
         createAssessmentTrackingDto,
         tenantId,
+        user_id
       );
 
       return response.status(HttpStatus.CREATED).send({
