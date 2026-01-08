@@ -18,6 +18,9 @@ import { filterBadWords } from '@tekdi/multilingual-profanity-filter';
 import { TowreDocument } from 'src/schemas/towre.schema';
 import { VocabularyDocument } from './schemas/vocabularySchema';
 import { correct_practice_word, correct_practice_wordDocument } from '../schemas/correctPractice';
+import { AssessmentTrackingDocument, AssessmentTrackingScoreDetailDocument, EvaluationType } from './schemas/assessment-tracking.schema';
+import { CreateAssessmentTrackingDto } from './dto/create-assessment-tracking.dto';
+import { randomUUID } from 'crypto';
 
 @Injectable()
 export class ScoresService {
@@ -39,6 +42,10 @@ export class ScoresService {
     private vocabularyModel: Model<VocabularyDocument>,
     @InjectModel('correct_practice_word')
     private correctPracticeWordModel: Model<correct_practice_wordDocument>,
+    @InjectModel('AssessmentTracking')
+    private readonly assessmentTrackingModel: Model<AssessmentTrackingDocument>,
+    @InjectModel('AssessmentTrackingScoreDetail')
+    private readonly assessmentTrackingScoreDetailModel: Model<AssessmentTrackingScoreDetailDocument>,
     private readonly cacheService: CacheService,
     private readonly httpService: HttpService,
   ) { }
@@ -109,6 +116,7 @@ export class ScoresService {
         sub_session_id: createMilestoneRecord.sub_session_id,
         milestone_level: milestoneToSet,
         sub_milestone_level: createMilestoneRecord.sub_milestone_level,
+        language: createMilestoneRecord.language || null,
         createdAt: new Date().toISOString().replace('Z', '+00:00'),
       };
 
@@ -1799,8 +1807,9 @@ export class ScoresService {
             sub_session_id: '$milestone_progress.sub_session_id',
             milestone_level: '$milestone_progress.milestone_level',
             sub_milestone_level: '$milestone_progress.sub_milestone_level',
-            createdAt: '$milestone_progress.createdAt',
             sessions: 1,
+            storedLanguage: '$milestone_progress.language',
+            createdAt: '$milestone_progress.createdAt',
           },
         },
         {
@@ -1826,7 +1835,25 @@ export class ScoresService {
                     ],
                   },
                 },
-                in: '$$matchedSession.language',
+                in: {
+                  // If sub_milestone_level exists (F1/F2/F3), use stored language
+                  // Otherwise, use old flow (session lookup)
+                  $cond: {
+                    if: {
+                      $and: [
+                        { $ne: ['$sub_milestone_level', null] },
+                        { $ne: ['$sub_milestone_level', ''] },
+                      ],
+                    },
+                    then: '$storedLanguage',
+                    else: {
+                      $ifNull: [
+                        '$storedLanguage',
+                        '$$matchedSession.language',
+                      ],
+                    },
+                  },
+                },
               },
             },
           },
@@ -3494,6 +3521,243 @@ export class ScoresService {
     return null;
   }
 }
+
+  async createAssessmentTracking(
+    createAssessmentTrackingDto: CreateAssessmentTrackingDto,
+    tenantId?: string,
+    userId?: string
+  ): Promise<any> {
+    try {
+      
+      // Generate assessmentTrackingId if not provided
+      if (!createAssessmentTrackingDto.assessmentTrackingId) {
+        createAssessmentTrackingDto.assessmentTrackingId = randomUUID();
+      }
+
+      // Set default values
+      if (!createAssessmentTrackingDto.createdOn) {
+        createAssessmentTrackingDto.createdOn = new Date();
+      }
+
+      // Handle submitedBy and evaluatedBy
+      if (
+        !createAssessmentTrackingDto.submitedBy ||
+        createAssessmentTrackingDto.submitedBy === ''
+      ) {
+        createAssessmentTrackingDto.submitedBy = 'Online';
+      } else {
+        const allowedValues = ['AI', 'Online', 'Manual', 'AI Evaluator'];
+        if (createAssessmentTrackingDto.submitedBy === 'AI Evaluator') {
+          createAssessmentTrackingDto.submitedBy = 'AI';
+        }
+        if (!allowedValues.includes(createAssessmentTrackingDto.submitedBy)) {
+          createAssessmentTrackingDto.submitedBy = 'Online';
+        }
+      }
+
+      createAssessmentTrackingDto.evaluatedBy =
+        createAssessmentTrackingDto.submitedBy as EvaluationType;
+
+      // Add tenantId if provided
+      if (tenantId) {
+        createAssessmentTrackingDto.tenantId = tenantId;
+      }
+
+      // Calculate session result (pass/fail) based on score percentage
+      let sessionResult = "pass";
+      const passingThreshold = 80;
+      const scorePercentage = createAssessmentTrackingDto.totalMaxScore > 0
+          ? Math.round((createAssessmentTrackingDto.totalScore / createAssessmentTrackingDto.totalMaxScore) * 100)
+          : 0;
+      if(scorePercentage < passingThreshold){
+        sessionResult = "fail"
+      }
+
+      // Handle Manual submission - update existing record if found
+      if (createAssessmentTrackingDto.submitedBy === 'Manual') {
+        const existingRecord = await this.assessmentTrackingModel.findOne({
+          userId: userId,
+          contentId: createAssessmentTrackingDto.contentId,
+          courseId: createAssessmentTrackingDto.courseId,
+          unitId: createAssessmentTrackingDto.unitId,
+        });
+
+        if (existingRecord) {
+          // Update existing record
+          Object.assign(existingRecord, createAssessmentTrackingDto);
+          existingRecord.assessmentTrackingId = existingRecord.assessmentTrackingId;
+          existingRecord.userId = userId;
+          existingRecord.updatedOn = new Date();
+          
+          const updatedRecord = await existingRecord.save();
+
+          // Delete existing score details
+          await this.assessmentTrackingScoreDetailModel.deleteMany({
+            assessmentTrackingId: existingRecord.assessmentTrackingId,
+          });
+
+          // Save new score details
+          await this.saveScoreDetails(
+            createAssessmentTrackingDto,
+            existingRecord.assessmentTrackingId,
+            userId
+          );
+          
+          return {
+            ...updatedRecord.toObject(),
+            sessionResult: sessionResult,
+          };
+        }
+      }
+
+      // Create new assessment tracking record
+      const assessmentTrackingData = {
+        assessmentTrackingId: createAssessmentTrackingDto.assessmentTrackingId,
+        userId: userId,
+        courseId: createAssessmentTrackingDto.courseId,
+        session_id: createAssessmentTrackingDto.session_id,
+        sub_session_id: createAssessmentTrackingDto.sub_session_id,
+        sub_milestone_level: createAssessmentTrackingDto.sub_milestone_level,
+        apply_level: createAssessmentTrackingDto.apply_level,
+        sub_apply_level: createAssessmentTrackingDto.sub_apply_level,
+        contentId: createAssessmentTrackingDto.contentId,
+        attemptId: createAssessmentTrackingDto.attemptId,
+        createdOn: createAssessmentTrackingDto.createdOn,
+        lastAttemptedOn: createAssessmentTrackingDto.lastAttemptedOn,
+        assessmentSummary: createAssessmentTrackingDto.assessmentSummary,
+        totalMaxScore: createAssessmentTrackingDto.totalMaxScore,
+        totalScore: createAssessmentTrackingDto.totalScore,
+        updatedOn: new Date(),
+        timeSpent: createAssessmentTrackingDto.timeSpent,
+        unitId: createAssessmentTrackingDto.unitId,
+        tenantId: createAssessmentTrackingDto.tenantId,
+        showFlag: createAssessmentTrackingDto.showFlag !== undefined 
+          ? createAssessmentTrackingDto.showFlag 
+          : true,
+        evaluatedBy: createAssessmentTrackingDto.evaluatedBy,
+        submitedBy: createAssessmentTrackingDto.submitedBy,
+      };
+     
+      // Define valid values
+      const validSubMilestoneLevels = ["F1", "F2", "F3"];
+      const validApplyLevels = ["A1", "A2", "A3"];
+      const requiredSubApplyLevel = 3; 
+
+      // Check conditions for creating milestone record
+      const subMilestoneLevel = createAssessmentTrackingDto.sub_milestone_level;
+      const applyLevel = createAssessmentTrackingDto.apply_level;
+      const subApplyLevel = createAssessmentTrackingDto.sub_apply_level;
+
+      // Milestone record is created ONLY when A3-L3 is completed 
+      if (
+        subMilestoneLevel && 
+        validSubMilestoneLevels.includes(subMilestoneLevel) &&
+        applyLevel === "A3" && 
+        subApplyLevel === requiredSubApplyLevel && 
+        createAssessmentTrackingDto.session_id &&
+        createAssessmentTrackingDto.sub_session_id
+      ) {
+        try {
+      
+          const milestoneLevel = "B";
+          let finalSubMilestoneLevel: string;
+          
+          // Determine next sub-milestone level when completing A3-L3
+          if (subMilestoneLevel === "F1") {
+            if (sessionResult === "pass") {
+              finalSubMilestoneLevel = "F2";
+            } else { 
+              finalSubMilestoneLevel = "F1";
+            }
+          } else if (subMilestoneLevel === "F2") {
+            finalSubMilestoneLevel = "F3"; 
+          } else if (subMilestoneLevel === "F3") {
+            finalSubMilestoneLevel = "F3";
+          } else {
+            finalSubMilestoneLevel = subMilestoneLevel; // Fallback
+          }
+          
+          console.log(`Creating milestone record: ${subMilestoneLevel}-${applyLevel}-L${subApplyLevel} → ${milestoneLevel}-${finalSubMilestoneLevel}`);
+          
+          await this.createMilestoneRecord({
+            user_id: userId,
+            session_id: createAssessmentTrackingDto.session_id,
+            sub_session_id: createAssessmentTrackingDto.sub_session_id,
+            milestone_level: milestoneLevel,
+            sub_milestone_level: finalSubMilestoneLevel,
+            language:createAssessmentTrackingDto.unitId
+          });
+          
+        } catch (milestoneError) {
+          console.error('Error creating milestone record:', milestoneError);
+        }
+      }
+      
+      const createdAssessment = new this.assessmentTrackingModel(
+        assessmentTrackingData,
+      );
+      const result = await createdAssessment.save();
+
+      // Save score details
+      await this.saveScoreDetails(
+        createAssessmentTrackingDto,
+        result.assessmentTrackingId,
+        userId
+      );
+
+      // Return result with sessionResult
+      return {
+        ...result.toObject(),
+        sessionResult: sessionResult,
+      };
+    } catch (err) {
+      console.error('Error creating assessment tracking:', err);
+      throw err;
+    }
+  }
+
+  private async saveScoreDetails(
+    createAssessmentTrackingDto: CreateAssessmentTrackingDto,
+    assessmentTrackingId: string,
+    userId: string
+  ): Promise<void> {
+    try {
+      const score_detail = createAssessmentTrackingDto.assessmentSummary;
+      const scoreObj = [];
+
+      for (let i = 0; i < score_detail.length; i++) {
+        const section: any = score_detail[i];
+        const itemData = section?.data;
+        if (itemData) {
+          for (let j = 0; j < itemData.length; j++) {
+            const dataItem = itemData[j];
+            scoreObj.push({
+              userId: userId,
+              assessmentTrackingId: assessmentTrackingId,
+              questionId: dataItem?.item?.id,
+              pass: dataItem?.pass,
+              sectionId: dataItem?.item?.sectionId,
+              resValue: dataItem?.resvalues
+                ? JSON.stringify(dataItem.resvalues)
+                : '',
+              duration: dataItem?.duration,
+              score: dataItem?.score,
+              maxScore: dataItem?.item?.maxscore,
+              queTitle: dataItem?.item?.title,
+              feedback: dataItem?.resvalues?.[0]?.AI_suggestion || '',
+            });
+          }
+        }
+      }
+
+      if (scoreObj.length > 0) {
+        await this.assessmentTrackingScoreDetailModel.insertMany(scoreObj);
+      }
+    } catch (e) {
+      console.error('Error in CreateScoreDetail:', e);
+      throw e;
+    }
+  }
 
 }
 
