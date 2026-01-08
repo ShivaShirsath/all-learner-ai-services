@@ -245,6 +245,7 @@ export class Score {
         sub_session_id: { type: String, required: false, index: true },
         milestone_level: { type: String, required: true, index: true },
         sub_milestone_level: { type: String, required: false },
+        language : {type: String, required: false},
         createdAt: { type: Date, required: true, index: true },
       },
     ],
@@ -255,6 +256,7 @@ export class Score {
     sub_session_id: string;
     milestone_level: string;
     sub_milestone_level: string;
+    language: string;
     createdAt: Date;
   }[]; // This array includes milestone progress and we take latest entry in array as current milestone for user
 }

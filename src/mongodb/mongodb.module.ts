@@ -16,6 +16,7 @@ import { getSetResultSchema } from './schemas/getSetResult';
 import { TowreSchema } from 'src/schemas/towre.schema';
 import { VocabularySchema } from './schemas/vocabularySchema';
 import { correct_practice_wordSchema } from '../schemas/correctPractice';
+import { AssessmentTrackingSchema, AssessmentTrackingScoreDetailSchema } from './schemas/assessment-tracking.schema';
 
 
 @Module({
@@ -48,7 +49,9 @@ import { correct_practice_wordSchema } from '../schemas/correctPractice';
       { name: 'getSetResult', schema: getSetResultSchema },
       { name: 'towre', schema: TowreSchema},
       { name: 'vocabulary', schema: VocabularySchema},
-      { name: 'correct_practice_word', schema: correct_practice_wordSchema}
+      { name: 'correct_practice_word', schema: correct_practice_wordSchema},
+      { name: 'AssessmentTracking', schema: AssessmentTrackingSchema },
+      { name: 'AssessmentTrackingScoreDetail', schema: AssessmentTrackingScoreDetailSchema }
     ]),
     CacheModule.register()
   ],

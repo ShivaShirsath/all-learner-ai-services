@@ -18,6 +18,7 @@ import {
 import { ScoresService } from './scores.service';
 import { CreateLearnerProfileDto } from './dto/CreateLearnerProfile.dto';
 import { AssessmentInputDto } from './dto/AssessmentInput.dto';
+import { CreateAssessmentTrackingDto } from './dto/create-assessment-tracking.dto';
 import { FastifyReply, FastifyRequest } from 'fastify';
 import {
   ApiBody,
@@ -6708,14 +6709,18 @@ export class ScoresController {
         prosodyResult = undefined;
       }
 
-      if (milestoneEntry) {
-        await this.scoresService
+      if (milestoneEntry) { 
+        let sub_milestone_level = '';
+         if(milestone_level == "B"){
+          sub_milestone_level = 'F1';
+         }
+         await this.scoresService
           .createMilestoneRecord({
             user_id: user_id,
             session_id: getSetResult.session_id,
             sub_session_id: getSetResult.sub_session_id,
             milestone_level: milestone_level,
-            sub_milestone_level: '',
+            sub_milestone_level: sub_milestone_level,
             language: getSetResult.language,
           })
           .then(async (milestoneResult) => {
@@ -6876,10 +6881,12 @@ export class ScoresController {
       
       // milestone data
       const milestone_level = recordData[0]?.milestone_level || 'm0';
+      const sub_milestone_level = recordData[0]?.sub_milestone_level || '';
       return response.status(HttpStatus.CREATED).send({
         status: 'success',
         data: {
           milestone_level: milestone_level,
+          sub_milestone_level : sub_milestone_level,
           extra: {
             latest_towre_data,
             vocabulary_count: vocabulary_count,
@@ -7549,6 +7556,77 @@ export class ScoresController {
       return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
         status: 'error',
         message: 'Server error - ' + err,
+      });
+    }
+  }
+
+  @Post('/assessment/create')
+  @ApiOperation({ summary: 'Create a new assessment tracking record' })
+  @ApiBody({
+    description: 'Payload for creating an assessment tracking record',
+    type: CreateAssessmentTrackingDto,
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Assessment tracking record created successfully',
+    schema: {
+      example: {
+        status: 'success',
+        message: 'Assessment tracking record created successfully',
+        data: {
+          assessmentTrackingId: 'uuid-here',
+          userId: 'user-uuid',
+          courseId: 'course-id',
+          contentId: 'content-id',
+          totalScore: 85,
+          totalMaxScore: 100,
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 500,
+    description: 'Internal server error',
+    schema: {
+      example: {
+        status: 'error',
+        message: 'Server error - <error message>',
+      },
+    },
+  })
+  
+  async createAssessmentTracking(
+    @Req() request: FastifyRequest,
+    @Res() response: FastifyReply,
+    @Body() createAssessmentTrackingDto: CreateAssessmentTrackingDto,
+  ) {
+    try {
+      // Extract user_id from authenticated request
+      const user_id = (request as any).user.virtual_id.toString();
+      
+      // Extract tenantId from request headers if available
+      const tenantId = 
+        (request.headers as any).tenantId || 
+        (request.headers as any).tenantid || 
+        null;
+
+      const savedRecord = await this.scoresService.createAssessmentTracking(
+        createAssessmentTrackingDto,
+        tenantId,
+        user_id
+      );
+
+      return response.status(HttpStatus.CREATED).send({
+        status: 'success',
+        message: 'Assessment tracking record created successfully',
+        data: {
+          assessmentTrackingId: savedRecord.assessmentTrackingId,
+        },
+      });
+    } catch (err) {
+      return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
+        status: 'error',
+        message: 'Server error - ' + err.message,
       });
     }
   }
