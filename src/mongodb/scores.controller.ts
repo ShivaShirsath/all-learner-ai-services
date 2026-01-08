@@ -7621,6 +7621,7 @@ export class ScoresController {
         message: 'Assessment tracking record created successfully',
         data: {
           assessmentTrackingId: savedRecord.assessmentTrackingId,
+          sessionResult: savedRecord.sessionResult,
         },
       });
     } catch (err) {

@@ -3563,6 +3563,16 @@ export class ScoresService {
         createAssessmentTrackingDto.tenantId = tenantId;
       }
 
+      // Calculate session result (pass/fail) based on score percentage
+      let sessionResult = "pass";
+      const passingThreshold = 80;
+      const scorePercentage = createAssessmentTrackingDto.totalMaxScore > 0
+          ? Math.round((createAssessmentTrackingDto.totalScore / createAssessmentTrackingDto.totalMaxScore) * 100)
+          : 0;
+      if(scorePercentage < passingThreshold){
+        sessionResult = "fail"
+      }
+
       // Handle Manual submission - update existing record if found
       if (createAssessmentTrackingDto.submitedBy === 'Manual') {
         const existingRecord = await this.assessmentTrackingModel.findOne({
@@ -3592,7 +3602,11 @@ export class ScoresService {
             existingRecord.assessmentTrackingId,
             userId
           );
-          return updatedRecord;
+          
+          return {
+            ...updatedRecord.toObject(),
+            sessionResult: sessionResult,
+          };
         }
       }
 
@@ -3623,15 +3637,6 @@ export class ScoresService {
         evaluatedBy: createAssessmentTrackingDto.evaluatedBy,
         submitedBy: createAssessmentTrackingDto.submitedBy,
       };
-
-      let sessionResult = "pass";
-      const passingThreshold = 80;
-      const scorePercentage = createAssessmentTrackingDto.totalMaxScore > 0
-          ? Math.round((createAssessmentTrackingDto.totalScore / createAssessmentTrackingDto.totalMaxScore) * 100)
-          : 0;
-      if(scorePercentage < passingThreshold){
-        sessionResult = "fail"
-      }
      
       // Define valid values
       const validSubMilestoneLevels = ["F1", "F2", "F3"];
@@ -3700,7 +3705,11 @@ export class ScoresService {
         userId
       );
 
-      return result;
+      // Return result with sessionResult
+      return {
+        ...result.toObject(),
+        sessionResult: sessionResult,
+      };
     } catch (err) {
       console.error('Error creating assessment tracking:', err);
       throw err;
