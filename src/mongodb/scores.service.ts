@@ -3648,10 +3648,34 @@ export class ScoresService {
       const applyLevel = createAssessmentTrackingDto.apply_level;
       const subApplyLevel = createAssessmentTrackingDto.sub_apply_level;
 
-      // Milestone record is created ONLY when A3-L3 is completed 
+      // F3 exit criteria: A2-L3 → milestone level m1
       if (
+        subMilestoneLevel === "F3" &&
+        applyLevel === "A2" && 
+        subApplyLevel === requiredSubApplyLevel && 
+        createAssessmentTrackingDto.session_id &&
+        createAssessmentTrackingDto.sub_session_id
+      ) {
+        try {
+          console.log(`Creating milestone record: F3-${applyLevel}-L${subApplyLevel} → m1`);
+          
+          await this.createMilestoneRecord({
+            user_id: userId,
+            session_id: createAssessmentTrackingDto.session_id,
+            sub_session_id: createAssessmentTrackingDto.sub_session_id,
+            milestone_level: "m1",
+            sub_milestone_level: "",
+            language: createAssessmentTrackingDto.unitId
+          });
+          
+        } catch (milestoneError) {
+          console.error('Error creating milestone record:', milestoneError);
+        }
+      }
+      // F1/F2 exit criteria: A3-L3 → milestone level B
+      else if (
         subMilestoneLevel && 
-        validSubMilestoneLevels.includes(subMilestoneLevel) &&
+        (subMilestoneLevel === "F1" || subMilestoneLevel === "F2") &&
         applyLevel === "A3" && 
         subApplyLevel === requiredSubApplyLevel && 
         createAssessmentTrackingDto.session_id &&
@@ -3671,8 +3695,6 @@ export class ScoresService {
             }
           } else if (subMilestoneLevel === "F2") {
             finalSubMilestoneLevel = "F3"; 
-          } else if (subMilestoneLevel === "F3") {
-            finalSubMilestoneLevel = "F3";
           } else {
             finalSubMilestoneLevel = subMilestoneLevel; // Fallback
           }
@@ -3685,7 +3707,7 @@ export class ScoresService {
             sub_session_id: createAssessmentTrackingDto.sub_session_id,
             milestone_level: milestoneLevel,
             sub_milestone_level: finalSubMilestoneLevel,
-            language:createAssessmentTrackingDto.unitId
+            language: createAssessmentTrackingDto.unitId
           });
           
         } catch (milestoneError) {
