@@ -6711,10 +6711,10 @@ export class ScoresController {
 
       if (milestoneEntry) { 
         let sub_milestone_level = '';
-         if(milestone_level == "B"){
+        if (milestone_level === "B") {
           sub_milestone_level = 'F1';
-         }
-         await this.scoresService
+        }
+        await this.scoresService
           .createMilestoneRecord({
             user_id: user_id,
             session_id: getSetResult.session_id,
