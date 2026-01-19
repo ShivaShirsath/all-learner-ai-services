@@ -74,6 +74,9 @@ export class CreateLearnerProfileDto {
 
   @ApiPropertyOptional()
   ansSelectionStatus?: { [key: string]: boolean };
+
+  @ApiPropertyOptional()
+  is_nonAsr?:boolean
 }
 
 export class OutputDTO {
