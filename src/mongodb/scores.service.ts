@@ -3502,7 +3502,6 @@ export class ScoresService {
       }
     }).exec();
 
-    if (!user) return null;
 
     const session = user.sessions.find(s =>
       s.session_id === sessionId &&
@@ -3510,12 +3509,16 @@ export class ScoresService {
       s.language === language &&
       s.ansSelectionStatus
     );
-    if (!session) return null;
+    
 
     const values = Object.values(session.ansSelectionStatus);
-    const percentage = (values.filter(Boolean).length / values.length) * 100;
+    const correctCount = values.filter(Boolean).length;
+    const totalCount = values.length;
+    const percentage = (correctCount / totalCount) * 100;
+    const result = values.length ? percentage >= 80 : null;
 
-    return values.length ? percentage >= 80 : null;
+  
+    return result;
   } catch (err) {
     console.error('Error calculating ansSelectionResult:', err);
     return null;

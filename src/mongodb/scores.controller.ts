@@ -40,6 +40,7 @@ import gu_config from './config/language/gu';
 import or_config from './config/language/or';
 import hi_config from './config/language/hi';
 import kn_config from './config/language/kn';
+import { isNotEmptyObject } from 'class-validator';
 
 const Public = () => SetMetadata('isPublic', true);
 @ApiTags('scores')
@@ -2977,12 +2978,13 @@ export class ScoresController {
       let is_correct_choice = CreateLearnerProfileDto.is_correct_choice;
       let comprehension;
       let createdAt = new Date().toISOString().replace('Z', '+00:00');
-
+      let is_nonAsr = CreateLearnerProfileDto.is_nonAsr;
+  
       /* Condition to check whether content type is char or not. If content type is char
       dont process it from ASR and other processing related with text evalution matrices and scoring mechanism
       */
       
-      if (CreateLearnerProfileDto['contentType'].toLowerCase() !== 'char') {
+      if (CreateLearnerProfileDto['contentType'].toLowerCase() !== 'char' && (is_nonAsr === undefined || is_nonAsr === false)) {
         let audioFile;
 
         if (mode == 'online' || mode == undefined) {
@@ -5801,28 +5803,21 @@ export class ScoresController {
       );
       let previous_level = recordData[0]?.milestone_level || undefined;
 
-      // Handle ansSelectionStatus evaluation for char content type (B milestone logic ONLY)
-      if (getSetResult.contentType.toLowerCase() === 'char') {
-        // Char content should only be used at milestone B
-        if (previous_level !== 'B') {
-          console.log(`Warning: Char content used at level ${previous_level}, but char is only for milestone B`);
-        }
-        
-        const ansSelectionResult = await this.scoresService.calculateAnsSelectionResult(
-          user_id,
-          getSetResult.session_id,
-          getSetResult.sub_session_id,
-          getSetResult.language
-        );
-        
-        
-        if (ansSelectionResult !== null) {
-          sessionResult = ansSelectionResult ? 'pass' : 'fail';
-          hasAnsSelectionStatus = true;
-        } else {
-          sessionResult = 'fail';
-          hasAnsSelectionStatus = false;
-        }
+      // Check ansSelectionStatus %
+      const ansSelectionResult = await this.scoresService.calculateAnsSelectionResult(
+        user_id,
+        getSetResult.session_id,
+        getSetResult.sub_session_id,
+        getSetResult.language
+      );
+      
+      // Only override sessionResult if ansSelectionStatus was found (new flow)
+      if (ansSelectionResult !== null) {
+        sessionResult = ansSelectionResult ? 'pass' : 'fail';
+        hasAnsSelectionStatus = true;
+        console.log(`[getSetResult] ansSelectionStatus found: result=${ansSelectionResult}, sessionResult=${sessionResult}`);
+      } else {
+        console.log(`[getSetResult] ansSelectionStatus not found, using old flow`);
       }
 
       if (totalSyllables <= 100) {
@@ -5839,8 +5834,8 @@ export class ScoresController {
         targetPerThreshold = 5;
       }
 
-      // Skip normal evaluation logic only for char content type at milestone B (uses ansSelectionStatus)
-      if (!isComprehension && !(getSetResult.contentType.toLowerCase() === 'char' && previous_level === 'B')) {
+     // isAnsSesction non_Asr exist
+      if (!isComprehension && !hasAnsSelectionStatus) {
         if (targetsPercentage <= targetPerThreshold) {
           // Add logic for the study the pic mechnics
           if (is_mechanics) {
@@ -5871,13 +5866,12 @@ export class ScoresController {
             }
           }
         } else {
-          // High target percentage - fail for all content types
           sessionResult = 'fail';
         }
       }
 
-      // For char content type, if no ansSelectionStatus was found, default to fail
-      if (getSetResult.contentType.toLowerCase() === 'char' && !hasAnsSelectionStatus && sessionResult === 'No Result') {
+      // This preserves old behavior when no evaluation logic matched
+      if (sessionResult === 'No Result') {
         sessionResult = 'fail';
       }
 
