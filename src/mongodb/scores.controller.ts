@@ -5811,11 +5811,12 @@ export class ScoresController {
         getSetResult.language
       );
       
+      let ansSelectionPercentage = 0;
       // Only override sessionResult if ansSelectionStatus was found (new flow)
       if (ansSelectionResult !== null) {
-        sessionResult = ansSelectionResult ? 'pass' : 'fail';
+        sessionResult = ansSelectionResult.result ? 'pass' : 'fail';
         hasAnsSelectionStatus = true;
-        console.log(`[getSetResult] ansSelectionStatus found: result=${ansSelectionResult}, sessionResult=${sessionResult}`);
+        ansSelectionPercentage = ansSelectionResult.percentage;
       } else {
         console.log(`[getSetResult] ansSelectionStatus not found, using old flow`);
       }
@@ -6738,6 +6739,9 @@ export class ScoresController {
           });
       }
 
+      // Use ansSelectionPercentage when hasAnsSelectionStatus is true, otherwise use passingPercentage
+      const responsePercentage = hasAnsSelectionStatus ? ansSelectionPercentage : (passingPercentage || 0);
+
       // log the responce data into the collection
       try {
         await this.scoresService.addGetSetResultLog({
@@ -6750,7 +6754,7 @@ export class ScoresController {
           previousLevel: previous_level,
           totalSyllables: totalSyllables,
           fluency: fluency,
-          percentage: passingPercentage || 0,
+          percentage: responsePercentage,
           fluencyResult: fluencyResult,
           prosodyResult: prosodyResult,
           targetsPercentage: targetsPercentage,
@@ -6775,7 +6779,7 @@ export class ScoresController {
           fluency: fluency,
           fluencyResult: fluencyResult,
           prosodyResult: prosodyResult,
-          percentage: passingPercentage || 0,
+          percentage: responsePercentage,
           targetsPercentage: targetsPercentage || 0,
           total_correctness_score:
             correct_score[0]?.total_correctness_score / contentLimit || 0,
