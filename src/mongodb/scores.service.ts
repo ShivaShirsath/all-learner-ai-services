@@ -3488,7 +3488,7 @@ export class ScoresService {
     }
   }
 
-  async calculateAnsSelectionResult(userId: string, sessionId: string, subSessionId: string, language: string): Promise<boolean | null> {
+  async calculateAnsSelectionResult(userId: string, sessionId: string, subSessionId: string, language: string): Promise<{ result: boolean; percentage: number } | null> {
   try {
     const user = await this.scoreModel.findOne({
       user_id: userId,
@@ -3502,6 +3502,9 @@ export class ScoresService {
       }
     }).exec();
 
+    if (!user) {
+      return null;
+    }
 
     const session = user.sessions.find(s =>
       s.session_id === sessionId &&
@@ -3510,15 +3513,17 @@ export class ScoresService {
       s.ansSelectionStatus
     );
     
+    if (!session || !session.ansSelectionStatus) {
+      return null;
+    }
 
     const values = Object.values(session.ansSelectionStatus);
     const correctCount = values.filter(Boolean).length;
     const totalCount = values.length;
-    const percentage = (correctCount / totalCount) * 100;
-    const result = values.length ? percentage >= 80 : null;
+    const percentage = totalCount > 0 ? Math.floor((correctCount / totalCount) * 100) : 0;
+    const result = values.length ? percentage >= 80 : false;
 
-  
-    return result;
+    return { result, percentage };
   } catch (err) {
     console.error('Error calculating ansSelectionResult:', err);
     return null;
