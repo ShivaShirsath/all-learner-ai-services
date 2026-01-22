@@ -246,7 +246,6 @@ export class Score {
         milestone_level: { type: String, required: true, index: true },
         sub_milestone_level: { type: String, required: false },
         language : {type: String, required: false},
-        pass_count: { type: Number, required: false, default: 0 },
         createdAt: { type: Date, required: true, index: true },
       },
     ],
@@ -258,7 +257,6 @@ export class Score {
     milestone_level: string;
     sub_milestone_level: string;
     language: string;
-    pass_count: number;
     createdAt: Date;
   }[]; // This array includes milestone progress and we take latest entry in array as current milestone for user
 }

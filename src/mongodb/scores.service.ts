@@ -117,7 +117,6 @@ export class ScoresService {
         milestone_level: milestoneToSet,
         sub_milestone_level: createMilestoneRecord.sub_milestone_level,
         language: createMilestoneRecord.language || null,
-        pass_count: createMilestoneRecord.pass_count !== undefined ? createMilestoneRecord.pass_count : 0,
         createdAt: new Date().toISOString().replace('Z', '+00:00'),
       };
 
@@ -1810,7 +1809,6 @@ export class ScoresService {
             sub_milestone_level: '$milestone_progress.sub_milestone_level',
             sessions: 1,
             storedLanguage: '$milestone_progress.language',
-            pass_count: '$milestone_progress.pass_count',
             createdAt: '$milestone_progress.createdAt',
           },
         },
@@ -1868,7 +1866,6 @@ export class ScoresService {
             sub_session_id: 1,
             milestone_level: 1,
             sub_milestone_level: 1,
-            pass_count: 1,
             createdAt: 1,
             language: 1,
           },
