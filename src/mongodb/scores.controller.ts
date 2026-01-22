@@ -6071,6 +6071,44 @@ export class ScoresController {
       }
 
       let milestone_level = previous_level;
+      let pass_count = 0;
+
+      // User must pass twice at the same milestone
+      if (
+        (getSetResult.language === 'en' || getSetResult.language === 'te') &&
+        previous_level &&
+        ['m4', 'm5', 'm6', 'm7', 'm8', 'm9'].includes(previous_level) &&
+        (
+          !getSetResult.hasOwnProperty('collectionId') ||
+          getSetResult.collectionId === '' ||
+          getSetResult?.collectionId === undefined
+        )
+      ) {
+        // Get current pass_count from latest milestone record
+        const currentPassCount = recordData[0]?.pass_count || 0;
+        
+        if (sessionResult === 'pass') {
+          if (currentPassCount === 0) {
+            // First pass: Stay at current level
+            milestone_level = previous_level;
+            pass_count = 1;
+            console.log(`[getSetResult] M4-M9 Two-Pass: First pass at ${previous_level}, staying at ${milestone_level}, pass_count=${pass_count}`);
+          } else if (currentPassCount === 1) {
+            // Second pass: Progress to next level
+            const previous_level_id = parseInt(previous_level.replace('m', ''));
+            milestone_level = 'm' + (previous_level_id + 1);
+            pass_count = 0;
+          }
+        } else if (sessionResult === 'fail') {
+          milestone_level = previous_level;
+          pass_count = 0;
+          if (currentPassCount === 1) {
+            milestoneEntry = true;
+          } else {
+            console.log(`[getSetResult] M4-M9 Two-Pass: Failed at ${previous_level} (pass_count already 0)`);
+          }
+        }
+      }
 
       
       // For Showcase, We are not sending collectionId based on this are calculating milestone
@@ -6080,10 +6118,16 @@ export class ScoresController {
         getSetResult.collectionId === '' ||
         getSetResult?.collectionId === undefined
       ) {
+        // Skip normal progression logic if we already handled M4-M9 two-pass requirement
+        const isM4M9TwoPassHandled = 
+          (getSetResult.language === 'en' || getSetResult.language === 'te') &&
+          previous_level &&
+          ['m4', 'm5', 'm6', 'm7', 'm8', 'm9'].includes(previous_level);
+        
         // Handle B → M1 progression: If user is at B and passes, go to M1
         if (previous_level === 'B' && sessionResult === 'pass') {
           milestone_level = 'm1';
-        } else if (sessionResult === 'pass') {
+        } else if (sessionResult === 'pass' && !isM4M9TwoPassHandled) {
           let previous_level_id =
             previous_level === undefined
               ? 0
@@ -6717,6 +6761,7 @@ export class ScoresController {
             milestone_level: milestone_level,
             sub_milestone_level: sub_milestone_level,
             language: getSetResult.language,
+            pass_count: pass_count,
           })
           .then(async (milestoneResult) => {
   
