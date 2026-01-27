@@ -6680,6 +6680,18 @@ export class ScoresController {
         }
       }
 
+      // Apply content type specific milestone logic for collectionId cases
+      if (sessionResult === 'fail') {
+        const isM0OrUndefined = previous_level === 'm0' || previous_level === undefined;
+        if (getSetResult.contentType.toLowerCase() === 'word' && isM0OrUndefined) {
+          milestone_level = 'B';
+        } else if (getSetResult.contentType.toLowerCase() === 'word') {
+          milestone_level = previous_level;
+        } else {
+          milestone_level = previous_level;
+        }
+      }
+
       // Check if is_B_enable is true, then route to milestone B instead of M1
       // Only apply when transitioning from M0 (or undefined) to M1
       // This handles collectionId-based cases where M1 might be set
