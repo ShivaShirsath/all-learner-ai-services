@@ -6415,7 +6415,11 @@ export class ScoresController {
               getSetResult.collectionId ===
               '809039e5-119d-42ae-925f-b2546b1e3d7b'
             ) {
-              milestone_level = 'm4';
+              if (sessionResult === 'fail') {
+                milestone_level = 'm3';
+              } else {
+                milestone_level = 'm4';
+              }
             } else if (
               getSetResult.collectionId ===
               '5b69052e-f609-4004-adce-cf0fcfdac98b' ||
@@ -6683,7 +6687,9 @@ export class ScoresController {
       // Apply content type specific milestone logic for collectionId cases
       if (sessionResult === 'fail') {
         const isM0OrUndefined = previous_level === 'm0' || previous_level === undefined;
-        if (getSetResult.contentType.toLowerCase() === 'word' && isM0OrUndefined) {
+        if (milestone_level === 'm1' || milestone_level === 'm2' || milestone_level === 'm3') {
+          // Preserve m1/m2/m3 set by collectionId logic
+        } else if (getSetResult.contentType.toLowerCase() === 'word' && isM0OrUndefined) {
           milestone_level = 'B';
         } else if (getSetResult.contentType.toLowerCase() === 'word') {
           milestone_level = previous_level;
