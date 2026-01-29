@@ -6687,8 +6687,11 @@ export class ScoresController {
       // Apply content type specific milestone logic for collectionId cases
       if (sessionResult === 'fail') {
         const isM0OrUndefined = previous_level === 'm0' || previous_level === undefined;
-        if (milestone_level === 'm1' || milestone_level === 'm2' || milestone_level === 'm3') {
-          // Preserve m1/m2/m3 set by collectionId logic
+        // If user was at B and fails, always stay at B (don't advance to m1)
+        if (previous_level === 'B') {
+          milestone_level = 'B';
+        } else if (milestone_level === 'm1' || milestone_level === 'm2' || milestone_level === 'm3') {
+          // Preserve m1/m2/m3 set by collectionId logic (but not if previous_level was B)
         } else if (getSetResult.contentType.toLowerCase() === 'word' && isM0OrUndefined) {
           milestone_level = 'B';
         } else if (getSetResult.contentType.toLowerCase() === 'word') {
@@ -7647,5 +7650,7 @@ export class ScoresController {
       });
     }
   }
+
+  
 }
 
