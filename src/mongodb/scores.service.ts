@@ -3649,18 +3649,78 @@ export class ScoresService {
       // Define valid values
       const validSubMilestoneLevels = ["F1", "F2", "F3"];
       const validApplyLevels = ["A1", "A2", "A3"];
-      const requiredSubApplyLevel = 3; 
 
       // Check conditions for creating milestone record
       const subMilestoneLevel = createAssessmentTrackingDto.sub_milestone_level;
       const applyLevel = createAssessmentTrackingDto.apply_level;
       const subApplyLevel = createAssessmentTrackingDto.sub_apply_level;
 
-      // F3 exit criteria: A2-L3 → milestone level m1
+      // F1 exit criteria: A3-L9 → milestone level B
       if (
+        subMilestoneLevel === "F1" &&
+        applyLevel === "A3" && 
+        subApplyLevel === 9 && 
+        createAssessmentTrackingDto.session_id &&
+        createAssessmentTrackingDto.sub_session_id
+      ) {
+        try {
+          const milestoneLevel = "B";
+          let finalSubMilestoneLevel: string;
+          
+          // Determine next sub-milestone level when completing A3-L9
+          if (sessionResult === "pass") {
+            finalSubMilestoneLevel = "F2";
+          } else { 
+            finalSubMilestoneLevel = "F1";
+          }
+          
+          console.log(`Creating milestone record: F1-${applyLevel}-L${subApplyLevel} → ${milestoneLevel}-${finalSubMilestoneLevel}`);
+          
+          await this.createMilestoneRecord({
+            user_id: userId,
+            session_id: createAssessmentTrackingDto.session_id,
+            sub_session_id: createAssessmentTrackingDto.sub_session_id,
+            milestone_level: milestoneLevel,
+            sub_milestone_level: finalSubMilestoneLevel,
+            language: createAssessmentTrackingDto.unitId
+          });
+          
+        } catch (milestoneError) {
+          console.error('Error creating milestone record:', milestoneError);
+        }
+      }
+      // F2 exit criteria: A3-L18 → milestone level B
+      else if (
+        subMilestoneLevel === "F2" &&
+        applyLevel === "A3" && 
+        subApplyLevel === 18 && 
+        createAssessmentTrackingDto.session_id &&
+        createAssessmentTrackingDto.sub_session_id
+      ) {
+        try {
+          const milestoneLevel = "B";
+          const finalSubMilestoneLevel = "F3";
+          
+          console.log(`Creating milestone record: F2-${applyLevel}-L${subApplyLevel} → ${milestoneLevel}-${finalSubMilestoneLevel}`);
+          
+          await this.createMilestoneRecord({
+            user_id: userId,
+            session_id: createAssessmentTrackingDto.session_id,
+            sub_session_id: createAssessmentTrackingDto.sub_session_id,
+            milestone_level: milestoneLevel,
+            sub_milestone_level: finalSubMilestoneLevel,
+            language: createAssessmentTrackingDto.unitId
+          });
+          
+        } catch (milestoneError) {
+          console.error('Error creating milestone record:', milestoneError);
+        }
+      }
+      // F3 exit criteria: A2-L24 → milestone level m1
+      else if (
         subMilestoneLevel === "F3" &&
         applyLevel === "A2" && 
-        subApplyLevel === requiredSubApplyLevel && 
+        subApplyLevel === 24 && 
         createAssessmentTrackingDto.session_id &&
         createAssessmentTrackingDto.sub_session_id
       ) {
@@ -3673,48 +3733,6 @@ export class ScoresService {
             sub_session_id: createAssessmentTrackingDto.sub_session_id,
             milestone_level: "m1",
             sub_milestone_level: "",
-            language: createAssessmentTrackingDto.unitId
-          });
-          
-        } catch (milestoneError) {
-          console.error('Error creating milestone record:', milestoneError);
-        }
-      }
-      // F1/F2 exit criteria: A3-L3 → milestone level B
-      else if (
-        subMilestoneLevel && 
-        (subMilestoneLevel === "F1" || subMilestoneLevel === "F2") &&
-        applyLevel === "A3" && 
-        subApplyLevel === requiredSubApplyLevel && 
-        createAssessmentTrackingDto.session_id &&
-        createAssessmentTrackingDto.sub_session_id
-      ) {
-        try {
-      
-          const milestoneLevel = "B";
-          let finalSubMilestoneLevel: string;
-          
-          // Determine next sub-milestone level when completing A3-L3
-          if (subMilestoneLevel === "F1") {
-            if (sessionResult === "pass") {
-              finalSubMilestoneLevel = "F2";
-            } else { 
-              finalSubMilestoneLevel = "F1";
-            }
-          } else if (subMilestoneLevel === "F2") {
-            finalSubMilestoneLevel = "F3"; 
-          } else {
-            finalSubMilestoneLevel = subMilestoneLevel; // Fallback
-          }
-          
-          console.log(`Creating milestone record: ${subMilestoneLevel}-${applyLevel}-L${subApplyLevel} → ${milestoneLevel}-${finalSubMilestoneLevel}`);
-          
-          await this.createMilestoneRecord({
-            user_id: userId,
-            session_id: createAssessmentTrackingDto.session_id,
-            sub_session_id: createAssessmentTrackingDto.sub_session_id,
-            milestone_level: milestoneLevel,
-            sub_milestone_level: finalSubMilestoneLevel,
             language: createAssessmentTrackingDto.unitId
           });
           

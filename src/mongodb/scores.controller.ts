@@ -6727,7 +6727,7 @@ export class ScoresController {
 
       if (milestoneEntry) { 
         let sub_milestone_level = '';
-        if (milestone_level === "B") {
+        if (milestone_level === "B" && (getSetResult.language === "en" || getSetResult.language === "te") ) {
           sub_milestone_level = 'F1';
         }
         await this.scoresService
