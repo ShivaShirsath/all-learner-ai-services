@@ -7651,6 +7651,69 @@ export class ScoresController {
     }
   }
 
+  @Post('/milestone/set')
+  async setMilestoneManually(
+    @Req() request: FastifyRequest,
+    @Res() response: FastifyReply,
+    @Body() setMilestoneDto: {
+      language: string;
+      milestone_level: string;
+      sub_milestone_level?: string;
+      session_id?: string;
+      sub_session_id?: string;
+    },
+  ) {
+    try {
+      const user_id = (request as any).user?.virtual_id?.toString();
+      if (!user_id) {
+        return response.status(HttpStatus.UNAUTHORIZED).send({
+          success: false,
+          error: 'User ID not found in token',
+        });
+      }
+
+      if (!setMilestoneDto.language || !setMilestoneDto.milestone_level) {
+        return response.status(HttpStatus.BAD_REQUEST).send({
+          success: false,
+          error: 'Missing required fields: language and milestone_level are required',
+        });
+      }
+
+      // Handle F1, F2, F3:
+      let finalMilestoneLevel = setMilestoneDto.milestone_level;
+      let finalSubMilestoneLevel = setMilestoneDto.sub_milestone_level;
+
+      if (['F1', 'F2', 'F3'].includes(setMilestoneDto.milestone_level.toUpperCase())) {
+        finalMilestoneLevel = 'B';
+        finalSubMilestoneLevel = setMilestoneDto.milestone_level.toUpperCase();
+      }
+
+      // Prepare data with extracted user_id
+      const milestoneData = {
+        user_id: user_id,
+        language: setMilestoneDto.language,
+        milestone_level: finalMilestoneLevel,
+        sub_milestone_level: finalSubMilestoneLevel,
+        session_id: setMilestoneDto.session_id,
+        sub_session_id: setMilestoneDto.sub_session_id,
+      };
+
+      const result = await this.scoresService.setMilestoneManually(milestoneData);
+
+      if (result.success) {
+        return response.status(HttpStatus.OK).send(result);
+      } else {
+        return response.status(HttpStatus.BAD_REQUEST).send(result);
+      }
+    } catch (err) {
+      console.error('Error in setMilestoneManually:', err);
+      return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
+        success: false,
+        error: 'Failed to set milestone',
+        message: err.message || 'Internal server error',
+      });
+    }
+  }
   
 }
 
