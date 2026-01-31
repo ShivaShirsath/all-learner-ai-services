@@ -3807,6 +3807,93 @@ export class ScoresService {
     }
   }
 
+  /**
+   * Alert : This api is only for the UAT, Manually set milestone for a user 
+   * Used for admin/manual milestone assignment
+   */
+    async setMilestoneManually(setMilestoneData: {
+      user_id: string;
+      language: string;
+      milestone_level: string;
+      sub_milestone_level?: string;
+      session_id?: string;
+      sub_session_id?: string;
+    }): Promise<any> {
+      try {
+        // Validate milestone_level format
+        const validMainMilestones = ['m0', 'm1', 'm2', 'm3', 'm4', 'm5', 'm6', 'm7', 'm8', 'm9', 'B'];
+        if (!validMainMilestones.includes(setMilestoneData.milestone_level)) {
+          throw new Error(
+            `Invalid milestone_level: ${setMilestoneData.milestone_level}. Must be one of: ${validMainMilestones.join(', ')}`
+          );
+        }
+  
+        // Validate sub_milestone_level if provided
+        if (setMilestoneData.sub_milestone_level) {
+          const validSubMilestones = ['F1', 'F2', 'F3'];
+          if (!validSubMilestones.includes(setMilestoneData.sub_milestone_level)) {
+            throw new Error(
+              `Invalid sub_milestone_level: ${setMilestoneData.sub_milestone_level}. Must be one of: ${validSubMilestones.join(', ')}`
+            );
+          }
+        }
+  
+        // Generate session_id and sub_session_id if not provided
+        const session_id = setMilestoneData.session_id || `manual-${Date.now()}`;
+        const sub_session_id = setMilestoneData.sub_session_id || `manual-sub-${Date.now()}`;
+  
+        const insertData = {
+          session_id: session_id,
+          sub_session_id: sub_session_id,
+          milestone_level: setMilestoneData.milestone_level,
+          sub_milestone_level: setMilestoneData.sub_milestone_level || '',
+          language: setMilestoneData.language,
+          createdAt: new Date().toISOString().replace('Z', '+00:00'),
+        };
+  
+        const userExists = await this.scoreModel.findOne({ user_id: setMilestoneData.user_id });
+        
+        if (!userExists) {
+          await this.scoreModel.create({
+            user_id: setMilestoneData.user_id,
+            milestone_progress: [insertData],
+            sessions: [],
+          });
+        } else {
+          await this.scoreModel.updateOne(
+            { user_id: setMilestoneData.user_id },
+            {
+              $push: {
+                milestone_progress: insertData,
+              },
+            },
+          );
+        }
+  
+        const latestMilestone = await this.getlatestmilestone(
+          setMilestoneData.user_id,
+          setMilestoneData.language,
+        );
+  
+        return {
+          success: true,
+          message: 'Milestone set successfully',
+          data: {
+            user_id: setMilestoneData.user_id,
+            language: setMilestoneData.language,
+            milestone_level: setMilestoneData.milestone_level,
+            sub_milestone_level: setMilestoneData.sub_milestone_level || '',
+            latest_milestone: latestMilestone[0] || null,
+          },
+        };
+      } catch (err) {
+        return {
+          success: false,
+          error: err.message || 'Failed to set milestone',
+          details: err,
+        };
+      }
+    }
 }
 
   
