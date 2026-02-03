@@ -3517,11 +3517,28 @@ export class ScoresService {
       return null;
     }
 
-    const values = Object.values(session.ansSelectionStatus);
-    const correctCount = values.filter(Boolean).length;
-    const totalCount = values.length;
+    let correctCount = 0;
+    let totalCount = 0;
+
+    // Handle new array format: [{ text: "a", status: true, gameType: "..." }, ...]
+    if (Array.isArray(session.ansSelectionStatus)) {
+      totalCount = session.ansSelectionStatus.length;
+      correctCount = session.ansSelectionStatus.filter(item => 
+        item && typeof item === 'object' && item.status === true
+      ).length;
+    } 
+    // Handle old object format: { "a": true, "b": false, ... } (backward compatibility)
+    else if (typeof session.ansSelectionStatus === 'object') {
+      const values = Object.values(session.ansSelectionStatus);
+      totalCount = values.length;
+      correctCount = values.filter(Boolean).length;
+    } 
+    else {
+      return null;
+    }
+
     const percentage = totalCount > 0 ? Math.floor((correctCount / totalCount) * 100) : 0;
-    const result = values.length ? percentage >= 80 : false;
+    const result = totalCount > 0 ? percentage >= 80 : false;
 
     return { result, percentage };
   } catch (err) {

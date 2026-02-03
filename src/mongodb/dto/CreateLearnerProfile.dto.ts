@@ -73,7 +73,13 @@ export class CreateLearnerProfileDto {
   milestone: string;
 
   @ApiPropertyOptional()
-  ansSelectionStatus?: { [key: string]: boolean };
+  ansSelectionStatus?: [
+    {
+      text:string,
+      status: boolean,
+      gameType?: string
+    }
+  ];
 
   @ApiPropertyOptional()
   is_nonAsr?:boolean
