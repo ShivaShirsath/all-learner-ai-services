@@ -3529,7 +3529,7 @@ export class ScoresService {
     } 
     // Handle old object format: { "a": true, "b": false, ... } (backward compatibility)
     else if (typeof session.ansSelectionStatus === 'object') {
-      const values = Object.values(session.ansSelectionStatus);
+    const values = Object.values(session.ansSelectionStatus);
       totalCount = values.length;
       correctCount = values.filter(Boolean).length;
     } 
@@ -3789,6 +3789,13 @@ export class ScoresService {
     try {
       const score_detail = createAssessmentTrackingDto.assessmentSummary;
       const scoreObj = [];
+      const {
+        session_id,
+        sub_session_id,
+        sub_milestone_level,
+        apply_level,
+        sub_apply_level,
+      } = createAssessmentTrackingDto;
 
       for (let i = 0; i < score_detail.length; i++) {
         const section: any = score_detail[i];
@@ -3810,6 +3817,11 @@ export class ScoresService {
               maxScore: dataItem?.item?.maxscore,
               queTitle: dataItem?.item?.title,
               feedback: dataItem?.resvalues?.[0]?.AI_suggestion || '',
+              session_id,
+              sub_session_id,
+              sub_milestone_level,
+              apply_level,
+              sub_apply_level,
             });
           }
         }
