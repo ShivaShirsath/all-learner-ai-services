@@ -6727,7 +6727,8 @@ export class ScoresController {
 
       if (milestoneEntry) { 
         let sub_milestone_level = '';
-        if (milestone_level === "B" && (getSetResult.language === "en" || getSetResult.language === "te") ) {
+        if (milestone_level === "B" && previous_level === "B" &&
+          (getSetResult.language === "en" || getSetResult.language === "te" || getSetResult.language === "hi") ) {
           sub_milestone_level = 'F1';
         }
         await this.scoresService
@@ -6737,7 +6738,7 @@ export class ScoresController {
             sub_session_id: getSetResult.sub_session_id,
             milestone_level: milestone_level,
             sub_milestone_level: sub_milestone_level,
-            language: getSetResult.language,
+            language: getSetResult.language || '',
           })
           .then(async (milestoneResult) => {
   
