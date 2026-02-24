@@ -91,6 +91,9 @@ export class AssessmentTrackingScoreDetail {
   @Prop({ type: String, required: true, index: true })
   sub_session_id: string;
 
+  @Prop({ type: String, required: true, index: true })
+  language: string;
+
   @Prop({ type: String, required: true })
   sub_milestone_level: string;
 

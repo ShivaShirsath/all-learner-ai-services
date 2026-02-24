@@ -2979,7 +2979,7 @@ export class ScoresController {
       let comprehension;
       let createdAt = new Date().toISOString().replace('Z', '+00:00');
       let is_nonAsr = CreateLearnerProfileDto.is_nonAsr;
-  
+
       /* Condition to check whether content type is char or not. If content type is char
       dont process it from ASR and other processing related with text evalution matrices and scoring mechanism
       */
@@ -5804,20 +5804,20 @@ export class ScoresController {
       let previous_level = recordData[0]?.milestone_level || undefined;
 
       // Check ansSelectionStatus %
-      const ansSelectionResult = await this.scoresService.calculateAnsSelectionResult(
-        user_id,
-        getSetResult.session_id,
-        getSetResult.sub_session_id,
-        getSetResult.language
-      );
-      
+        const ansSelectionResult = await this.scoresService.calculateAnsSelectionResult(
+          user_id,
+          getSetResult.session_id,
+          getSetResult.sub_session_id,
+          getSetResult.language
+        );
+        
       let ansSelectionPercentage = 0;
       // Only override sessionResult if ansSelectionStatus was found (new flow)
-      if (ansSelectionResult !== null) {
+        if (ansSelectionResult !== null) {
         sessionResult = ansSelectionResult.result ? 'pass' : 'fail';
-        hasAnsSelectionStatus = true;
+          hasAnsSelectionStatus = true;
         ansSelectionPercentage = ansSelectionResult.percentage;
-      } else {
+        } else {
         console.log(`[getSetResult] ansSelectionStatus not found, using old flow`);
       }
 
@@ -6418,7 +6418,7 @@ export class ScoresController {
               if (sessionResult === 'fail') {
                 milestone_level = 'm3';
               } else {
-                milestone_level = 'm4';
+              milestone_level = 'm4';
               }
             } else if (
               getSetResult.collectionId ===
@@ -6725,7 +6725,7 @@ export class ScoresController {
         prosodyResult = undefined;
       }
 
-      if (milestoneEntry) { 
+      if (milestoneEntry) {
         let sub_milestone_level = '';
         if (milestone_level === "B" && previous_level === "B" &&
           (getSetResult.language === "en" || getSetResult.language === "te" || getSetResult.language === "hi") ) {
@@ -7623,11 +7623,11 @@ export class ScoresController {
     try {
       // Extract user_id from authenticated request
       const user_id = (request as any).user.virtual_id.toString();
-      
+
       // Extract tenantId from request headers if available
-      const tenantId = 
-        (request.headers as any).tenantId || 
-        (request.headers as any).tenantid || 
+      const tenantId =
+        (request.headers as any).tenantId ||
+        (request.headers as any).tenantid ||
         null;
 
       const savedRecord = await this.scoresService.createAssessmentTracking(
@@ -7642,6 +7642,8 @@ export class ScoresController {
         data: {
           assessmentTrackingId: savedRecord.assessmentTrackingId,
           sessionResult: savedRecord.sessionResult,
+          target_syllables: savedRecord.target_char,
+          familiarity_syllables: savedRecord.familiarity_char,
         },
       });
     } catch (err) {
