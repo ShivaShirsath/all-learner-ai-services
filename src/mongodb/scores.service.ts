@@ -3598,6 +3598,33 @@ export class ScoresService {
         sessionResult = "fail"
       }
 
+      // Extract target_char (score=0) and familiarity_char (score=1) from assessmentSummary
+      const targetCharSet = new Set<string>();
+      const familiarityCharSet = new Set<string>();
+      const assessmentSummary = createAssessmentTrackingDto.assessmentSummary || [];
+      
+      for (const section of assessmentSummary) {
+        const itemData = section?.data || [];
+        for (const dataItem of itemData) {
+          const correctAnswer = dataItem?.resvalues?.[0]?.correctAnswer;
+          if (correctAnswer) {
+            if (dataItem?.score === 0) {
+              targetCharSet.add(correctAnswer);
+            } else if (dataItem?.score === 1) {
+              familiarityCharSet.add(correctAnswer);
+            }
+          }
+        }
+      }
+      
+      // Remove from familiarity_char if it exists in target_char
+      for (const char of targetCharSet) {
+        familiarityCharSet.delete(char);
+      }
+      
+      const target_char = Array.from(targetCharSet);
+      const familiarity_char = Array.from(familiarityCharSet);
+
       // Handle Manual submission - update existing record if found
       if (createAssessmentTrackingDto.submitedBy === 'Manual') {
         const existingRecord = await this.assessmentTrackingModel.findOne({
@@ -3631,6 +3658,8 @@ export class ScoresService {
           return {
             ...updatedRecord.toObject(),
             sessionResult: sessionResult,
+            target_char: target_char,
+            familiarity_char: familiarity_char,
           };
         }
       }
@@ -3770,10 +3799,11 @@ export class ScoresService {
         userId
       );
 
-      // Return result with sessionResult
       return {
         ...result.toObject(),
         sessionResult: sessionResult,
+        target_char: target_char,
+        familiarity_char: familiarity_char,
       };
     } catch (err) {
       console.error('Error creating assessment tracking:', err);
@@ -3795,6 +3825,7 @@ export class ScoresService {
         sub_milestone_level,
         apply_level,
         sub_apply_level,
+        unitId
       } = createAssessmentTrackingDto;
 
       for (let i = 0; i < score_detail.length; i++) {
@@ -3822,6 +3853,7 @@ export class ScoresService {
               sub_milestone_level,
               apply_level,
               sub_apply_level,
+              language: unitId
             });
           }
         }
@@ -3926,4 +3958,5 @@ export class ScoresService {
 }
 
   
+
 
