@@ -3606,8 +3606,11 @@ export class ScoresService {
       for (const section of assessmentSummary) {
         const itemData = section?.data || [];
         for (const dataItem of itemData) {
-          const correctAnswer = dataItem?.resvalues?.[0]?.correctAnswer;
+          let correctAnswer = dataItem?.resvalues?.[0]?.correctAnswer;
           if (correctAnswer) {
+            if (correctAnswer.includes(':')) {
+              correctAnswer = correctAnswer.split(':')[0];
+            }
             if (dataItem?.score === 0) {
               targetCharSet.add(correctAnswer);
             } else if (dataItem?.score === 1) {
