@@ -41,6 +41,7 @@ import or_config from './config/language/or';
 import hi_config from './config/language/hi';
 import kn_config from './config/language/kn';
 import { isNotEmptyObject } from 'class-validator';
+import { splitGraphemes } from "split-graphemes";
 
 const Public = () => SetMetadata('isPublic', true);
 @ApiTags('scores')
@@ -3759,39 +3760,52 @@ export class ScoresController {
             constructTokens,
           );
 
-          if (originalText.includes('ం') || originalText.includes('ర')) {
-            let agreeableResults = await this.scoresService.replaceCharacters(
-              originalText,
+          const hasAgreeableChar =
+          originalText.includes("ం") || originalText.includes("ర");
+        
+          let forceSimilarityCheck = true;
+          
+          if (hasAgreeableChar) {
+            const agreeableResults =
+              await this.scoresService.replaceCharacters(originalText);
+          
+            if (agreeableResults.includes(responseText)) {
+              responseText = originalText;
+          
+              const splits = splitGraphemes(responseText.toLowerCase()).filter(
+                (item) => item && item !== "‌" && item !== " "
+              );
+          
+              tokenArr = splits.map((item) => ({ [item]: 0.777 }));
+              anamolyTokenArr = [];
+              forceSimilarityCheck = false;
+            }
+          }
+          
+          if (forceSimilarityCheck) {
+            const [
+              bestMatch,
+              usedArr,
+              unusedArr,
+              constructedSimilarity,
+            ] = await this.scoresService.findAllSimilarities(
+              wordsWithValues,
+              [originalText]
             );
-            let agreeableHighestSimilarity =
-              await this.scoresService.findAllSimilarities(wordsWithValues, [
-                originalText,
-                ...agreeableResults,
-              ]);
-
-            responseText = agreeableHighestSimilarity[0];
-            tokenArr = agreeableHighestSimilarity[1];
-            anamolyTokenArr = agreeableHighestSimilarity[2];
-          } else {
-            let constructedHighestSimilarity =
-              await this.scoresService.findAllSimilarities(wordsWithValues, [
-                originalText,
-              ]);
-            /*checks whether the ASR has highest similarity or constructed has highest
-              and assign to the response text*/
-            let originalSimilarity = await this.scoresService.getTextSimilarity(
-              nonDenoisedresponseText,
-              originalText,
-            );
-
-            if (originalSimilarity >= constructedHighestSimilarity[3]) {
+          
+            const originalSimilarity =
+              await this.scoresService.getTextSimilarity(
+                nonDenoisedresponseText,
+                originalText
+              );
+          
+            if (originalSimilarity >= constructedSimilarity) {
               responseText = nonDenoisedresponseText;
               flag = 1;
             } else {
-              //if the constructed has highesr similarity we'll be pushing the usedArr into tokenArr and unusedArr into anamolyTokenArr
-              responseText = constructedHighestSimilarity[0];
-              tokenArr = constructedHighestSimilarity[1];
-              anamolyTokenArr = constructedHighestSimilarity[2];
+              responseText = bestMatch;
+              tokenArr = usedArr;
+              anamolyTokenArr = unusedArr;
             }
           }
         } else {
