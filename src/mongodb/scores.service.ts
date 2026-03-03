@@ -3786,7 +3786,7 @@ export class ScoresService {
         subMilestoneLevel === "F3" &&
         applyLevel === "A2" && 
         subApplyLevel === 24 && 
-        createAssessmentTrackingDto.courseId === "memoryChallenge",
+        createAssessmentTrackingDto.courseId === "memoryChallenge" &&
         createAssessmentTrackingDto.session_id &&
         createAssessmentTrackingDto.sub_session_id
       ) {
