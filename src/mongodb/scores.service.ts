@@ -3595,18 +3595,22 @@ export class ScoresService {
       // Calculate total score and maxScore from assessmentSummary
       let totalScore = 0;
       let totalMaxScore = 0;
-      const assessmentSummaryData = createAssessmentTrackingDto.assessmentSummary || [];
       
-      for (const section of assessmentSummaryData) {
-        const itemData = section?.data || [];
-        for (const dataItem of itemData) {
-          totalScore += dataItem?.score || 0;
-          totalMaxScore += dataItem?.item?.maxscore || 0;
-        }
-      }
-     
       if(createAssessmentTrackingDto.courseId === "letterLauncher"){
-        totalMaxScore = totalMaxScore * 5
+        totalScore = createAssessmentTrackingDto.totalScore || 0;
+        totalMaxScore = (createAssessmentTrackingDto.totalMaxScore || 0) * 5;
+  
+      } else {
+        // For other courses, calculate from assessmentSummary
+        const assessmentSummaryData = createAssessmentTrackingDto.assessmentSummary || [];
+        
+        for (const section of assessmentSummaryData) {
+          const itemData = section?.data || [];
+          for (const dataItem of itemData) {
+            totalScore += dataItem?.score || 0;
+            totalMaxScore += dataItem?.item?.maxscore || 0;
+          }
+        }
       }
       
       const scorePercentage = totalMaxScore > 0
@@ -3766,7 +3770,14 @@ export class ScoresService {
       ) {
         try {
           const milestoneLevel = "B";
-          const finalSubMilestoneLevel = "F3";
+          let finalSubMilestoneLevel: string;
+          
+          // Determine next sub-milestone level when completing A3-L9
+          if (sessionResult === "pass") {
+            finalSubMilestoneLevel = "F3";
+          } else { 
+            finalSubMilestoneLevel = "F2";
+          }
                 
           await this.createMilestoneRecord({
             user_id: userId,
@@ -3781,7 +3792,6 @@ export class ScoresService {
           console.error('Error creating milestone record:', milestoneError);
         }
       }
-      // F3 exit criteria: A2-L24 → milestone level m1
       else if (
         subMilestoneLevel === "F3" &&
         applyLevel === "A2" && 
@@ -3790,13 +3800,24 @@ export class ScoresService {
         createAssessmentTrackingDto.session_id &&
         createAssessmentTrackingDto.sub_session_id
       ) {
-        try { 
+        try {
+          let finalMilestoneLevel: string;
+          let finalSubMilestoneLevel: string;
+          
+          if (sessionResult === "pass") {
+            finalMilestoneLevel = "m1";
+            finalSubMilestoneLevel = "";
+          } else {
+            finalMilestoneLevel = "B";
+            finalSubMilestoneLevel = "F3";
+          }
+          
           await this.createMilestoneRecord({
             user_id: userId,
             session_id: createAssessmentTrackingDto.session_id,
             sub_session_id: createAssessmentTrackingDto.sub_session_id,
-            milestone_level: "m1",
-            sub_milestone_level: "",
+            milestone_level: finalMilestoneLevel,
+            sub_milestone_level: finalSubMilestoneLevel,
             language: createAssessmentTrackingDto.unitId
           });
           
