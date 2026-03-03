@@ -3588,14 +3588,34 @@ export class ScoresService {
         createAssessmentTrackingDto.tenantId = tenantId;
       }
 
-      // Calculate session result (pass/fail) based on score percentage
+      // Calculate session result
       let sessionResult = "pass";
       const passingThreshold = 80;
-      const scorePercentage = createAssessmentTrackingDto.totalMaxScore > 0
-          ? Math.round((createAssessmentTrackingDto.totalScore / createAssessmentTrackingDto.totalMaxScore) * 100)
+      
+      // Calculate total score and maxScore from assessmentSummary
+      let totalScore = 0;
+      let totalMaxScore = 0;
+      const assessmentSummaryData = createAssessmentTrackingDto.assessmentSummary || [];
+      
+      for (const section of assessmentSummaryData) {
+        const itemData = section?.data || [];
+        for (const dataItem of itemData) {
+          totalScore += dataItem?.score || 0;
+          totalMaxScore += dataItem?.item?.maxscore || 0;
+        }
+      }
+     
+      if(createAssessmentTrackingDto.courseId === "letterLauncher"){
+        totalMaxScore = totalMaxScore * 5
+      }
+      
+      const scorePercentage = totalMaxScore > 0
+          ? Math.round((totalScore / totalMaxScore) * 100)
           : 0;
-      if(scorePercentage < passingThreshold){
-        sessionResult = "fail"
+      
+
+      if (scorePercentage < passingThreshold) {
+        sessionResult = "fail";
       }
 
       // Extract target_char (score=0) and familiarity_char (score=1) from assessmentSummary
@@ -3722,9 +3742,7 @@ export class ScoresService {
           } else { 
             finalSubMilestoneLevel = "F1";
           }
-          
-          console.log(`Creating milestone record: F1-${applyLevel}-L${subApplyLevel} → ${milestoneLevel}-${finalSubMilestoneLevel}`);
-          
+        
           await this.createMilestoneRecord({
             user_id: userId,
             session_id: createAssessmentTrackingDto.session_id,
@@ -3749,9 +3767,7 @@ export class ScoresService {
         try {
           const milestoneLevel = "B";
           const finalSubMilestoneLevel = "F3";
-          
-          console.log(`Creating milestone record: F2-${applyLevel}-L${subApplyLevel} → ${milestoneLevel}-${finalSubMilestoneLevel}`);
-          
+                
           await this.createMilestoneRecord({
             user_id: userId,
             session_id: createAssessmentTrackingDto.session_id,
@@ -3770,12 +3786,11 @@ export class ScoresService {
         subMilestoneLevel === "F3" &&
         applyLevel === "A2" && 
         subApplyLevel === 24 && 
+        createAssessmentTrackingDto.courseId === "memoryChallenge",
         createAssessmentTrackingDto.session_id &&
         createAssessmentTrackingDto.sub_session_id
       ) {
-        try {
-          console.log(`Creating milestone record: F3-${applyLevel}-L${subApplyLevel} → m1`);
-          
+        try { 
           await this.createMilestoneRecord({
             user_id: userId,
             session_id: createAssessmentTrackingDto.session_id,
