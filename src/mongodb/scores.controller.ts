@@ -194,6 +194,7 @@ export class ScoresController {
       let intensity_std = 0;
       let expression_classification = '';
       let smoothness_classification = '';
+      let feedback = '';
       
       /* Condition to check whether content type is char or not. If content type is char
       dont process it from ASR and other processing related with text evalution matrices and scoring mechanism
@@ -264,22 +265,61 @@ export class ScoresController {
           pause_count = CreateLearnerProfileDto.pause_count;
         }
 
-        // add the vocabulary logic
-        await this.scoresService.vocabularyCount(
-          user_id,
-          originalText,
-          responseText,
-          language,
-          CreateLearnerProfileDto.session_id,
-          CreateLearnerProfileDto.sub_session_id
-        )
+        // Profanity Detection logic - Check BEFORE any further processing
+        try {
+          const badWordResponse = await this.scoresService.checkProfanity(responseText, language);
+          if (badWordResponse) {
+            feedback = 'profanity detected';
+            console.warn('Profanity detected for user:', user_id, 'session:', CreateLearnerProfileDto.session_id);
+            
+            // Create minimal data object
+            const profanityScoreData = {
+              user_id: user_id,
+              session: {
+                session_id: CreateLearnerProfileDto.session_id,
+                sub_session_id: CreateLearnerProfileDto.sub_session_id || '',
+                contentType: CreateLearnerProfileDto.contentType,
+                contentId: CreateLearnerProfileDto.contentId || '',
+                createdAt: createdAt,
+                language: language,
+                original_text: originalText,
+                response_text: '***',
+                construct_text: '***',
+                feedback: feedback,
+                asrOutput: '***',
+              },
+            };
+            
+            try {
+              await this.scoresService.create(profanityScoreData);
+            } catch (dbError) {
+              console.error('Failed to save profanity data to DB:', dbError);
+            }
+            
+            return response.status(HttpStatus.CREATED).send({
+              status: 'success',
+              msg: 'Data stored with profanity detected',
+              originalText: originalText,
+              responseText: '***',
+              feedback: feedback,
+            });
+          }
+        } catch (profanityCheckError) {
+          console.error('Profanity check failed:', profanityCheckError);
+        }
 
-        const badWordResponse = await this.scoresService.checkProfanity(responseText, language)
-        if (badWordResponse) {
-          return response.status(HttpStatus.BAD_REQUEST).send({
-            statusCode: HttpStatus.BAD_REQUEST,
-            message: 'Profanity detected.',
-          });
+        // add the vocabulary logic
+        try {
+          await this.scoresService.vocabularyCount(
+            user_id,
+            originalText,
+            responseText,
+            language,
+            CreateLearnerProfileDto.session_id,
+            CreateLearnerProfileDto.sub_session_id
+          );
+        } catch (vocabError) {
+          console.error('Vocabulary count failed:', vocabError);
         }
 
         // Get All hexcode for this selected language
@@ -678,6 +718,7 @@ export class ScoresController {
       let intensity_std = 0;
       let expression_classification = '';
       let smoothness_classification = '';
+      let feedback = '';
 
       /* Condition to check whether content type is char or not. If content type is char
       dont process it from ASR and other processing related with text evalution matrices and scoring mechanism
@@ -743,22 +784,61 @@ export class ScoresController {
 
         responseText = CreateLearnerProfileDto.output[0].source;
 
-        // add the vocabulary logic
-        await this.scoresService.vocabularyCount(
-          user_id,
-          originalText,
-          responseText,
-          language,
-          CreateLearnerProfileDto.session_id,
-          CreateLearnerProfileDto.sub_session_id
-        )
+        // Profanity Detection logic - Check BEFORE any further processing
+        try {
+          const badWordResponse = await this.scoresService.checkProfanity(responseText, language);
+          if (badWordResponse) {
+            feedback = 'profanity detected';
+            console.warn('Profanity detected for user:', user_id, 'session:', CreateLearnerProfileDto.session_id);
+            
+            // Create minimal data object
+            const profanityScoreData = {
+              user_id: user_id,
+              session: {
+                session_id: CreateLearnerProfileDto.session_id,
+                sub_session_id: CreateLearnerProfileDto.sub_session_id || '',
+                contentType: CreateLearnerProfileDto.contentType,
+                contentId: CreateLearnerProfileDto.contentId || '',
+                createdAt: createdAt,
+                language: language,
+                original_text: originalText,
+                response_text: '***',
+                construct_text: '***',
+                feedback: feedback,
+                asrOutput: '***',
+              },
+            };
+            
+            try {
+              await this.scoresService.create(profanityScoreData);
+            } catch (dbError) {
+              console.error('Failed to save profanity data to DB:', dbError);
+            }
+            
+            return response.status(HttpStatus.CREATED).send({
+              status: 'success',
+              msg: 'Data stored with profanity detected',
+              originalText: originalText,
+              responseText: '***',
+              feedback: feedback,
+            });
+          }
+        } catch (profanityCheckError) {
+          console.error('Profanity check failed:', profanityCheckError);
+        }
 
-        const badWordResponse = await this.scoresService.checkProfanity(responseText, language)
-        if (badWordResponse) {
-          return response.status(HttpStatus.BAD_REQUEST).send({
-            statusCode: HttpStatus.BAD_REQUEST,
-            message: 'Profanity detected.',
-          });
+        // add the vocabulary logic
+        try {
+          await this.scoresService.vocabularyCount(
+            user_id,
+            originalText,
+            responseText,
+            language,
+            CreateLearnerProfileDto.session_id,
+            CreateLearnerProfileDto.sub_session_id
+          );
+        } catch (vocabError) {
+          console.error('Vocabulary count failed:', vocabError);
         }
 
         // Get All hexcode for this selected language
@@ -1157,6 +1237,7 @@ export class ScoresController {
       let intensity_std = 0;
       let expression_classification = '';
       let smoothness_classification = '';
+      let feedback = '';
 
       /* Condition to check whether content type is char or not. If content type is char
       dont process it from ASR and other processing related with text evalution matrices and scoring mechanism
@@ -1619,6 +1700,7 @@ export class ScoresController {
       let intensity_std = 0;
       let expression_classification = '';
       let smoothness_classification = '';
+      let feedback = '';
       let similarityNonDenoisedText = 0;
       let similarityDenoisedText = 0;
       let nonDenoisedresponseText = '';
@@ -1701,21 +1783,61 @@ export class ScoresController {
         responseText = CreateLearnerProfileDto.output[0].source;
         responseText = await this.scoresService.mergeResponseWordsUsingOriginal(originalText, responseText);
 
+        // Profanity Detection logic - Check BEFORE any further processing
+        try {
+          const badWordResponse = await this.scoresService.checkProfanity(responseText, language);
+          if (badWordResponse) {
+            feedback = 'profanity detected';
+            console.warn('Profanity detected for user:', user_id, 'session:', CreateLearnerProfileDto.session_id);
+            
+            // Create minimal data object
+            const profanityScoreData = {
+              user_id: user_id,
+              session: {
+                session_id: CreateLearnerProfileDto.session_id,
+                sub_session_id: CreateLearnerProfileDto.sub_session_id || '',
+                contentType: CreateLearnerProfileDto.contentType,
+                contentId: CreateLearnerProfileDto.contentId || '',
+                createdAt: createdAt,
+                language: language,
+                original_text: originalText,
+                response_text: '***',
+                construct_text: '***',
+                feedback: feedback,
+                asrOutput: '***',
+              },
+            };
+            
+            try {
+              await this.scoresService.create(profanityScoreData);
+            } catch (dbError) {
+              console.error('Failed to save profanity data to DB:', dbError);
+            }
+            
+            return response.status(HttpStatus.CREATED).send({
+              status: 'success',
+              msg: 'Data stored with profanity detected',
+              originalText: originalText,
+              responseText: '***',
+              feedback: feedback,
+            });
+          }
+        } catch (profanityCheckError) {
+          console.error('Profanity check failed:', profanityCheckError);
+        }
+
         // add the vocabulary logic
-        await this.scoresService.vocabularyCount(
-          user_id,
-          originalText,
-          responseText,
-          language,
-          CreateLearnerProfileDto.session_id,
-          CreateLearnerProfileDto.sub_session_id
-        )
-        const badWordResponse = await this.scoresService.checkProfanity(responseText, language)
-        if (badWordResponse) {
-          return response.status(HttpStatus.BAD_REQUEST).send({
-            statusCode: HttpStatus.BAD_REQUEST,
-            message: 'Profanity detected.',
-          });
+        try {
+          await this.scoresService.vocabularyCount(
+            user_id,
+            originalText,
+            responseText,
+            language,
+            CreateLearnerProfileDto.session_id,
+            CreateLearnerProfileDto.sub_session_id
+          );
+        } catch (vocabError) {
+          console.error('Vocabulary count failed:', vocabError);
         }
 
         const tokenHexcodeDataArr = await this.scoresService.gethexcodeMapping(
@@ -2980,6 +3102,7 @@ export class ScoresController {
       let comprehension;
       let createdAt = new Date().toISOString().replace('Z', '+00:00');
       let is_nonAsr = CreateLearnerProfileDto.is_nonAsr;
+      let feedback = '';
 
       /* Condition to check whether content type is char or not. If content type is char
       dont process it from ASR and other processing related with text evalution matrices and scoring mechanism
@@ -3076,24 +3199,66 @@ export class ScoresController {
           pause_count = CreateLearnerProfileDto.pause_count;
         }
 
-        // add the vocabulary logic
-        await this.scoresService.vocabularyCount(
-          user_id,
-          originalText,
-          responseText,
-          language,
-          CreateLearnerProfileDto.session_id,
-          CreateLearnerProfileDto.sub_session_id
-        )
-
         // Profanity Detection logic
-        const badWordResponse = await this.scoresService.checkProfanity(responseText, language)
-        if (badWordResponse) {
-          return response.status(HttpStatus.BAD_REQUEST).send({
-            statusCode: HttpStatus.BAD_REQUEST,
-            message: 'Profanity detected.',
-          });
+        try {
+          const badWordResponse = await this.scoresService.checkProfanity(responseText, language);
+          if (badWordResponse) {
+            feedback = 'profanity detected';
+            console.warn('Profanity detected for user:', user_id, 'session:', CreateLearnerProfileDto.session_id);
+            
+            // Create minimal data object
+            const profanityScoreData = {
+              user_id: user_id,
+              session: {
+                session_id: CreateLearnerProfileDto.session_id,
+                sub_session_id: CreateLearnerProfileDto.sub_session_id || '',
+                contentType: CreateLearnerProfileDto.contentType,
+                contentId: CreateLearnerProfileDto.contentId || '',
+                createdAt: createdAt,
+                language: language,
+                original_text: originalText,
+                response_text: '***',
+                construct_text: '***', // Required field, redacted for profanity
+                feedback: feedback,
+                asrOutput: '***', // Required field, redacted for profanity
+              },
+            };
+            
+            try {
+              await this.scoresService.create(profanityScoreData);
+            } catch (dbError) {
+              console.error('Failed to save profanity data to DB:', dbError);
+              // Continue to return response even if DB write fails
+            }
+            
+            return response.status(HttpStatus.CREATED).send({
+              status: 'success',
+              msg: 'Data stored with profanity detected',
+              originalText: originalText,
+              responseText: '***',
+              feedback: feedback,
+            });
+          }
+        } catch (profanityCheckError) {
+          console.error('Profanity check failed:', profanityCheckError);
+          // Continue processing if profanity check fails (fail-safe approach)
         }
+
+        // add the vocabulary logic
+        try {
+          await this.scoresService.vocabularyCount(
+            user_id,
+            originalText,
+            responseText,
+            language,
+            CreateLearnerProfileDto.session_id,
+            CreateLearnerProfileDto.sub_session_id
+          );
+        } catch (vocabError) {
+          console.error('Vocabulary count failed:', vocabError);
+          // Continue processing even if vocabulary count fails
+        }
+
         // Agreeable substitution logic
         responseText = await this.scoresService.getBestCorrectedResponse(originalText, responseText, substitutions)
 
@@ -3432,6 +3597,7 @@ export class ScoresController {
             mechanics_id: CreateLearnerProfileDto.mechanics_id || '',
             isRetry: false,
             mode: mode,
+            feedback: feedback,
           },
         };
 
@@ -3469,6 +3635,7 @@ export class ScoresController {
             original_text: originalText,
             response_text: responseText,
             ansSelectionStatus: CreateLearnerProfileDto.ansSelectionStatus,
+            feedback: feedback,
           },
         };
 
@@ -3500,6 +3667,7 @@ export class ScoresController {
         subsessionTargetsCount: totalTargets,
         subsessionFluency: parseFloat(fluency.toFixed(2)),
         createScoreData: createScoreData,
+        feedback: feedback,
       });
     } catch (err) {
       return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
@@ -5835,6 +6003,12 @@ export class ScoresController {
         console.log(`[getSetResult] ansSelectionStatus not found, using old flow`);
       }
 
+      // Check if there are no records in the sub-session - should fail
+      if (totalSyllables === 0 && !hasAnsSelectionStatus && !isComprehension) {
+        console.log('[getSetResult] No records found in sub-session, setting sessionResult to fail');
+        sessionResult = 'fail';
+      }
+
       if (totalSyllables <= 100) {
         targetPerThreshold = 30;
       } else if (totalSyllables > 100 && totalSyllables <= 150) {
@@ -5850,7 +6024,7 @@ export class ScoresController {
       }
 
      // isAnsSesction non_Asr exist
-      if (!isComprehension && !hasAnsSelectionStatus) {
+      if (!isComprehension && !hasAnsSelectionStatus && totalSyllables > 0) {
         if (targetsPercentage <= targetPerThreshold) {
           // Add logic for the study the pic mechnics
           if (is_mechanics) {

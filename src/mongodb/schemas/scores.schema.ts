@@ -125,6 +125,7 @@ export class Score {
         isRetry: { type: Boolean, required: false },
         mode: { type: String, required: false },
         ansSelectionStatus: { type: Object, required: false },
+        feedback: { type: String, required: false },
       },
     ],
     required: true,
@@ -236,6 +237,7 @@ export class Score {
     isRetry: boolean;
     mode: string;
     ansSelectionStatus: { [key: string]: boolean };
+    feedback: string;
   }[];
 
   @Prop({
