@@ -89,7 +89,10 @@ export class ScoresService {
         if (currentMilestone) {
           const getMilestoneNum = (level: string): number => {
             if (!level) return -1;
-            if (level === 'B') return 0;
+            // F levels are between m0 and m1: F1=0.1, F2=0.2, F3=0.3
+            if (level === 'F1') return 0.1;
+            if (level === 'F2') return 0.2;
+            if (level === 'F3') return 0.3;
             if (level.startsWith('m')) {
               const num = parseInt(level.replace('m', ''), 10);
               return isNaN(num) ? -1 : num;
@@ -115,7 +118,6 @@ export class ScoresService {
         session_id: createMilestoneRecord.session_id,
         sub_session_id: createMilestoneRecord.sub_session_id,
         milestone_level: milestoneToSet,
-        sub_milestone_level: createMilestoneRecord.sub_milestone_level,
         language: createMilestoneRecord.language || null,
         createdAt: new Date().toISOString().replace('Z', '+00:00'),
       };
@@ -1806,7 +1808,6 @@ export class ScoresService {
             session_id: '$milestone_progress.session_id',
             sub_session_id: '$milestone_progress.sub_session_id',
             milestone_level: '$milestone_progress.milestone_level',
-            sub_milestone_level: '$milestone_progress.sub_milestone_level',
             sessions: 1,
             storedLanguage: '$milestone_progress.language',
             createdAt: '$milestone_progress.createdAt',
@@ -1836,14 +1837,11 @@ export class ScoresService {
                   },
                 },
                 in: {
-                  // If sub_milestone_level exists (F1/F2/F3), use stored language
+                  // If milestone_level is F1/F2/F3, use stored language
                   // Otherwise, use old flow (session lookup)
                   $cond: {
                     if: {
-                      $and: [
-                        { $ne: ['$sub_milestone_level', null] },
-                        { $ne: ['$sub_milestone_level', ''] },
-                      ],
+                      $in: ['$milestone_level', ['F1', 'F2', 'F3']],
                     },
                     then: '$storedLanguage',
                     else: {
@@ -1865,7 +1863,6 @@ export class ScoresService {
             session_id: 1,
             sub_session_id: 1,
             milestone_level: 1,
-            sub_milestone_level: 1,
             createdAt: 1,
             language: 1,
           },
@@ -2304,6 +2301,27 @@ export class ScoresService {
     } catch (err) {
       console.error('Error saving getSetResultLog:', err);
       throw err;
+    }
+  }
+
+  async getGetSetResultHistory(
+    userId: string,
+    sessionId: string,
+    language: string,
+  ): Promise<any | null> {
+    try {
+      return await this.getSetResultModel
+        .findOne({
+          userId,
+          sessionId,
+          langauge: language,
+        })
+        .sort({ createdAt: -1 })
+        .lean()
+        .exec();
+    } catch (err) {
+      console.error('Error fetching getSetResult history:', err);
+      return null;
     }
   }
 
@@ -3698,7 +3716,6 @@ export class ScoresService {
         courseId: createAssessmentTrackingDto.courseId,
         session_id: createAssessmentTrackingDto.session_id,
         sub_session_id: createAssessmentTrackingDto.sub_session_id,
-        sub_milestone_level: createAssessmentTrackingDto.sub_milestone_level,
         apply_level: createAssessmentTrackingDto.apply_level,
         sub_apply_level: createAssessmentTrackingDto.sub_apply_level,
         contentId: createAssessmentTrackingDto.contentId,
@@ -3719,40 +3736,40 @@ export class ScoresService {
         submitedBy: createAssessmentTrackingDto.submitedBy,
       };
      
-      // Define valid values
-      const validSubMilestoneLevels = ["F1", "F2", "F3"];
-      const validApplyLevels = ["A1", "A2", "A3"];
-
-      // Check conditions for creating milestone record
-      const subMilestoneLevel = createAssessmentTrackingDto.sub_milestone_level;
+      // Check conditions for creating milestone record based on current milestone level
       const applyLevel = createAssessmentTrackingDto.apply_level;
       const subApplyLevel = createAssessmentTrackingDto.sub_apply_level;
 
-      // F1 exit criteria: A3-L9 → milestone level B
+      // Get current milestone level to determine exit criteria
+      const currentMilestoneData = await this.getlatestmilestone(
+        userId,
+        createAssessmentTrackingDto.unitId,
+      );
+      const currentMilestoneLevel = currentMilestoneData[0]?.milestone_level || 'm0';
+
+      // F1 exit criteria: A3-L9 → milestone level F2
       if (
-        subMilestoneLevel === "F1" &&
+        currentMilestoneLevel === "F1" &&
         applyLevel === "A3" && 
         subApplyLevel === 9 && 
         createAssessmentTrackingDto.session_id &&
         createAssessmentTrackingDto.sub_session_id
       ) {
         try {
-          const milestoneLevel = "B";
-          let finalSubMilestoneLevel: string;
+          let finalMilestoneLevel: string;
           
-          // Determine next sub-milestone level when completing A3-L9
+          // Determine next milestone level when completing A3-L9
           if (sessionResult === "pass") {
-            finalSubMilestoneLevel = "F2";
+            finalMilestoneLevel = "F2";
           } else { 
-            finalSubMilestoneLevel = "F1";
+            finalMilestoneLevel = "F1";
           }
-        
+          
           await this.createMilestoneRecord({
             user_id: userId,
             session_id: createAssessmentTrackingDto.session_id,
             sub_session_id: createAssessmentTrackingDto.sub_session_id,
-            milestone_level: milestoneLevel,
-            sub_milestone_level: finalSubMilestoneLevel,
+            milestone_level: finalMilestoneLevel,
             language: createAssessmentTrackingDto.unitId
           });
           
@@ -3760,31 +3777,29 @@ export class ScoresService {
           console.error('Error creating milestone record:', milestoneError);
         }
       }
-      // F2 exit criteria: A3-L18 → milestone level B
+      // F2 exit criteria: A3-L18 → milestone level F3
       else if (
-        subMilestoneLevel === "F2" &&
+        currentMilestoneLevel === "F2" &&
         applyLevel === "A3" && 
         subApplyLevel === 18 && 
         createAssessmentTrackingDto.session_id &&
         createAssessmentTrackingDto.sub_session_id
       ) {
         try {
-          const milestoneLevel = "B";
-          let finalSubMilestoneLevel: string;
+          let finalMilestoneLevel: string;
           
-          // Determine next sub-milestone level when completing A3-L9
+          // Determine next milestone level when completing A3-L18
           if (sessionResult === "pass") {
-            finalSubMilestoneLevel = "F3";
+            finalMilestoneLevel = "F3";
           } else { 
-            finalSubMilestoneLevel = "F2";
+            finalMilestoneLevel = "F2";
           }
-                
+          
           await this.createMilestoneRecord({
             user_id: userId,
             session_id: createAssessmentTrackingDto.session_id,
             sub_session_id: createAssessmentTrackingDto.sub_session_id,
-            milestone_level: milestoneLevel,
-            sub_milestone_level: finalSubMilestoneLevel,
+            milestone_level: finalMilestoneLevel,
             language: createAssessmentTrackingDto.unitId
           });
           
@@ -3792,8 +3807,9 @@ export class ScoresService {
           console.error('Error creating milestone record:', milestoneError);
         }
       }
+      // F3 exit criteria: A2-L24 → milestone level M1
       else if (
-        subMilestoneLevel === "F3" &&
+        currentMilestoneLevel === "F3" &&
         applyLevel === "A2" && 
         subApplyLevel === 24 && 
         createAssessmentTrackingDto.courseId === "memoryChallenge" &&
@@ -3802,14 +3818,11 @@ export class ScoresService {
       ) {
         try {
           let finalMilestoneLevel: string;
-          let finalSubMilestoneLevel: string;
           
           if (sessionResult === "pass") {
             finalMilestoneLevel = "m1";
-            finalSubMilestoneLevel = "";
           } else {
-            finalMilestoneLevel = "B";
-            finalSubMilestoneLevel = "F3";
+            finalMilestoneLevel = "F3"; // Stay at F3 on fail
           }
           
           await this.createMilestoneRecord({
@@ -3817,7 +3830,6 @@ export class ScoresService {
             session_id: createAssessmentTrackingDto.session_id,
             sub_session_id: createAssessmentTrackingDto.sub_session_id,
             milestone_level: finalMilestoneLevel,
-            sub_milestone_level: finalSubMilestoneLevel,
             language: createAssessmentTrackingDto.unitId
           });
           
@@ -3861,7 +3873,6 @@ export class ScoresService {
       const {
         session_id,
         sub_session_id,
-        sub_milestone_level,
         apply_level,
         sub_apply_level,
         unitId
@@ -3889,7 +3900,6 @@ export class ScoresService {
               feedback: dataItem?.resvalues?.[0]?.AI_suggestion || '',
               session_id,
               sub_session_id,
-              sub_milestone_level,
               apply_level,
               sub_apply_level,
               language: unitId
@@ -3915,27 +3925,16 @@ export class ScoresService {
       user_id: string;
       language: string;
       milestone_level: string;
-      sub_milestone_level?: string;
       session_id?: string;
       sub_session_id?: string;
     }): Promise<any> {
       try {
         // Validate milestone_level format
-        const validMainMilestones = ['m0', 'm1', 'm2', 'm3', 'm4', 'm5', 'm6', 'm7', 'm8', 'm9', 'B'];
+        const validMainMilestones = ['m0', 'm1', 'm2', 'm3', 'm4', 'm5', 'm6', 'm7', 'm8', 'm9', 'm10', 'm11', 'm12', 'm13', 'm14', 'm15', 'F1', 'F2', 'F3'];
         if (!validMainMilestones.includes(setMilestoneData.milestone_level)) {
           throw new Error(
             `Invalid milestone_level: ${setMilestoneData.milestone_level}. Must be one of: ${validMainMilestones.join(', ')}`
           );
-        }
-  
-        // Validate sub_milestone_level if provided
-        if (setMilestoneData.sub_milestone_level) {
-          const validSubMilestones = ['F1', 'F2', 'F3'];
-          if (!validSubMilestones.includes(setMilestoneData.sub_milestone_level)) {
-            throw new Error(
-              `Invalid sub_milestone_level: ${setMilestoneData.sub_milestone_level}. Must be one of: ${validSubMilestones.join(', ')}`
-            );
-          }
         }
   
         // Generate session_id and sub_session_id if not provided
@@ -3946,7 +3945,6 @@ export class ScoresService {
           session_id: session_id,
           sub_session_id: sub_session_id,
           milestone_level: setMilestoneData.milestone_level,
-          sub_milestone_level: setMilestoneData.sub_milestone_level || '',
           language: setMilestoneData.language,
           createdAt: new Date().toISOString().replace('Z', '+00:00'),
         };
@@ -3982,7 +3980,6 @@ export class ScoresService {
             user_id: setMilestoneData.user_id,
             language: setMilestoneData.language,
             milestone_level: setMilestoneData.milestone_level,
-            sub_milestone_level: setMilestoneData.sub_milestone_level || '',
             latest_milestone: latestMilestone[0] || null,
           },
         };

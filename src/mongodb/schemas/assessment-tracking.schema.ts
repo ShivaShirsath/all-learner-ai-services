@@ -25,9 +25,6 @@ export class AssessmentTracking {
   sub_session_id: string;
 
   @Prop({ type: String, required: true })
-  sub_milestone_level: string;
-
-  @Prop({ type: String, required: true })
   apply_level: string;
 
   @Prop({ type: Number, required: true })
@@ -93,9 +90,6 @@ export class AssessmentTrackingScoreDetail {
 
   @Prop({ type: String, required: true, index: true })
   language: string;
-
-  @Prop({ type: String, required: true })
-  sub_milestone_level: string;
 
   @Prop({ type: String, required: true })
   apply_level: string;
