@@ -5848,6 +5848,11 @@ export class ScoresController {
           example: '5221f84c-8abb-4601-a9d0-f8d8dd496566',
           description: 'Collection ID for discovery sets (optional, used for milestone updates)',
         },
+        setNo: {
+          type: 'string',
+          example: 'set3',
+          description: 'Set identifier from getAssessment response (optional, used to track assessment flow)',
+        },
         totalSyllableCount: {
           type: 'number',
           example: 50,
@@ -5916,7 +5921,16 @@ export class ScoresController {
       let sessionResult = 'No Result';
       let max_level = getSetResult.max_level;
       let hasAnsSelectionStatus = false;
+      const setNo = getSetResult.setNo;
 
+      let getGetSetResultHistory = await this.scoresService.getGetSetResultHistory(
+        user_id,
+        getSetResult.session_id,
+        getSetResult.language,
+      )
+
+      const previousSessionContentType = getGetSetResultHistory?.contentType; 
+     
       let targets = await this.scoresService.getTargetsBysubSession(
         user_id,
         getSetResult.sub_session_id,
@@ -6268,15 +6282,14 @@ export class ScoresController {
         getSetResult.collectionId === '' ||
         getSetResult?.collectionId === undefined
       ) {
-        // Handle B → M1 progression: If user is at B and passes, go to M1
-        if (previous_level === 'B' && sessionResult === 'pass') {
-          milestone_level = 'm1';
-        } else if (sessionResult === 'pass') {
+        // Note: F1 → F2 → F3 → M1 progression is handled in create API, not here
+        // This API only handles: M0 → F1 transition when isFoundationEnable is true (for letter failures)
+        if (sessionResult === 'pass') {
           let previous_level_id =
             previous_level === undefined
               ? 0
-              : previous_level === 'B'
-              ? 0 // Treat B as equivalent to m0 for progression calculation
+              : previous_level === 'F1' || previous_level === 'F2' || previous_level === 'F3'
+              ? 0 // Treat F1/F2/F3 as equivalent to m0 for progression calculation (they progress via create API)
               : parseInt(previous_level.replace('m', ''));
 
           if (
@@ -6304,13 +6317,14 @@ export class ScoresController {
             // Calculate next milestone (would be m1 from m0 or undefined)
             const nextMilestone = 'm' + (previous_level_id + 1);
             
-            // If transitioning from M0 (or undefined) to M1, check is_B_enable
+            // If transitioning from M0 (or undefined) to M1, check isFoundationEnable
+            // This handles letter failures: M0 → F1 (F1 → F2 → F3 → M1 is handled in create API)
             if (
               nextMilestone === 'm1' &&
               (previous_level === 'm0' || previous_level === undefined) &&
-              getSetResult.is_B_enable === true
+              getSetResult.isFoundationEnable === true
             ) {
-              milestone_level = 'B';
+              milestone_level = 'F1'; // Route to F1 for letter failures
             } else {
               milestone_level = nextMilestone;
             }
@@ -6354,6 +6368,7 @@ export class ScoresController {
           }
 
           // This collection_id is for the En
+          // set 1
         } else if (
           getSetResult.collectionId ===
           '36e4cff0-0552-4107-b8f4-9f9c5a3ff3c1' ||
@@ -6563,6 +6578,7 @@ export class ScoresController {
             getSetResult.collectionId !== '' &&
             getSetResult.collectionId !== undefined
           ) {
+            // this collection ids for content_type Word-1
             if (
               getSetResult.collectionId ===
               '91a5279d-f4a2-4c4d-bc8f-0b15ba6e5995' ||
@@ -6573,11 +6589,17 @@ export class ScoresController {
               getSetResult.collectionId ===
               '775c974a-4bda-4cfc-bc47-2aff56e39c46'
             ) {
-              if (sessionResult === 'pass') {
+              if (sessionResult === 'pass' && setNo === 'set3' && previousSessionContentType === 'Sentence') {
+                milestone_level = 'm3';
+              } else if(sessionResult === 'fail' && setNo === 'set3' && previousSessionContentType === 'Sentence') {
                 milestone_level = 'm2';
-              } else {
+              }else if(sessionResult === 'pass' && setNo === 'set2') {
+                milestoneEntry = false;
+              }else if(sessionResult === 'pass' && setNo === 'set3' && previousSessionContentType === 'Word') {
+                milestone_level = 'm2';
+              }else if(sessionResult === 'fail' && setNo === 'set3' && previousSessionContentType === 'Word') {
                 milestone_level = 'm1';
-              }
+              } 
             } else if (
               getSetResult.collectionId ===
               'f9eb8c70-524f-46a1-a737-1eec64a42e6f' ||
@@ -6588,11 +6610,9 @@ export class ScoresController {
               getSetResult.collectionId ===
               '87c2866e-6249-4fe1-9b1b-8b22ddd05ea7'
             ) {
-              if (sessionResult === 'fail') {
-                milestone_level = 'm3';
-              } else {
-                milestoneEntry = false;
-              }
+              milestoneEntry = false;
+
+            // set 3
             } else if (
               getSetResult.collectionId ===
               'e62061ea-4195-4460-b8e3-c0433bf8624e' ||
@@ -6618,7 +6638,11 @@ export class ScoresController {
               getSetResult.collectionId ===
               'b12b79ec-f7cb-44b4-99c9-5ea747d4f99a'
             ) {
-              milestone_level = 'm1';
+              if (sessionResult === 'pass') {
+                milestone_level = 'm1';
+              } else {
+              milestone_level = 'F1'; // Start F flow instead of B
+              }
             }
           } else if (
             getSetResult.language === 'te' &&
@@ -6875,13 +6899,15 @@ export class ScoresController {
       // Apply content type specific milestone logic for collectionId cases
       if (sessionResult === 'fail') {
         const isM0OrUndefined = previous_level === 'm0' || previous_level === undefined;
-        // If user was at B and fails, always stay at B (don't advance to m1)
-        if (previous_level === 'B') {
-          milestone_level = 'B';
+        // If user was at F1/F2/F3 and fails, always stay at current F level
+        // (F1 → F2 → F3 progression is handled in create API, not here)
+        if (previous_level === 'F1' || previous_level === 'F2' || previous_level === 'F3') {
+          milestone_level = previous_level;
         } else if (milestone_level === 'm1' || milestone_level === 'm2' || milestone_level === 'm3') {
-          // Preserve m1/m2/m3 set by collectionId logic (but not if previous_level was B)
+          // Preserve m1/m2/m3 set by collectionId logic
         } else if (getSetResult.contentType.toLowerCase() === 'word' && isM0OrUndefined) {
-          milestone_level = 'B';
+          // Route to F1 when isFoundationEnable is true (for letter failures)
+          milestone_level = getSetResult.isFoundationEnable === true ? 'F1' : previous_level;
         } else if (getSetResult.contentType.toLowerCase() === 'word') {
           milestone_level = previous_level;
         } else {
@@ -6889,15 +6915,15 @@ export class ScoresController {
         }
       }
 
-      // Check if is_B_enable is true, then route to milestone B instead of M1
+      // Check if isFoundationEnable is true, then route to milestone F1 instead of M1
       // Only apply when transitioning from M0 (or undefined) to M1
-      // This handles collectionId-based cases where M1 might be set
+      // This handles collectionId-based cases where M1 might be set (for letter failures)
       if (
-        getSetResult.is_B_enable === true &&
+        getSetResult.isFoundationEnable === true &&
         milestone_level === 'm1' &&
         (previous_level === 'm0' || previous_level === undefined || previous_level === null)
       ) {
-        milestone_level = 'B';
+        milestone_level = 'F1'; // Route to F1 for letter failures
       }
 
       let currentLevel = milestone_level;
@@ -6914,18 +6940,12 @@ export class ScoresController {
       }
 
       if (milestoneEntry) {
-        let sub_milestone_level = '';
-        if (milestone_level === "B" && previous_level === "B" &&
-          (getSetResult.language === "en" || getSetResult.language === "te" || getSetResult.language === "hi" || getSetResult.language === "kn") ) {
-          sub_milestone_level = 'F1';
-        }
         await this.scoresService
           .createMilestoneRecord({
             user_id: user_id,
             session_id: getSetResult.session_id,
             sub_session_id: getSetResult.sub_session_id,
             milestone_level: milestone_level,
-            sub_milestone_level: sub_milestone_level,
             language: getSetResult.language || '',
           })
           .then(async (milestoneResult) => {
@@ -6972,7 +6992,9 @@ export class ScoresController {
           totalCorrectnessScore:
             (correct_score[0]?.total_correctness_score ?? 0) / contentLimit,
           comprehensionScore: overallScore,
-          collectionId: getSetResult.collectionId || ""
+          collectionId: getSetResult.collectionId || "",
+          setNo: getSetResult.setNo || "",
+          contentType: getSetResult.contentType || "",
         });
       } catch (logError) {
         console.error('Failed to log session result:', logError);
@@ -7025,7 +7047,7 @@ export class ScoresController {
         data: {
           type: 'object',
           properties: {
-            milestone_level: { type: 'string', example: 'm0', description: 'Current milestone level (m0-m9 or B)' },
+            milestone_level: { type: 'string', example: 'm0', description: 'Current milestone level (m0-m15, F1, F2, F3)' },
             extra: {
               type: 'object',
               properties: {
@@ -7089,12 +7111,10 @@ export class ScoresController {
       
       // milestone data
       const milestone_level = recordData[0]?.milestone_level || 'm0';
-      const sub_milestone_level = recordData[0]?.sub_milestone_level || '';
       return response.status(HttpStatus.CREATED).send({
         status: 'success',
         data: {
           milestone_level: milestone_level,
-          sub_milestone_level : sub_milestone_level,
           extra: {
             latest_towre_data,
             vocabulary_count: vocabulary_count,
@@ -7402,7 +7422,7 @@ export class ScoresController {
   }
 
   @ApiBody({
-    description: 'Request body for fetching milestone levels for multiple users. Milestone levels indicate the learning progress stage (m0-m9 or B) of each user.',
+    description: 'Request body for fetching milestone levels for multiple users. Milestone levels indicate the learning progress stage (m0-m15, F1, F2, F3) of each user.',
     schema: {
       type: 'object',
       properties: {
@@ -7433,7 +7453,7 @@ export class ScoresController {
           data: {
             type: 'object',
             properties: {
-              milestone_level: { type: 'string', example: 'm0', description: 'Current milestone level (m0-m9 or B)' },
+              milestone_level: { type: 'string', example: 'm0', description: 'Current milestone level (m0-m15, F1, F2, F3)' },
             },
           },
         },
@@ -7454,7 +7474,7 @@ export class ScoresController {
   @ApiForbiddenResponse({ description: 'Forbidden.' })
   @ApiOperation({
     summary: 'Get milestone levels for multiple users',
-    description: 'Retrieves current milestone levels for multiple users at once. Milestone levels represent learning progress stages from m0 (beginner) to m9 (advanced) or B (special beginner track).',
+    description: 'Retrieves current milestone levels for multiple users at once. Milestone levels represent learning progress stages from m0 (beginner) to m15 (advanced), or F1, F2, F3 (foundational levels).',
   })
   @Post('/getUsersMilestones')
   async getUsersMilestones(@Res() response: FastifyReply, @Body() data: any) {
@@ -7849,7 +7869,6 @@ export class ScoresController {
     @Body() setMilestoneDto: {
       language: string;
       milestone_level: string;
-      sub_milestone_level?: string;
       session_id?: string;
       sub_session_id?: string;
     },
@@ -7870,21 +7889,11 @@ export class ScoresController {
         });
       }
 
-      // Handle F1, F2, F3:
-      let finalMilestoneLevel = setMilestoneDto.milestone_level;
-      let finalSubMilestoneLevel = setMilestoneDto.sub_milestone_level;
-
-      if (['F1', 'F2', 'F3'].includes(setMilestoneDto.milestone_level.toUpperCase())) {
-        finalMilestoneLevel = 'B';
-        finalSubMilestoneLevel = setMilestoneDto.milestone_level.toUpperCase();
-      }
-
       // Prepare data with extracted user_id
       const milestoneData = {
         user_id: user_id,
         language: setMilestoneDto.language,
-        milestone_level: finalMilestoneLevel,
-        sub_milestone_level: finalSubMilestoneLevel,
+        milestone_level: setMilestoneDto.milestone_level,
         session_id: setMilestoneDto.session_id,
         sub_session_id: setMilestoneDto.sub_session_id,
       };

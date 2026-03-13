@@ -41,15 +41,6 @@ export class CreateAssessmentTrackingDto {
 
   @ApiPropertyOptional({
     type: () => String,
-    description: 'Sub Milestone Level',
-  })
-  @Expose()
-  @IsOptional()
-  @IsString()
-  sub_milestone_level?: string;
-
-  @ApiPropertyOptional({
-    type: () => String,
     description: 'Apply Level',
   })
   @Expose()

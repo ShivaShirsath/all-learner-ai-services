@@ -13,6 +13,7 @@ export class Score {
         sub_session_id: { type: String, required: false, index: true },
         contentType: { type: String, required: true },
         contentId: { type: String, required: false, index: true },
+        setNo: { type: String, required: false },
         createdAt: { type: Date, required: true },
         original_text: { type: String, required: true },
         response_text: { type: String, required: true },
@@ -137,6 +138,7 @@ export class Score {
     sub_session_id: string; // used to club set recorded data within session
     contentType: string; // contentType could be Char, Word, Sentence and Paragraph
     contentId: string; // contentId of original text content shown to user to speak
+    setNo: string;
     response_text: string; // text return by ai after converting audio to text
     construct_text: string; // this will be constructed by matching response text with original text.
     language: string; // content language
@@ -246,7 +248,6 @@ export class Score {
         session_id: { type: String, required: true, index: true },
         sub_session_id: { type: String, required: false, index: true },
         milestone_level: { type: String, required: true, index: true },
-        sub_milestone_level: { type: String, required: false },
         language : {type: String, required: false},
         createdAt: { type: Date, required: true, index: true },
       },
@@ -257,7 +258,6 @@ export class Score {
     session_id: string;
     sub_session_id: string;
     milestone_level: string;
-    sub_milestone_level: string;
     language: string;
     createdAt: Date;
   }[]; // This array includes milestone progress and we take latest entry in array as current milestone for user
