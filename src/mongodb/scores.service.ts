@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { HttpException, Inject, Injectable } from '@nestjs/common';
 import { ScoreDocument } from './schemas/scores.schema';
 import { hexcodeMappingDocument } from './schemas/hexcodeMapping.schema';
 import { assessmentInputDocument } from './schemas/assessmentInput.schema';
@@ -21,6 +21,12 @@ import { correct_practice_word, correct_practice_wordDocument } from '../schemas
 import { AssessmentTrackingDocument, AssessmentTrackingScoreDetailDocument, EvaluationType } from './schemas/assessment-tracking.schema';
 import { CreateAssessmentTrackingDto } from './dto/create-assessment-tracking.dto';
 import { randomUUID } from 'crypto';
+import {
+  buildErrorPayload,
+  buildHttpExceptionFromUnknown,
+  ErrorCodes,
+  mapAxiosToUpstreamHttpException,
+} from 'src/common/exceptions/api.exceptions';
 
 @Injectable()
 export class ScoresService {
@@ -71,7 +77,7 @@ export class ScoresService {
         return await updatedRecordData;
       }
     } catch (err) {
-      return err;
+      throw buildHttpExceptionFromUnknown(err);
     }
   }
 
@@ -135,7 +141,7 @@ export class ScoresService {
         savedMilestoneLevel: milestoneToSet,
       };
     } catch (err) {
-      return err;
+      throw buildHttpExceptionFromUnknown(err);
     }
   }
 
@@ -189,7 +195,7 @@ export class ScoresService {
       asrOutBeforeDenoised = await asrCall();
     }
 
-    let denoiserConfig = {
+    const denoiserConfig = {
       method: 'post',
       url: process.env.ALL_TEXT_EVAL_API + '/audio_processing',
       headers: {
@@ -204,33 +210,39 @@ export class ScoresService {
       },
     };
 
-    await axios
-      .request(denoiserConfig)
-      .then((response) => {
-        audio = response.data.denoised_audio_base64;
-        pause_count = response.data.pause_count;
-        avg_pause = response.data.avg_pause;
-        pitch_classification = response.data.pitch_classification;
-        pitch_mean = response.data.pitch_mean;
-        pitch_std = response.data.pitch_std;
-        intensity_classification = response.data.intensity_classification;
-        intensity_mean = response.data.intensity_mean;
-        intensity_std = response.data.intensity_std;
-        expression_classification = response.data.expression_classification;
-        smoothness_classification = response.data.smoothness_classification;
-      })
-      .catch((error) => {
-        console.log("audioFileToAsrOutput.1");
-      });
+    try {
+      const denoiserResponse = await axios.request(denoiserConfig);
+      audio = denoiserResponse.data.denoised_audio_base64;
+      pause_count = denoiserResponse.data.pause_count;
+      avg_pause = denoiserResponse.data.avg_pause;
+      pitch_classification = denoiserResponse.data.pitch_classification;
+      pitch_mean = denoiserResponse.data.pitch_mean;
+      pitch_std = denoiserResponse.data.pitch_std;
+      intensity_classification = denoiserResponse.data.intensity_classification;
+      intensity_mean = denoiserResponse.data.intensity_mean;
+      intensity_std = denoiserResponse.data.intensity_std;
+      expression_classification = denoiserResponse.data.expression_classification;
+      smoothness_classification = denoiserResponse.data.smoothness_classification;
+    } catch (error) {
+      const { status, body } = buildErrorPayload(error);
+      throw new HttpException(
+        {
+          ...body,
+          code: ErrorCodes.TEXT_EVAL_AUDIO_PROCESSING_FAILED,
+          message:
+            'Text evaluation service could not run audio processing (denoiser / prosody pipeline).',
+          upstream: 'text-eval',
+        },
+        status,
+      );
+    }
 
     if (process.env.denoiserEnabled === 'true') {
       asrOutDenoisedOutput = await asrCall();
     }
 
     async function asrCall() {
-      let output: any;
-
-      let optionsObj = {
+      const optionsObj = {
         config: {
           serviceId: serviceId,
           language: {
@@ -253,9 +265,9 @@ export class ScoresService {
         delete optionsObj.config.bestTokenCount;
       }
 
-      let options = JSON.stringify(optionsObj);
+      const options = JSON.stringify(optionsObj);
 
-      let config = {
+      const config = {
         method: 'post',
         url: process.env.AI4BHARAT_URL,
         headers: {
@@ -265,16 +277,22 @@ export class ScoresService {
         data: options,
       };
 
-      await axios
-        .request(config)
-        .then((response) => {
-          output = response.data;
-        })
-        .catch((error) => {
-          console.log("audioFileToAsrOutput.2");
-        });
-
-      return output;
+      try {
+        const asrResponse = await axios.request(config);
+        return asrResponse.data;
+      } catch (error) {
+        const { status, body } = buildErrorPayload(error);
+        throw new HttpException(
+          {
+            ...body,
+            code: ErrorCodes.AI4BHARAT_UNAVAILABLE,
+            message:
+              'Speech recognition (AI4Bharat) is unavailable or failed to transcribe audio.',
+            upstream: 'ai4bharat',
+          },
+          status,
+        );
+      }
     }
 
     return {
@@ -2488,7 +2506,12 @@ export class ScoresService {
         .pipe(
           map((resp) => resp.data),
           catchError((error: AxiosError) => {
-            throw 'Error from text Eval service' + error;
+            throw mapAxiosToUpstreamHttpException(
+              'text-eval',
+              ErrorCodes.TEXT_EVAL_UNAVAILABLE,
+              'Text evaluation service is unavailable or returned an error while computing text metrics.',
+              error,
+            );
           }),
         ),
     );
@@ -3118,7 +3141,12 @@ export class ScoresService {
             };
           }),
           catchError((error: AxiosError) => {
-            throw error;
+            throw mapAxiosToUpstreamHttpException(
+              'llm',
+              ErrorCodes.LLM_SERVICE_UNAVAILABLE,
+              'Comprehension (LLM) service is unavailable or returned an error.',
+              error,
+            );
           }),
         ),
     );
@@ -3328,8 +3356,16 @@ export class ScoresService {
       const response = await axios.request(config);
       return response.data;
     } catch (error) {
-      console.error('Error in getRecommendation:', error.response?.data || error.message);
-      throw error;
+      console.error(
+        'Error in getRecommendation:',
+        (error as any)?.response?.data || (error as Error).message,
+      );
+      throw mapAxiosToUpstreamHttpException(
+        'recommendation',
+        ErrorCodes.RECOMMENDATION_UNAVAILABLE,
+        'Recommendation service is unavailable or returned an error.',
+        error,
+      );
     }
   }
 

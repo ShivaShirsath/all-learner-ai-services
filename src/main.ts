@@ -9,6 +9,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppClusterService } from './app-cluster.service';
 import compression from '@fastify/compress';
 import * as cors from 'cors';
+import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 
 
 async function bootstrap() {
@@ -16,6 +17,8 @@ async function bootstrap() {
     AppModule.forRoot(process.env.DATABASE),
     new FastifyAdapter({ logger: true, bodyLimit: 30 * 1024 * 1024 }),
   );
+
+  app.useGlobalFilters(new GlobalExceptionFilter());
 
   await app.register(compression, {
     global: true,

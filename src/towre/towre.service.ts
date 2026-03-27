@@ -9,6 +9,10 @@ import { correct_vocabulary_word, correct_vocabulary_wordDocument } from '../sch
 import { CreateTowreDto } from './dto/towre.dto';
 import { CreateCorrectPracticeWordDto } from './dto/correctPracticeWord.dto';
 import { CreateCorrectVocabularyWordDto } from './dto/correctRecalledWord.dto';
+import {
+  ErrorCodes,
+  mapAxiosToUpstreamHttpException,
+} from '../common/exceptions/api.exceptions';
 
 @Injectable()
 export class TowreService {
@@ -86,7 +90,12 @@ export class TowreService {
       return response.data?.contents || [];
     } catch (error) {
       console.error('Error fetching content data:', error);
-      return latestWords;
+      throw mapAxiosToUpstreamHttpException(
+        'content-service',
+        ErrorCodes.CONTENT_SERVICE_UNAVAILABLE,
+        'Content service is unavailable or could not load content details for practice words.',
+        error,
+      );
     }
   }
 
