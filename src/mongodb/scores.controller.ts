@@ -5848,6 +5848,12 @@ export class ScoresController {
           example: '5221f84c-8abb-4601-a9d0-f8d8dd496566',
           description: 'Collection ID for discovery sets (optional, used for milestone updates)',
         },
+        setTag: {
+          type: 'string',
+          example: 'set4',
+          description:
+            'ASER discovery set tag (set1–set6). When set with supported language, milestone rules follow set semantics instead of collectionId lists: set4→m0, set2/set3 Word→pass m2/fail m1, set5 second Para→fail m3/pass no write, set6 Story→fail m3/pass m4, set1 Char→m1.',
+        },
         totalSyllableCount: {
           type: 'number',
           example: 50,
@@ -6437,7 +6443,57 @@ export class ScoresController {
             previous_level = 'm0';
           }
         } else {
-          if (
+          const discoverySetTagRaw =
+            typeof getSetResult.setTag === 'string'
+              ? getSetResult.setTag.trim().toLowerCase()
+              : '';
+          const discoveryTagLangs = [
+            'en',
+            'ta',
+            'kn',
+            'te',
+            'hi',
+            'or',
+            'gu',
+          ];
+          const isDiscoverySetTag =
+            discoverySetTagRaw &&
+            ['set1', 'set2', 'set3', 'set4', 'set5', 'set6'].includes(
+              discoverySetTagRaw,
+            ) &&
+            discoveryTagLangs.includes(
+              (getSetResult.language || '').toLowerCase(),
+            );
+
+          if (isDiscoverySetTag && discoverySetTagRaw === 'set4') {
+            milestone_level = 'm0';
+            if (previous_level === undefined) {
+              previous_level = 'm0';
+            }
+          } else if (
+            isDiscoverySetTag &&
+            (discoverySetTagRaw === 'set2' || discoverySetTagRaw === 'set3')
+          ) {
+            if (sessionResult === 'pass') {
+              milestone_level = 'm2';
+            } else {
+              milestone_level = 'm1';
+            }
+          } else if (isDiscoverySetTag && discoverySetTagRaw === 'set5') {
+            if (sessionResult === 'fail') {
+              milestone_level = 'm3';
+            } else {
+              milestoneEntry = false;
+            }
+          } else if (isDiscoverySetTag && discoverySetTagRaw === 'set6') {
+            if (sessionResult === 'fail') {
+              milestone_level = 'm3';
+            } else {
+              milestone_level = 'm4';
+            }
+          } else if (isDiscoverySetTag && discoverySetTagRaw === 'set1') {
+            milestone_level = 'm1';
+          } else if (
             getSetResult.language === 'ta' &&
             getSetResult.collectionId !== '' &&
             getSetResult.collectionId !== undefined
@@ -6604,8 +6660,6 @@ export class ScoresController {
               }
             } else if (
               getSetResult.collectionId ===
-              'f9eb8c70-524f-46a1-a737-1eec64a42e6f' ||
-              getSetResult.collectionId ===
               'f24d6660-c759-44f9-a4ae-5b46b62098b2' ||
               getSetResult.collectionId ===
               'f6b5638d-4398-4cf4-833c-42a4695a6425' ||
@@ -6625,7 +6679,9 @@ export class ScoresController {
               getSetResult.collectionId ===
               'b9ab3b2f-5c21-4c61-b9c8-90898b5278dd' ||
               getSetResult.collectionId ===
-              '809039e5-119d-42ae-925f-b2546b1e3d7b'
+              '809039e5-119d-42ae-925f-b2546b1e3d7b' ||
+              getSetResult.collectionId ===
+              'f9eb8c70-524f-46a1-a737-1eec64a42e6f'
             ) {
               if (sessionResult === 'fail') {
                 milestone_level = 'm3';
