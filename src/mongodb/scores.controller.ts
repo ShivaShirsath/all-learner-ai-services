@@ -6451,7 +6451,15 @@ export class ScoresController {
               getSetResult.collectionId ===
               '76ef507c-5d56-457c-aa3a-647cf5dba545' ||
               getSetResult.collectionId ===
-              '55767bfa-0e12-4d8f-999b-e84daf6c7587'
+              '55767bfa-0e12-4d8f-999b-e84daf6c7587' ||
+              getSetResult.collectionId ===
+              'aca41722-3f1e-45eb-a563-4d79c27aa50e' ||
+              getSetResult.collectionId ===
+              '42259cda-9db5-4b0d-8589-880eb7c949b5' ||
+              getSetResult.collectionId ===
+              '1efb5897-9eb3-4e71-8fd2-892a505d0dc9' ||
+              getSetResult.collectionId ===
+              'e4ab8ac2-38c2-4dcc-83f1-654548629a50'
             ) {
               if (sessionResult === 'pass') {
                 milestone_level = 'm2';
@@ -6513,7 +6521,15 @@ export class ScoresController {
               getSetResult.collectionId ===
               'f9b877d2-4994-4eab-998c-aacaf0076b5a' ||
               getSetResult.collectionId ===
-              '6a89f990-8727-49da-b128-b7ea1839d025'
+              '6a89f990-8727-49da-b128-b7ea1839d025' ||
+              getSetResult.collectionId ===
+              'b38fa83c-82f0-4ab4-9889-63bfd87a41d3' ||
+              getSetResult.collectionId ===
+              '1ff67529-0b3d-44d5-9b2e-19cb38055d33' ||
+              getSetResult.collectionId ===
+              'c280f485-f71c-4d36-8ddf-81ff1585306c' ||
+              getSetResult.collectionId ===
+              '6c9a6588-bd2f-410e-9ccc-48b630986b0e'
             ) {
               if (sessionResult === 'pass') {
                 milestone_level = 'm2';
@@ -6571,7 +6587,15 @@ export class ScoresController {
               getSetResult.collectionId ===
               'f99ff325-05c0-4cff-b825-b2cbb9638300' ||
               getSetResult.collectionId ===
-              '775c974a-4bda-4cfc-bc47-2aff56e39c46'
+              '775c974a-4bda-4cfc-bc47-2aff56e39c46' ||
+              getSetResult.collectionId ===
+              '6b98b4f6-d401-4835-b9d5-89e3a82743e0' ||
+              getSetResult.collectionId ===
+              '98e6a05a-7915-4e2d-802c-3e5011b4ab08' ||
+              getSetResult.collectionId ===
+              'c65782eb-60af-459a-b503-5438d97de392' ||
+              getSetResult.collectionId ===
+              'fa6725f1-bd48-41bc-8674-ef22ed7bff2c'
             ) {
               if (sessionResult === 'pass') {
                 milestone_level = 'm2';
@@ -6633,7 +6657,15 @@ export class ScoresController {
               getSetResult.collectionId ===
               '33fb7dfa-4c51-42dd-b4cd-7a38747b96f4' ||
               getSetResult.collectionId ===
-              '5a5560e8-e22a-402c-a6da-fb93bfc2b335'
+              '5a5560e8-e22a-402c-a6da-fb93bfc2b335' ||
+              getSetResult.collectionId ===
+              '07971210-fcb0-478f-9710-43f37fb98fa2' ||
+              getSetResult.collectionId ===
+              'cfc532a1-2fba-439d-834d-d153c8c7d33e' ||
+              getSetResult.collectionId ===
+              '3fc7204a-de05-4e83-814e-8648d1b2a74d' ||
+              getSetResult.collectionId ===
+              'd78033a0-d14e-4dac-9dac-afbdc2ac75a6'
             ) {
               if (sessionResult === 'pass') {
                 milestone_level = 'm2';
@@ -6693,7 +6725,15 @@ export class ScoresController {
               getSetResult.collectionId ===
               '3d0a5345-2acb-4ed1-919d-fc6511417ed2' ||
               getSetResult.collectionId ===
-              '42e4140b-4294-424f-b488-f0c53fc376c9'
+              '42e4140b-4294-424f-b488-f0c53fc376c9' ||
+              getSetResult.collectionId ===
+              'f9375cdb-c9e4-4df0-b884-2ff4679c7f10' ||
+              getSetResult.collectionId ===
+              'c163408f-c3be-4836-8b61-2d1f0cbbc765' ||
+              getSetResult.collectionId ===
+              '0023563e-12da-40a7-9549-8c735a2fb98f' ||
+              getSetResult.collectionId ===
+              '586a483a-d299-4bde-8022-1ff476988543'
             ) {
               if (sessionResult === 'pass') {
                 milestone_level = 'm2';
@@ -6756,7 +6796,15 @@ export class ScoresController {
               getSetResult.collectionId ===
               '2a1a6894-d953-4a26-a294-a7f66469b209' ||
               getSetResult.collectionId ===
-              'e0bdd73c-dd8b-4c2b-92cf-be753fd32c46'
+              'e0bdd73c-dd8b-4c2b-92cf-be753fd32c46' ||
+              getSetResult.collectionId ===
+              'f18f2a47-b762-4798-a15f-9ba1202abc42' ||
+              getSetResult.collectionId ===
+              'cb2143b7-c991-4d9c-bc8f-fa593b731743' ||
+              getSetResult.collectionId ===
+              '8cd631b3-fd13-406f-897a-8a6bd9f3c1d6' ||
+              getSetResult.collectionId ===
+              '4f3343b0-bdf4-4801-b4e5-89243629ccb6'
             ) {
               if (sessionResult === 'pass') {
                 milestone_level = 'm2';
@@ -6819,7 +6867,15 @@ export class ScoresController {
               getSetResult.collectionId ===
               '647d40b3-35d6-415f-9a41-2388d8ca147f' ||
               getSetResult.collectionId ===
-              '52e6cdfc-3f1e-4ca6-84ff-4a2ab04c2cfc'
+              '52e6cdfc-3f1e-4ca6-84ff-4a2ab04c2cfc' ||
+              getSetResult.collectionId ===
+              '46ac2621-a0c4-4488-8328-85da8bd1a7da' ||
+              getSetResult.collectionId ===
+              'f3b29ee3-c435-4d4a-a870-f18706296dd8' ||
+              getSetResult.collectionId ===
+              '811ac935-a0af-43bb-bcee-93f2b604d221' ||
+              getSetResult.collectionId ===
+              '7c38a405-5880-43a4-b3a3-e779c5f9ee57'
             ) {
               if (sessionResult === 'pass') {
                 milestone_level = 'm2';
