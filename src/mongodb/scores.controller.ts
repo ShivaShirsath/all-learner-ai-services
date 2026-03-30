@@ -5854,6 +5854,12 @@ export class ScoresController {
           description:
             'ASER discovery set tag (set1–set6). When set with supported language, milestone rules follow set semantics instead of collectionId lists: set4→m0, set2/set3 Word→pass m2/fail m1, set5 second Para→fail m3/pass no write, set6 Story→fail m3/pass m4, set1 Char→m1.',
         },
+        applyDiscoveryMilestone: {
+          type: 'boolean',
+          example: true,
+          description:
+            'With discovery setTag: if true, persist milestone via createMilestoneRecord. If false or omitted, score the session only—stored milestone unchanged and response currentLevel matches previous_level until the client sends true on the third discovery set.',
+        },
         totalSyllableCount: {
           type: 'number',
           example: 50,
@@ -7012,7 +7018,37 @@ export class ScoresController {
         milestone_level = 'B';
       }
 
+      const discoverySetTagNormPersist =
+        typeof getSetResult.setTag === 'string'
+          ? getSetResult.setTag.trim().toLowerCase()
+          : '';
+      const discoveryTagLangsPersist = [
+        'en',
+        'ta',
+        'kn',
+        'te',
+        'hi',
+        'or',
+        'gu',
+      ];
+      const hasDiscoverySetTagForPersist =
+        discoverySetTagNormPersist &&
+        ['set1', 'set2', 'set3', 'set4', 'set5', 'set6'].includes(
+          discoverySetTagNormPersist,
+        ) &&
+        discoveryTagLangsPersist.includes(
+          (getSetResult.language || '').toLowerCase(),
+        );
+      const applyDiscoveryMilestonePersist =
+        getSetResult.applyDiscoveryMilestone === true;
+      const skipDiscoveryMilestonePersist =
+        hasDiscoverySetTagForPersist && !applyDiscoveryMilestonePersist;
+
       let currentLevel = milestone_level;
+
+      if (skipDiscoveryMilestonePersist) {
+        currentLevel = previous_level;
+      }
 
       if (
         !(
@@ -7025,7 +7061,7 @@ export class ScoresController {
         prosodyResult = undefined;
       }
 
-      if (milestoneEntry) {
+      if (milestoneEntry && !skipDiscoveryMilestonePersist) {
         let sub_milestone_level = '';
         if (milestone_level === "B" && previous_level === "B" &&
           (getSetResult.language === "en" || getSetResult.language === "te" || getSetResult.language === "hi" || getSetResult.language === "kn") ) {
