@@ -7128,7 +7128,10 @@ export class ScoresController {
       if (
         getSetResult.is_B_enable === true &&
         milestone_level === 'm1' &&
-        (previous_level === 'm0' || previous_level === undefined || previous_level === null)
+        (previous_level === 'm0' || previous_level === undefined || previous_level === null) &&
+        (!getSetResult.hasOwnProperty('collectionId') ||
+          getSetResult.collectionId === '' ||
+          getSetResult.collectionId === undefined)
       ) {
         milestone_level = 'B';
       }
