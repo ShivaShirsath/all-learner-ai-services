@@ -204,7 +204,7 @@ export class ScoresController {
       let expression_classification = '';
       let smoothness_classification = '';
       let feedback = '';
-      
+
       /* Condition to check whether content type is char or not. If content type is char
       dont process it from ASR and other processing related with text evalution matrices and scoring mechanism
       */
@@ -280,7 +280,7 @@ export class ScoresController {
           if (badWordResponse) {
             feedback = 'profanity detected';
             console.warn('Profanity detected for user:', user_id, 'session:', CreateLearnerProfileDto.session_id);
-            
+
             // Create minimal data object
             const profanityScoreData = {
               user_id: user_id,
@@ -298,13 +298,13 @@ export class ScoresController {
                 asrOutput: '***',
               },
             };
-            
+
             try {
               await this.scoresService.create(profanityScoreData);
             } catch (dbError) {
               console.error('Failed to save profanity data to DB:', dbError);
             }
-            
+
             return response.status(HttpStatus.CREATED).send({
               status: 'success',
               msg: 'Data stored with profanity detected',
@@ -426,10 +426,10 @@ export class ScoresController {
         );
 
         let accuracy_classification =
-        this.scoresService.getAccuracyClassification(
-          CreateLearnerProfileDto.contentType,
-          fluencyScore,
-        );
+          this.scoresService.getAccuracyClassification(
+            CreateLearnerProfileDto.contentType,
+            fluencyScore,
+          );
 
         createScoreData = {
           user_id: user_id, // userid sent by client
@@ -526,13 +526,13 @@ export class ScoresController {
 
         // Store Array to DB
         const data = await this.scoresService.create(createScoreData);
-      }else{
+      } else {
         createScoreData = {
-          user_id: user_id, 
+          user_id: user_id,
           session: {
-            session_id: CreateLearnerProfileDto.session_id, 
-            sub_session_id: CreateLearnerProfileDto.sub_session_id || '', 
-            contentType: CreateLearnerProfileDto.contentType, 
+            session_id: CreateLearnerProfileDto.session_id,
+            sub_session_id: CreateLearnerProfileDto.sub_session_id || '',
+            contentType: CreateLearnerProfileDto.contentType,
             contentId: CreateLearnerProfileDto.contentId || '',
             createdAt: createdAt,
             language: language,
@@ -796,7 +796,7 @@ export class ScoresController {
           if (badWordResponse) {
             feedback = 'profanity detected';
             console.warn('Profanity detected for user:', user_id, 'session:', CreateLearnerProfileDto.session_id);
-            
+
             // Create minimal data object
             const profanityScoreData = {
               user_id: user_id,
@@ -814,13 +814,13 @@ export class ScoresController {
                 asrOutput: '***',
               },
             };
-            
+
             try {
               await this.scoresService.create(profanityScoreData);
             } catch (dbError) {
               console.error('Failed to save profanity data to DB:', dbError);
             }
-            
+
             return response.status(HttpStatus.CREATED).send({
               status: 'success',
               msg: 'Data stored with profanity detected',
@@ -942,10 +942,10 @@ export class ScoresController {
         );
 
         let accuracy_classification =
-        this.scoresService.getAccuracyClassification(
-          CreateLearnerProfileDto.contentType,
-          fluencyScore,
-        );
+          this.scoresService.getAccuracyClassification(
+            CreateLearnerProfileDto.contentType,
+            fluencyScore,
+          );
 
         createScoreData = {
           user_id: user_id, // userid sent by client
@@ -1043,13 +1043,13 @@ export class ScoresController {
 
         // Store Array to DB
         const data = await this.scoresService.create(createScoreData);
-      }else{
+      } else {
         createScoreData = {
-          user_id: user_id, 
+          user_id: user_id,
           session: {
-            session_id: CreateLearnerProfileDto.session_id, 
-            sub_session_id: CreateLearnerProfileDto.sub_session_id || '', 
-            contentType: CreateLearnerProfileDto.contentType, 
+            session_id: CreateLearnerProfileDto.session_id,
+            sub_session_id: CreateLearnerProfileDto.sub_session_id || '',
+            contentType: CreateLearnerProfileDto.contentType,
             contentId: CreateLearnerProfileDto.contentId || '',
             createdAt: createdAt,
             language: language,
@@ -1516,13 +1516,13 @@ export class ScoresController {
 
         // Store Array to DB
         const data = await this.scoresService.create(createScoreData);
-      }else{
+      } else {
         createScoreData = {
-          user_id: user_id, 
+          user_id: user_id,
           session: {
-            session_id: CreateLearnerProfileDto.session_id, 
-            sub_session_id: CreateLearnerProfileDto.sub_session_id || '', 
-            contentType: CreateLearnerProfileDto.contentType, 
+            session_id: CreateLearnerProfileDto.session_id,
+            sub_session_id: CreateLearnerProfileDto.sub_session_id || '',
+            contentType: CreateLearnerProfileDto.contentType,
             contentId: CreateLearnerProfileDto.contentId || '',
             createdAt: createdAt,
             language: language,
@@ -1789,7 +1789,7 @@ export class ScoresController {
           if (badWordResponse) {
             feedback = 'profanity detected';
             console.warn('Profanity detected for user:', user_id, 'session:', CreateLearnerProfileDto.session_id);
-            
+
             // Create minimal data object
             const profanityScoreData = {
               user_id: user_id,
@@ -1807,13 +1807,13 @@ export class ScoresController {
                 asrOutput: '***',
               },
             };
-            
+
             try {
               await this.scoresService.create(profanityScoreData);
             } catch (dbError) {
               console.error('Failed to save profanity data to DB:', dbError);
             }
-            
+
             return response.status(HttpStatus.CREATED).send({
               status: 'success',
               msg: 'Data stored with profanity detected',
@@ -1927,10 +1927,10 @@ export class ScoresController {
         );
 
         let accuracy_classification =
-        this.scoresService.getAccuracyClassification(
-          CreateLearnerProfileDto.contentType,
-          fluencyScore,
-        );
+          this.scoresService.getAccuracyClassification(
+            CreateLearnerProfileDto.contentType,
+            fluencyScore,
+          );
 
         createScoreData = {
           user_id: user_id,
@@ -2017,13 +2017,13 @@ export class ScoresController {
         };
 
         await this.scoresService.create(createScoreData);
-      }else{
+      } else {
         createScoreData = {
-          user_id: user_id, 
+          user_id: user_id,
           session: {
-            session_id: CreateLearnerProfileDto.session_id, 
-            sub_session_id: CreateLearnerProfileDto.sub_session_id || '', 
-            contentType: CreateLearnerProfileDto.contentType, 
+            session_id: CreateLearnerProfileDto.session_id,
+            sub_session_id: CreateLearnerProfileDto.sub_session_id || '',
+            contentType: CreateLearnerProfileDto.contentType,
             contentId: CreateLearnerProfileDto.contentId || '',
             createdAt: createdAt,
             language: language,
@@ -2913,13 +2913,13 @@ export class ScoresController {
           );
           return result?.hexcode || '';
         }
-      }else{
+      } else {
         createScoreData = {
-          user_id: user_id, 
+          user_id: user_id,
           session: {
-            session_id: CreateLearnerProfileDto.session_id, 
-            sub_session_id: CreateLearnerProfileDto.sub_session_id || '', 
-            contentType: CreateLearnerProfileDto.contentType, 
+            session_id: CreateLearnerProfileDto.session_id,
+            sub_session_id: CreateLearnerProfileDto.sub_session_id || '',
+            contentType: CreateLearnerProfileDto.contentType,
             contentId: CreateLearnerProfileDto.contentId || '',
             createdAt: createdAt,
             language: language,
@@ -2960,7 +2960,7 @@ export class ScoresController {
         responseText: responseText,
         subsessionTargetsCount: totalTargets,
         subsessionFluency: parseFloat(fluency.toFixed(2)),
-        ansSelectionStatus : ansSelectionStatus ? ansSelectionStatus : {}
+        ansSelectionStatus: ansSelectionStatus ? ansSelectionStatus : {}
       });
     } catch (err) {
       throw mapUnknownToHttpException(err);
@@ -3106,7 +3106,7 @@ export class ScoresController {
       /* Condition to check whether content type is char or not. If content type is char
       dont process it from ASR and other processing related with text evalution matrices and scoring mechanism
       */
-      
+
       if (CreateLearnerProfileDto['contentType'].toLowerCase() !== 'char' && (is_nonAsr === undefined || is_nonAsr === false)) {
         let audioFile;
 
@@ -3204,7 +3204,7 @@ export class ScoresController {
           if (badWordResponse) {
             feedback = 'profanity detected';
             console.warn('Profanity detected for user:', user_id, 'session:', CreateLearnerProfileDto.session_id);
-            
+
             // Create minimal data object
             const profanityScoreData = {
               user_id: user_id,
@@ -3222,14 +3222,14 @@ export class ScoresController {
                 asrOutput: '***', // Required field, redacted for profanity
               },
             };
-            
+
             try {
               await this.scoresService.create(profanityScoreData);
             } catch (dbError) {
               console.error('Failed to save profanity data to DB:', dbError);
               // Continue to return response even if DB write fails
             }
-            
+
             return response.status(HttpStatus.CREATED).send({
               status: 'success',
               msg: 'Data stored with profanity detected',
@@ -3482,7 +3482,7 @@ export class ScoresController {
           responseText,
           pause_count,
         );
-        
+
         let accuracy_classification =
           this.scoresService.getAccuracyClassification(
             CreateLearnerProfileDto.contentType,
@@ -3609,25 +3609,25 @@ export class ScoresController {
         // Store Array to DB
         const data = await this.scoresService.create(createScoreData);
 
-         // Voice auth api call
-          try {
-            if (process.env.VOICE_AUTH_ENABLE === "true") {
-              this.scoresService.voiceAuth(
-                CreateLearnerProfileDto.audio.toString('base64'),
-                user_id
-              )
-            }
-          } catch (error) {
-            console.log('errro from the voice-auth-Module');
+        // Voice auth api call
+        try {
+          if (process.env.VOICE_AUTH_ENABLE === "true") {
+            this.scoresService.voiceAuth(
+              CreateLearnerProfileDto.audio.toString('base64'),
+              user_id
+            )
           }
-      }else{
-      
+        } catch (error) {
+          console.log('errro from the voice-auth-Module');
+        }
+      } else {
+
         createScoreData = {
-          user_id: user_id, 
+          user_id: user_id,
           session: {
-            session_id: CreateLearnerProfileDto.session_id, 
-            sub_session_id: CreateLearnerProfileDto.sub_session_id || '', 
-            contentType: CreateLearnerProfileDto.contentType, 
+            session_id: CreateLearnerProfileDto.session_id,
+            sub_session_id: CreateLearnerProfileDto.sub_session_id || '',
+            contentType: CreateLearnerProfileDto.contentType,
             contentId: CreateLearnerProfileDto.contentId || '',
             createdAt: createdAt,
             language: language,
@@ -3658,7 +3658,7 @@ export class ScoresController {
         CreateLearnerProfileDto.language,
       );
 
-     
+
       return response.status(HttpStatus.CREATED).send({
         status: 'success',
         msg: 'Successfully stored data to learner profile',
@@ -3925,27 +3925,27 @@ export class ScoresController {
           );
 
           const hasAgreeableChar =
-          originalText.includes("ం") || originalText.includes("ర");
-        
+            originalText.includes("ం") || originalText.includes("ర");
+
           let forceSimilarityCheck = true;
-          
+
           if (hasAgreeableChar) {
             const agreeableResults =
               await this.scoresService.replaceCharacters(originalText);
-          
+
             if (agreeableResults.includes(responseText)) {
               responseText = originalText;
-          
+
               const splits = splitGraphemes(responseText.toLowerCase()).filter(
                 (item) => item && item !== "‌" && item !== " "
               );
-          
+
               tokenArr = splits.map((item) => ({ [item]: 0.777 }));
               anamolyTokenArr = [];
               forceSimilarityCheck = false;
             }
           }
-          
+
           if (forceSimilarityCheck) {
             const [
               bestMatch,
@@ -3956,13 +3956,13 @@ export class ScoresController {
               wordsWithValues,
               [originalText]
             );
-          
+
             const originalSimilarity =
               await this.scoresService.getTextSimilarity(
                 nonDenoisedresponseText,
                 originalText
               );
-          
+
             if (originalSimilarity >= constructedSimilarity) {
               responseText = nonDenoisedresponseText;
               flag = 1;
@@ -3978,42 +3978,42 @@ export class ScoresController {
         }
 
         // Update scores after final responseText is determined
-          // Check if original text and final response text are the same or very similar
-          const isSameText = CreateLearnerProfileDto.original_text === responseText.replace(/\s+/g, '');
-          const similarityScore = await this.scoresService.getTextSimilarity(
-            CreateLearnerProfileDto.original_text,
-            responseText
-          );
-          const isHighSimilarity = similarityScore >= highSimilarityThreshold; 
-              
-          if (isSameText || isHighSimilarity) {
-            // Update scores in the selected output
-            if (CreateLearnerProfileDto.output[0]?.nBestTokens) {
-              CreateLearnerProfileDto.output[0].nBestTokens.forEach((element: any) => {
-                element.tokens.forEach((token: any) => {
-                  const char = Object.keys(token)[0];
-                  const originalScore = Object.values(token)[0] as number;
-                  
-                  // Update score: 0.7 + original score (make it >= 0.7 so it's not a target)
-                  const updatedScore = parseFloat((0.7 + (originalScore / 100)).toFixed(4));
-                  token[char] = updatedScore;
-                });
-              });
-            }
-            
-            // Also update scores in tokenArr if it exists
-            if (tokenArr && tokenArr.length > 0) {
-              tokenArr.forEach((tokenObj: any) => {
-                const char = Object.keys(tokenObj)[0];
-                const originalScore = Object.values(tokenObj)[0] as number;
-                
+        // Check if original text and final response text are the same or very similar
+        const isSameText = CreateLearnerProfileDto.original_text === responseText.replace(/\s+/g, '');
+        const similarityScore = await this.scoresService.getTextSimilarity(
+          CreateLearnerProfileDto.original_text,
+          responseText
+        );
+        const isHighSimilarity = similarityScore >= highSimilarityThreshold;
+
+        if (isSameText || isHighSimilarity) {
+          // Update scores in the selected output
+          if (CreateLearnerProfileDto.output[0]?.nBestTokens) {
+            CreateLearnerProfileDto.output[0].nBestTokens.forEach((element: any) => {
+              element.tokens.forEach((token: any) => {
+                const char = Object.keys(token)[0];
+                const originalScore = Object.values(token)[0] as number;
+
                 // Update score: 0.7 + original score (make it >= 0.7 so it's not a target)
                 const updatedScore = parseFloat((0.7 + (originalScore / 100)).toFixed(4));
-                tokenObj[char] = updatedScore;
+                token[char] = updatedScore;
               });
-            }
+            });
           }
-        
+
+          // Also update scores in tokenArr if it exists
+          if (tokenArr && tokenArr.length > 0) {
+            tokenArr.forEach((tokenObj: any) => {
+              const char = Object.keys(tokenObj)[0];
+              const originalScore = Object.values(tokenObj)[0] as number;
+
+              // Update score: 0.7 + original score (make it >= 0.7 so it's not a target)
+              const updatedScore = parseFloat((0.7 + (originalScore / 100)).toFixed(4));
+              tokenObj[char] = updatedScore;
+            });
+          }
+        }
+
 
         let constructText = '';
 
@@ -4396,10 +4396,10 @@ export class ScoresController {
           100;
 
         let accuracy_classification =
-        this.scoresService.getAccuracyClassification(
-          CreateLearnerProfileDto.contentType,
-          fluencyScore,
-        );
+          this.scoresService.getAccuracyClassification(
+            CreateLearnerProfileDto.contentType,
+            fluencyScore,
+          );
 
         createScoreData = {
           user_id: user_id, // userid sent by client
@@ -4502,14 +4502,14 @@ export class ScoresController {
           let result = tokenHexcodeDataArr.find((item) => item.token === token);
           return result?.hexcode || '';
         }
-      }else{
-      
+      } else {
+
         createScoreData = {
-          user_id: user_id, 
+          user_id: user_id,
           session: {
-            session_id: CreateLearnerProfileDto.session_id, 
-            sub_session_id: CreateLearnerProfileDto.sub_session_id || '', 
-            contentType: CreateLearnerProfileDto.contentType, 
+            session_id: CreateLearnerProfileDto.session_id,
+            sub_session_id: CreateLearnerProfileDto.sub_session_id || '',
+            contentType: CreateLearnerProfileDto.contentType,
             contentId: CreateLearnerProfileDto.contentId || '',
             createdAt: createdAt,
             language: language,
@@ -5260,7 +5260,7 @@ export class ScoresController {
       }
 
       const url = process.env.ALL_CONTENT_SERVICE_API;
-     
+
       // Add the check for the limit
       if (contentlimit > 20) {
         contentlimit = 20;
@@ -5518,7 +5518,7 @@ export class ScoresController {
       }
 
       const url = process.env.ALL_CONTENT_SERVICE_API;
-     
+
       // Add the check for the limit
       if (contentlimit > 20) {
         contentlimit = 20;
@@ -5968,8 +5968,8 @@ export class ScoresController {
       } else {
         totalSyllables = totalTargets + familiarity.length;
       }
-        
-      let targetsPercentage = totalSyllables > 0 
+
+      let targetsPercentage = totalSyllables > 0
         ? Math.min(Math.floor((totalTargets / totalSyllables) * 100))
         : 0;
       let passingPercentage = Math.floor(100 - targetsPercentage);
@@ -5983,20 +5983,20 @@ export class ScoresController {
       let previous_level = recordData[0]?.milestone_level || undefined;
 
       // Check ansSelectionStatus %
-        const ansSelectionResult = await this.scoresService.calculateAnsSelectionResult(
-          user_id,
-          getSetResult.session_id,
-          getSetResult.sub_session_id,
-          getSetResult.language
-        );
-        
+      const ansSelectionResult = await this.scoresService.calculateAnsSelectionResult(
+        user_id,
+        getSetResult.session_id,
+        getSetResult.sub_session_id,
+        getSetResult.language
+      );
+
       let ansSelectionPercentage = 0;
       // Only override sessionResult if ansSelectionStatus was found (new flow)
-        if (ansSelectionResult !== null) {
+      if (ansSelectionResult !== null) {
         sessionResult = ansSelectionResult.result ? 'pass' : 'fail';
-          hasAnsSelectionStatus = true;
+        hasAnsSelectionStatus = true;
         ansSelectionPercentage = ansSelectionResult.percentage;
-        } else {
+      } else {
         console.log(`[getSetResult] ansSelectionStatus not found, using old flow`);
       }
 
@@ -6020,7 +6020,7 @@ export class ScoresController {
         targetPerThreshold = 5;
       }
 
-     // isAnsSesction non_Asr exist
+      // isAnsSesction non_Asr exist
       if (!isComprehension && !hasAnsSelectionStatus && totalSyllables > 0) {
         if (targetsPercentage <= targetPerThreshold) {
           // Add logic for the study the pic mechnics
@@ -6068,7 +6068,7 @@ export class ScoresController {
         !getSetResult.collectionId
       ) {
         const userLevelNum = parseInt(previous_level?.replace('m', ''), 10);
-        if (['en', 'kn','te','hi','ta','or','gu'].includes(getSetResult.language.toLowerCase()) && userLevelNum < 10) {
+        if (['en', 'kn', 'te', 'hi', 'ta', 'or', 'gu'].includes(getSetResult.language.toLowerCase()) && userLevelNum < 10) {
           // Determine pass threshold based on milestone level.
           // For M4+ (e.g. level >= 4) threshold is 3.0; otherwise, 2.6.
 
@@ -6170,7 +6170,7 @@ export class ScoresController {
         !getSetResult.hasOwnProperty('collectionId') ||
         !getSetResult.collectionId
       ) {
-        if (['en', 'kn','te','hi','ta','or','gu'].includes(getSetResult.language.toLowerCase())) {
+        if (['en', 'kn', 'te', 'hi', 'ta', 'or', 'gu'].includes(getSetResult.language.toLowerCase())) {
           const userLevelNum = previous_level
             ? parseInt(previous_level.replace('m', ''), 10)
             : 0;
@@ -6250,14 +6250,14 @@ export class ScoresController {
       if (
         !hasAnsSelectionStatus && // Only apply fluency override if we don't have ansSelectionStatus
         ((typeof fluencyResult !== 'undefined' && fluencyResult === 'fail') ||
-        (typeof prosodyResult !== 'undefined' && prosodyResult === 'fail'))
+          (typeof prosodyResult !== 'undefined' && prosodyResult === 'fail'))
       ) {
         sessionResult = 'fail';
       }
 
       let milestone_level = previous_level;
 
-      
+
       // For Showcase, We are not sending collectionId based on this are calculating milestone
 
       if (
@@ -6273,8 +6273,8 @@ export class ScoresController {
             previous_level === undefined
               ? 0
               : previous_level === 'B'
-              ? 0 // Treat B as equivalent to m0 for progression calculation
-              : parseInt(previous_level.replace('m', ''));
+                ? 0 // Treat B as equivalent to m0 for progression calculation
+                : parseInt(previous_level.replace('m', ''));
 
           if (
             getSetResult.language === en_config.language_code &&
@@ -6300,7 +6300,7 @@ export class ScoresController {
           } else {
             // Calculate next milestone (would be m1 from m0 or undefined)
             const nextMilestone = 'm' + (previous_level_id + 1);
-            
+
             // If transitioning from M0 (or undefined) to M1, check is_B_enable
             if (
               nextMilestone === 'm1' &&
@@ -6596,7 +6596,7 @@ export class ScoresController {
               ) {
                 milestone_level = 'm1';
               }
-            }else if (
+            } else if (
               getSetResult.collectionId ===
               '6b98b4f6-d401-4835-b9d5-89e3a82743e0' ||
               getSetResult.collectionId ===
@@ -6617,11 +6617,7 @@ export class ScoresController {
               getSetResult.collectionId ===
               '87c2866e-6249-4fe1-9b1b-8b22ddd05ea7'
             ) {
-              if (sessionResult === 'fail') {
-                milestone_level = 'm3';
-              } else {
-                milestoneEntry = false;
-              }
+              milestoneEntry = false;
             } else if (
               getSetResult.collectionId ===
               'e62061ea-4195-4460-b8e3-c0433bf8624e' ||
@@ -6635,7 +6631,7 @@ export class ScoresController {
               if (sessionResult === 'fail') {
                 milestone_level = 'm3';
               } else {
-              milestone_level = 'm4';
+                milestone_level = 'm4';
               }
             } else if (
               getSetResult.collectionId ===
@@ -6933,7 +6929,7 @@ export class ScoresController {
 
       if (
         !(
-          (['en','kn','te','hi','ta','or','gu'].includes(getSetResult.language.toLowerCase())) &&
+          (['en', 'kn', 'te', 'hi', 'ta', 'or', 'gu'].includes(getSetResult.language.toLowerCase())) &&
           (!getSetResult.hasOwnProperty('collectionId') ||
             !getSetResult.collectionId)
         )
@@ -6945,7 +6941,7 @@ export class ScoresController {
       if (milestoneEntry) {
         let sub_milestone_level = '';
         if (milestone_level === "B" && previous_level === "B" &&
-          (getSetResult.language === "en" || getSetResult.language === "te" || getSetResult.language === "hi" || getSetResult.language === "kn") ) {
+          (getSetResult.language === "en" || getSetResult.language === "te" || getSetResult.language === "hi" || getSetResult.language === "kn")) {
           sub_milestone_level = 'F1';
         }
         await this.scoresService
@@ -6958,7 +6954,7 @@ export class ScoresController {
             language: getSetResult.language || '',
           })
           .then(async (milestoneResult) => {
-  
+
             if (milestoneResult?.savedMilestoneLevel) {
               currentLevel = milestoneResult.savedMilestoneLevel;
             }
@@ -7114,7 +7110,7 @@ export class ScoresController {
       );
       // Get vocabulary statistics (learned and understood words count)
       const vocabularyStats = await this.scoresService.getVocabularyStats(id);
-      
+
       // milestone data
       const milestone_level = recordData[0]?.milestone_level || 'm0';
       const sub_milestone_level = recordData[0]?.sub_milestone_level || '';
@@ -7122,7 +7118,7 @@ export class ScoresController {
         status: 'success',
         data: {
           milestone_level: milestone_level,
-          sub_milestone_level : sub_milestone_level,
+          sub_milestone_level: sub_milestone_level,
           extra: {
             latest_towre_data,
             vocabulary_count: vocabulary_count,
@@ -7140,80 +7136,80 @@ export class ScoresController {
   @Post('/GetMissingChars')
   async GetMissingChars(@Res() response: FastifyReply, @Body() storyData: any) {
     try {
-    const data = await this.scoresService.getMissingChars(
-      storyData.storyLanguage,
-    );
+      const data = await this.scoresService.getMissingChars(
+        storyData.storyLanguage,
+      );
 
-    const storyString = storyData.storyString;
+      const storyString = storyData.storyString;
 
-    const tokenArr = storyString.split('');
+      const tokenArr = storyString.split('');
 
-    const taVowelSignArr = [
-      'ா',
-      'ி',
-      'ீ',
-      'ு',
-      'ூ',
-      'ெ',
-      'ே',
-      'ை',
-      'ொ',
-      'ோ',
-      'ௌ',
-      '்',
-    ];
+      const taVowelSignArr = [
+        'ா',
+        'ி',
+        'ீ',
+        'ு',
+        'ூ',
+        'ெ',
+        'ே',
+        'ை',
+        'ொ',
+        'ோ',
+        'ௌ',
+        '்',
+      ];
 
-    const vowelSignArr = taVowelSignArr;
+      const vowelSignArr = taVowelSignArr;
 
-    const uniqueChar = new Set();
-    const uniqueCharArr = [];
-    let prevEle = '';
-    let isPrevVowel = false;
+      const uniqueChar = new Set();
+      const uniqueCharArr = [];
+      let prevEle = '';
+      let isPrevVowel = false;
 
-    // Create Unique token array
-    for (const tokenArrEle of tokenArr) {
-      for (const keyEle of tokenArrEle.split('')) {
-        if (vowelSignArr.includes(keyEle)) {
-          if (isPrevVowel) {
-            const prevEleArr = prevEle.split('');
-            if (prevEleArr.length) {
-              prevEle = prevEleArr[0] + keyEle;
+      // Create Unique token array
+      for (const tokenArrEle of tokenArr) {
+        for (const keyEle of tokenArrEle.split('')) {
+          if (vowelSignArr.includes(keyEle)) {
+            if (isPrevVowel) {
+              const prevEleArr = prevEle.split('');
+              if (prevEleArr.length) {
+                prevEle = prevEleArr[0] + keyEle;
+                uniqueCharArr[uniqueCharArr.length - 1] = prevEle;
+              }
+            } else {
+              prevEle = prevEle + keyEle;
               uniqueCharArr[uniqueCharArr.length - 1] = prevEle;
+              //uniqueCharArr.push(prevEle);
             }
+            isPrevVowel = true;
           } else {
-            prevEle = prevEle + keyEle;
-            uniqueCharArr[uniqueCharArr.length - 1] = prevEle;
-            //uniqueCharArr.push(prevEle);
+            if (keyEle != ' ') {
+              uniqueCharArr.push(keyEle);
+            }
+            prevEle = keyEle;
+            isPrevVowel = false;
           }
-          isPrevVowel = true;
-        } else {
-          if (keyEle != ' ') {
-            uniqueCharArr.push(keyEle);
-          }
-          prevEle = keyEle;
-          isPrevVowel = false;
         }
       }
-    }
 
-    //let uniqueCharArr = Array.from(uniqueChar);
-    const matched = uniqueCharArr.filter((element) => data.includes(element));
-    const matchtedTotal = matched.length;
+      //let uniqueCharArr = Array.from(uniqueChar);
+      const matched = uniqueCharArr.filter((element) => data.includes(element));
+      const matchtedTotal = matched.length;
 
-    const notIncluded = data.filter((element) => {
-      if (!uniqueCharArr.includes(element)) {
-        return element;
-      }
-    });
-    const notIncludedTotal = notIncluded.length;
+      const notIncluded = data.filter((element) => {
+        if (!uniqueCharArr.includes(element)) {
+          return element;
+        }
+      });
+      const notIncludedTotal = notIncluded.length;
 
-    return response.status(HttpStatus.CREATED).send({
-      status: 'success',
-      matched: matched,
-      matchtedTotal: matchtedTotal,
-      notIncluded: notIncluded,
-      notIncludedTotal: notIncludedTotal,
-    });
+      return response.status(HttpStatus.CREATED).send({
+        status: 'success',
+        matched: matched,
+        matchtedTotal: matchtedTotal,
+        notIncluded: notIncluded,
+        notIncludedTotal: notIncludedTotal,
+      });
     } catch (err) {
       throw mapUnknownToHttpException(err);
     }
@@ -7226,13 +7222,13 @@ export class ScoresController {
     @Body() assessmentInput: AssessmentInputDto,
   ) {
     try {
-    await this.scoresService.assessmentInputCreate(
-      assessmentInput,
-    );
-    return response.status(HttpStatus.CREATED).send({
-      status: 'success',
-      msg: 'Successfully stored data to Assessment Input',
-    });
+      await this.scoresService.assessmentInputCreate(
+        assessmentInput,
+      );
+      return response.status(HttpStatus.CREATED).send({
+        status: 'success',
+        msg: 'Successfully stored data to Assessment Input',
+      });
     } catch (err) {
       throw mapUnknownToHttpException(err);
     }
@@ -7763,7 +7759,7 @@ export class ScoresController {
 
       const authHeader = request.headers['authorization'];
       const token = authHeader?.split(' ')[1];
-      
+
       if (!language || !content_type) {
         throw new BadRequestException({
           code: ErrorCodes.BAD_REQUEST,
@@ -7824,7 +7820,7 @@ export class ScoresController {
       },
     },
   })
-  
+
   async createAssessmentTracking(
     @Req() request: FastifyRequest,
     @Res() response: FastifyReply,
@@ -7933,6 +7929,6 @@ export class ScoresController {
       throw mapUnknownToHttpException(err);
     }
   }
-  
+
 }
 
