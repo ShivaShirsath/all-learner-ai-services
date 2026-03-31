@@ -1,19 +1,21 @@
 import {
-  Controller,
-  Get,
-  Post,
+  BadRequestException,
   Body,
-  Patch,
-  Param,
+  Controller,
   Delete,
+  Get,
   HttpStatus,
+  Param,
+  ParseArrayPipe,
+  Patch,
+  Post,
+  Query,
+  Req,
   Res,
   Search,
-  Query,
-  ParseArrayPipe,
-  UseGuards,
-  Req,
   SetMetadata,
+  UnauthorizedException,
+  UseGuards,
 } from '@nestjs/common';
 import { ScoresService } from './scores.service';
 import { CreateLearnerProfileDto } from './dto/CreateLearnerProfile.dto';
@@ -36,6 +38,13 @@ import { AxiosError } from 'axios';
 import ta_config from './config/language/ta';
 import en_config from './config/language/en';
 import { JwtAuthGuard } from 'src/auth/auth.guard';
+import {
+  ErrorCodes,
+  finalizeStandardError,
+  getOrCreateRequestId,
+  mapAxiosToUpstreamHttpException,
+  mapUnknownToHttpException,
+} from 'src/common/exceptions/api.exceptions';
 import gu_config from './config/language/gu';
 import or_config from './config/language/or';
 import hi_config from './config/language/hi';
@@ -252,8 +261,8 @@ export class ScoresController {
             }
 
             if (CreateLearnerProfileDto.output[0].source === '') {
-              return response.status(HttpStatus.BAD_REQUEST).send({
-                status: 'error',
+              throw new BadRequestException({
+                code: ErrorCodes.BAD_REQUEST,
                 message:
                   'Audio to Text functionality Responded Empty Response. Please check audio file or speak Loudly',
               });
@@ -567,10 +576,7 @@ export class ScoresController {
         ansSelectionStatus: ansSelectionStatus ? ansSelectionStatus : {}
       });
     } catch (err) {
-      return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
-        status: 'error',
-        message: 'Server error - ' + err,
-      });
+      throw mapUnknownToHttpException(err);
     }
   }
 
@@ -774,8 +780,8 @@ export class ScoresController {
           }
 
           if (CreateLearnerProfileDto.output[0].source === '') {
-            return response.status(HttpStatus.BAD_REQUEST).send({
-              status: 'error',
+            throw new BadRequestException({
+              code: ErrorCodes.BAD_REQUEST,
               message:
                 'Audio to Text functionality Responded Empty Response. Please check audio file or speak Loudly',
             });
@@ -1088,10 +1094,7 @@ export class ScoresController {
         ansSelectionStatus: ansSelectionStatus ? ansSelectionStatus : {}
       });
     } catch (err) {
-      return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
-        status: 'error',
-        message: 'Server error - ' + err,
-      });
+      throw mapUnknownToHttpException(err);
     }
   }
 
@@ -1293,8 +1296,8 @@ export class ScoresController {
           }
 
           if (CreateLearnerProfileDto.output[0].source === '') {
-            return response.status(HttpStatus.BAD_REQUEST).send({
-              status: 'error',
+            throw new BadRequestException({
+              code: ErrorCodes.BAD_REQUEST,
               message:
                 'Audio to Text functionality Responded Empty Response. Please check audio file or speak Loudly',
             });
@@ -1315,8 +1318,8 @@ export class ScoresController {
 
         const badWordResponse = await this.scoresService.checkProfanity(responseText, language)
         if (badWordResponse) {
-          return response.status(HttpStatus.BAD_REQUEST).send({
-            statusCode: HttpStatus.BAD_REQUEST,
+          throw new BadRequestException({
+            code: ErrorCodes.BAD_REQUEST,
             message: 'Profanity detected.',
           });
         }
@@ -1565,10 +1568,7 @@ export class ScoresController {
         ansSelectionStatus: ansSelectionStatus ? ansSelectionStatus : {}
       });
     } catch (err) {
-      return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
-        status: 'error',
-        message: 'Server error - ' + err,
-      });
+      throw mapUnknownToHttpException(err);
     }
   }
 
@@ -1772,8 +1772,8 @@ export class ScoresController {
           }
 
           if (CreateLearnerProfileDto.output[0].source === '') {
-            return response.status(HttpStatus.BAD_REQUEST).send({
-              status: 'error',
+            throw new BadRequestException({
+              code: ErrorCodes.BAD_REQUEST,
               message:
                 'Audio to Text functionality responded with an empty response. Please check the audio file or speak louder.',
             });
@@ -2077,10 +2077,7 @@ export class ScoresController {
         ansSelectionStatus: ansSelectionStatus ? ansSelectionStatus : {}
       });
     } catch (err) {
-      return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
-        status: 'error',
-        message: 'Server error - ' + err,
-      });
+      throw mapUnknownToHttpException(err);
     }
   }
 
@@ -2267,8 +2264,8 @@ export class ScoresController {
             }
 
             if (CreateLearnerProfileDto.output[0].source === '') {
-              return response.status(HttpStatus.BAD_REQUEST).send({
-                status: 'error',
+              throw new BadRequestException({
+                code: ErrorCodes.BAD_REQUEST,
                 message:
                   'Audio to Text functionality Responded Empty Response. Please check audio file or speak Loudly',
               });
@@ -2344,8 +2341,8 @@ export class ScoresController {
 
         const badWordResponse = await this.scoresService.checkProfanity(responseText, language)
         if (badWordResponse) {
-          return response.status(HttpStatus.BAD_REQUEST).send({
-            statusCode: HttpStatus.BAD_REQUEST,
+          throw new BadRequestException({
+            code: ErrorCodes.BAD_REQUEST,
             message: 'Profanity detected.',
           });
         }
@@ -2726,7 +2723,12 @@ export class ScoresController {
             .pipe(
               map((resp) => resp.data),
               catchError((error: AxiosError) => {
-                throw 'Error from text Eval service' + error;
+                throw mapAxiosToUpstreamHttpException(
+                  'text-eval',
+                  ErrorCodes.TEXT_EVAL_UNAVAILABLE,
+                  'Text evaluation service is unavailable or returned an error while computing text matrices.',
+                  error,
+                );
               }),
             ),
         );
@@ -2961,10 +2963,7 @@ export class ScoresController {
         ansSelectionStatus : ansSelectionStatus ? ansSelectionStatus : {}
       });
     } catch (err) {
-      return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
-        status: 'error',
-        message: 'Server error - ' + err,
-      });
+      throw mapUnknownToHttpException(err);
     }
   }
 
@@ -3181,8 +3180,8 @@ export class ScoresController {
             }
 
             if (CreateLearnerProfileDto.output[0].source === '') {
-              return response.status(HttpStatus.BAD_REQUEST).send({
-                status: 'error',
+              throw new BadRequestException({
+                code: ErrorCodes.BAD_REQUEST,
                 message:
                   'Audio to Text functionality Responded Empty Response. Please check audio file or speak Loudly',
               });
@@ -3670,10 +3669,7 @@ export class ScoresController {
         feedback: feedback,
       });
     } catch (err) {
-      return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
-        status: 'error',
-        message: 'Server error - ' + err,
-      });
+      throw mapUnknownToHttpException(err);
     }
   }
 
@@ -3902,8 +3898,8 @@ export class ScoresController {
           }
 
           if (CreateLearnerProfileDto.output[0].source === '') {
-            return response.status(HttpStatus.BAD_REQUEST).send({
-              status: 'error',
+            throw new BadRequestException({
+              code: ErrorCodes.BAD_REQUEST,
               message:
                 'Audio to Text functionality Responded Empty Response. Please check audio file or speak Loudly',
             });
@@ -4319,7 +4315,12 @@ export class ScoresController {
             .pipe(
               map((resp) => resp.data),
               catchError((error: AxiosError) => {
-                throw 'Error from text Eval service' + error;
+                throw mapAxiosToUpstreamHttpException(
+                  'text-eval',
+                  ErrorCodes.TEXT_EVAL_UNAVAILABLE,
+                  'Text evaluation service is unavailable or returned an error while computing text matrices.',
+                  error,
+                );
               }),
             ),
         );
@@ -4557,10 +4558,7 @@ export class ScoresController {
         ansSelectionStatus: ansSelectionStatus ? ansSelectionStatus : {}
       });
     } catch (err) {
-      return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
-        status: 'error',
-        message: 'Server error - ' + err,
-      });
+      throw mapUnknownToHttpException(err);
     }
   }
 
@@ -4623,10 +4621,7 @@ export class ScoresController {
       );
       return response.status(HttpStatus.OK).send(targetResult);
     } catch (err) {
-      return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
-        status: 'error',
-        message: 'Server error - ' + err,
-      });
+      throw mapUnknownToHttpException(err);
     }
   }
 
@@ -4691,10 +4686,7 @@ export class ScoresController {
       );
       return response.status(HttpStatus.OK).send(targetResult);
     } catch (err) {
-      return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
-        status: 'error',
-        message: 'Server error - ' + err,
-      });
+      throw mapUnknownToHttpException(err);
     }
   }
 
@@ -4758,10 +4750,7 @@ export class ScoresController {
       );
       return response.status(HttpStatus.OK).send(targetResult);
     } catch (err) {
-      return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
-        status: 'error',
-        message: 'Server error - ' + err,
-      });
+      throw mapUnknownToHttpException(err);
     }
   }
 
@@ -4826,10 +4815,7 @@ export class ScoresController {
         );
       return response.status(HttpStatus.OK).send(familiarityResult);
     } catch (err) {
-      return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
-        status: 'error',
-        message: 'Server error - ' + err,
-      });
+      throw mapUnknownToHttpException(err);
     }
   }
 
@@ -4889,10 +4875,7 @@ export class ScoresController {
         await this.scoresService.getFamiliarityBySession(id, language);
       return response.status(HttpStatus.OK).send(familiarityResult);
     } catch (err) {
-      return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
-        status: 'error',
-        message: 'Server error - ' + err,
-      });
+      throw mapUnknownToHttpException(err);
     }
   }
 
@@ -4945,10 +4928,7 @@ export class ScoresController {
       );
       return response.status(HttpStatus.OK).send(familiarityResult);
     } catch (err) {
-      return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
-        status: 'error',
-        message: 'Server error - ' + err,
-      });
+      throw mapUnknownToHttpException(err);
     }
   }
 
@@ -5113,7 +5093,12 @@ export class ScoresController {
           .pipe(
             map((resp) => resp.data),
             catchError((error: AxiosError) => {
-              throw 'Error at Content service API Call -' + error;
+              throw mapAxiosToUpstreamHttpException(
+                'content-service',
+                ErrorCodes.CONTENT_SERVICE_UNAVAILABLE,
+                'Content service is unavailable or returned an error.',
+                error,
+              );
             }),
           ),
       );
@@ -5151,10 +5136,7 @@ export class ScoresController {
         totalTargets: totalTargets,
       });
     } catch (err) {
-      return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
-        status: 'error',
-        message: 'Server error - ' + err,
-      });
+      throw mapUnknownToHttpException(err);
     }
   }
 
@@ -5307,7 +5289,12 @@ export class ScoresController {
           .pipe(
             map((resp) => resp.data),
             catchError((error: AxiosError) => {
-              throw 'Error at Content service API Call -' + error;
+              throw mapAxiosToUpstreamHttpException(
+                'content-service',
+                ErrorCodes.CONTENT_SERVICE_UNAVAILABLE,
+                'Content service is unavailable or returned an error.',
+                error,
+              );
             }),
           ),
       );
@@ -5357,10 +5344,7 @@ export class ScoresController {
         totalSyllableCount: totalSyllableCount,
       });
     } catch (err) {
-      return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
-        status: 'error',
-        message: 'Server error - ' + err,
-      });
+      throw mapUnknownToHttpException(err);
     }
   }
 
@@ -5567,7 +5551,12 @@ export class ScoresController {
           .pipe(
             map((resp) => resp.data),
             catchError((error: AxiosError) => {
-              throw 'Error at Content service API Call -' + error;
+              throw mapAxiosToUpstreamHttpException(
+                'content-service',
+                ErrorCodes.CONTENT_SERVICE_UNAVAILABLE,
+                'Content service is unavailable or returned an error.',
+                error,
+              );
             }),
           ),
       );
@@ -5610,10 +5599,7 @@ export class ScoresController {
         totalSyllableCount: totalSyllableCount,
       });
     } catch (err) {
-      return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
-        status: 'error',
-        message: 'Server error - ' + err,
-      });
+      throw mapUnknownToHttpException(err);
     }
   }
 
@@ -5769,7 +5755,12 @@ export class ScoresController {
           .pipe(
             map((resp) => resp.data),
             catchError((error: AxiosError) => {
-              throw 'Error at Content service API Call -' + error;
+              throw mapAxiosToUpstreamHttpException(
+                'content-service',
+                ErrorCodes.CONTENT_SERVICE_UNAVAILABLE,
+                'Content service is unavailable or returned an error.',
+                error,
+              );
             }),
           ),
       );
@@ -5811,10 +5802,7 @@ export class ScoresController {
         totalSyllableCount: totalSyllableCount,
       });
     } catch (err) {
-      return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
-        status: 'error',
-        message: 'Server error - ' + err,
-      });
+      throw mapUnknownToHttpException(err);
     }
   }
 
@@ -6997,10 +6985,7 @@ export class ScoresController {
         },
       });
     } catch (err) {
-      return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
-        status: 'error',
-        message: 'Server error - ' + err,
-      });
+      throw mapUnknownToHttpException(err);
     }
   }
 
@@ -7104,16 +7089,14 @@ export class ScoresController {
         },
       });
     } catch (err) {
-      return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
-        status: 'error',
-        message: 'Server error - ' + err,
-      });
+      throw mapUnknownToHttpException(err);
     }
   }
 
   @ApiExcludeEndpoint(true)
   @Post('/GetMissingChars')
   async GetMissingChars(@Res() response: FastifyReply, @Body() storyData: any) {
+    try {
     const data = await this.scoresService.getMissingChars(
       storyData.storyLanguage,
     );
@@ -7188,6 +7171,9 @@ export class ScoresController {
       notIncluded: notIncluded,
       notIncludedTotal: notIncludedTotal,
     });
+    } catch (err) {
+      throw mapUnknownToHttpException(err);
+    }
   }
 
   @ApiExcludeEndpoint(true)
@@ -7196,13 +7182,17 @@ export class ScoresController {
     @Res() response: FastifyReply,
     @Body() assessmentInput: AssessmentInputDto,
   ) {
-    const data = await this.scoresService.assessmentInputCreate(
+    try {
+    await this.scoresService.assessmentInputCreate(
       assessmentInput,
     );
     return response.status(HttpStatus.CREATED).send({
       status: 'success',
       msg: 'Successfully stored data to Assessment Input',
     });
+    } catch (err) {
+      throw mapUnknownToHttpException(err);
+    }
   }
 
   @ApiExcludeEndpoint(true)
@@ -7212,8 +7202,12 @@ export class ScoresController {
     @Req() request: FastifyRequest,
     @Query() { limit = 5 },
   ) {
-    const user_id = (request as any).user.virtual_id.toString();
-    return this.scoresService.getAllSessions(user_id, limit);
+    try {
+      const user_id = (request as any).user.virtual_id.toString();
+      return await this.scoresService.getAllSessions(user_id, limit);
+    } catch (err) {
+      throw mapUnknownToHttpException(err);
+    }
   }
 
 
@@ -7298,10 +7292,7 @@ export class ScoresController {
       }
       return response.status(HttpStatus.OK).send(recordData);
     } catch (err) {
-      return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
-        status: 'error',
-        message: 'Server error - ' + err,
-      });
+      throw mapUnknownToHttpException(err);
     }
   }
 
@@ -7394,10 +7385,7 @@ export class ScoresController {
       }
       return response.status(HttpStatus.OK).send(recordData);
     } catch (err) {
-      return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
-        status: 'error',
-        message: 'Server error - ' + err,
-      });
+      throw mapUnknownToHttpException(err);
     }
   }
 
@@ -7475,10 +7463,7 @@ export class ScoresController {
       }
       return response.status(HttpStatus.OK).send(recordData);
     } catch (err) {
-      return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
-        status: 'error',
-        message: 'Server error - ' + err,
-      });
+      throw mapUnknownToHttpException(err);
     }
   }
 
@@ -7652,10 +7637,7 @@ export class ScoresController {
       };
       return response.status(HttpStatus.OK).send(finalResponse);
     } catch (err) {
-      return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
-        status: 'error',
-        message: 'Server error - ' + err,
-      });
+      throw mapUnknownToHttpException(err);
     }
   }
 
@@ -7740,8 +7722,8 @@ export class ScoresController {
       const token = authHeader?.split(' ')[1];
       
       if (!language || !content_type) {
-        return response.status(HttpStatus.BAD_REQUEST).send({
-          status: 'error',
+        throw new BadRequestException({
+          code: ErrorCodes.BAD_REQUEST,
           message: 'Language and content_type are required fields',
         });
       }
@@ -7761,10 +7743,7 @@ export class ScoresController {
 
       return response.status(HttpStatus.OK).send(recommendationData);
     } catch (err) {
-      return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
-        status: 'error',
-        message: 'Server error - ' + err,
-      });
+      throw mapUnknownToHttpException(err);
     }
   }
 
@@ -7835,10 +7814,7 @@ export class ScoresController {
         },
       });
     } catch (err) {
-      return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
-        status: 'error',
-        message: 'Server error - ' + err.message,
-      });
+      throw mapUnknownToHttpException(err);
     }
   }
 
@@ -7857,16 +7833,17 @@ export class ScoresController {
     try {
       const user_id = (request as any).user?.virtual_id?.toString();
       if (!user_id) {
-        return response.status(HttpStatus.UNAUTHORIZED).send({
-          success: false,
-          error: 'User ID not found in token',
+        throw new UnauthorizedException({
+          code: ErrorCodes.UNAUTHORIZED,
+          message: 'User ID not found in token',
         });
       }
 
       if (!setMilestoneDto.language || !setMilestoneDto.milestone_level) {
-        return response.status(HttpStatus.BAD_REQUEST).send({
-          success: false,
-          error: 'Missing required fields: language and milestone_level are required',
+        throw new BadRequestException({
+          code: ErrorCodes.BAD_REQUEST,
+          message:
+            'Missing required fields: language and milestone_level are required',
         });
       }
 
@@ -7893,16 +7870,24 @@ export class ScoresController {
 
       if (result.success) {
         return response.status(HttpStatus.OK).send(result);
-      } else {
-        return response.status(HttpStatus.BAD_REQUEST).send(result);
       }
+      const requestId = getOrCreateRequestId(request);
+      return response.status(HttpStatus.BAD_REQUEST).send(
+        finalizeStandardError(
+          HttpStatus.BAD_REQUEST,
+          {
+            code: ErrorCodes.BAD_REQUEST,
+            message: String(
+              result.error ?? result.message ?? 'Could not update milestone',
+            ),
+            errors: [result],
+          },
+          requestId,
+        ),
+      );
     } catch (err) {
       console.error('Error in setMilestoneManually:', err);
-      return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
-        success: false,
-        error: 'Failed to set milestone',
-        message: err.message || 'Internal server error',
-      });
+      throw mapUnknownToHttpException(err);
     }
   }
   

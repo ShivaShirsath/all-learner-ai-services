@@ -3,10 +3,12 @@ import {
   CanActivate,
   ExecutionContext,
   UnauthorizedException,
-  Inject,
+  HttpException,
+  HttpStatus,
 } from '@nestjs/common';
+import { ErrorCodes } from 'src/common/exceptions/api.exceptions';
 import { JwtService } from '@nestjs/jwt';
-import axios from 'axios';
+import axios, { isAxiosError } from 'axios';
 import { createHash } from 'crypto';
 import { Request } from 'express';
 import * as jose from 'jose';
@@ -59,8 +61,19 @@ export class JwtAuthGuard implements CanActivate {
       );
       const verifiedToken = await jose.jwtVerify(jwtSignedToken, jwtSigninKey);
 
-      // get the token status
+      // get the token status (orchestration service)
       const tokenStatus = await this.checkTokenStatus(verifiedToken.payload.virtual_id);
+      if (tokenStatus.error === 'orchestration_unavailable') {
+        throw new HttpException(
+          {
+            code: ErrorCodes.ORCHESTRATION_UNAVAILABLE,
+            message:
+              'Cannot verify your session because the authentication service is unavailable. Please try again later.',
+            upstream: 'orchestration',
+          },
+          HttpStatus.SERVICE_UNAVAILABLE,
+        );
+      }
       if (tokenStatus.token == null || tokenStatus.token !== token) {
         throw new UnauthorizedException('User is logged out');
       }
@@ -70,14 +83,22 @@ export class JwtAuthGuard implements CanActivate {
 
       return true;
     } catch (err) {
+      if (err instanceof HttpException) {
+        throw err;
+      }
       throw new UnauthorizedException('Invalid or expired token');
     }
   }
 
   // check user status
-  async checkTokenStatus(user_id: any): Promise<{ token: string }> {
+  async checkTokenStatus(
+    user_id: any,
+  ): Promise<{ token: string | null; error?: 'orchestration_unavailable' }> {
     try {
       const url = process.env.ALL_ORC_SERVICE_URL;
+      if (!url) {
+        throw new Error('ALL_ORC_SERVICE_URL is not configured');
+      }
       const response = await axios.post(url, {
         user_id: user_id,
       });
@@ -86,9 +107,18 @@ export class JwtAuthGuard implements CanActivate {
         token: response.data?.result?.token || null,
       };
     } catch (error: any) {
-      console.error('Error calling token-status API:', error?.response?.data || error.message);
+      console.error(
+        'Error calling token-status API:',
+        error?.response?.data || error.message,
+      );
+      // Reachable orchestration that returns 4xx/5xx: treat like missing session token
+      if (isAxiosError(error) && error.response) {
+        return { token: null };
+      }
+      // Network / DNS / timeout / no URL: dependency down
       return {
         token: null,
+        error: 'orchestration_unavailable',
       };
     }
   }

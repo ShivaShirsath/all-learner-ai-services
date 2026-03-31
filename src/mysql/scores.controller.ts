@@ -1,70 +1,102 @@
 import {
-  Controller,
-  Get,
-  Post,
   Body,
-  Patch,
-  Param,
+  Controller,
   Delete,
+  Get,
   HttpStatus,
+  Param,
+  Patch,
+  Post,
   Res,
 } from '@nestjs/common';
 import { ScoresService } from './scores.service';
 import { CreateScoreDto } from './dto/create-score.dto';
 import { UpdateScoreDto } from './dto/update-score.dto';
 import { FastifyReply } from 'fastify';
+import { mapUnknownToHttpException } from '../common/exceptions/api.exceptions';
 
 @Controller('scores')
 export class ScoresController {
   constructor(private readonly scoresService: ScoresService) {}
 
   @Post()
-  create(
+  async create(
     @Res() response: FastifyReply,
     @Body() createScoreDto: CreateScoreDto,
   ) {
-    const databaseType = process.env.DATABASE;
-
     try {
-      const data = this.scoresService.create(createScoreDto);
-      return response
-        .status(HttpStatus.INTERNAL_SERVER_ERROR)
-        .send({ status: 'success mysql', data });
-    } catch {
-      return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
-        status: 'error',
-        message: 'Server error - ' + `Invalid database type: ${databaseType}`,
+      const data = await this.scoresService.create(createScoreDto);
+      return response.status(HttpStatus.CREATED).send({
+        status: 'success',
+        message: 'Record created',
+        data,
       });
+    } catch (err) {
+      throw mapUnknownToHttpException(err);
     }
   }
 
   @Get()
-  findAll() {
-    return this.scoresService.findAll();
-  }
-
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.scoresService.findOne(+id);
+  async findAll(@Res() response: FastifyReply) {
+    try {
+      const data = await this.scoresService.findAll();
+      return response.status(HttpStatus.OK).send(data);
+    } catch (err) {
+      throw mapUnknownToHttpException(err);
+    }
   }
 
   @Get('/byuser/:id')
-  findByUser(@Param('id') id: string) {
-    return this.scoresService.findByUser(id);
+  async findByUser(@Res() response: FastifyReply, @Param('id') id: string) {
+    try {
+      const data = await this.scoresService.findByUser(id);
+      return response.status(HttpStatus.OK).send(data);
+    } catch (err) {
+      throw mapUnknownToHttpException(err);
+    }
   }
 
   @Get('/bysession/:id')
-  findBySession(@Param('id') id: string) {
-    return this.scoresService.findBySession(id);
+  async findBySession(@Res() response: FastifyReply, @Param('id') id: string) {
+    try {
+      const data = await this.scoresService.findBySession(id);
+      return response.status(HttpStatus.OK).send(data);
+    } catch (err) {
+      throw mapUnknownToHttpException(err);
+    }
+  }
+
+  @Get(':id')
+  async findOne(@Res() response: FastifyReply, @Param('id') id: string) {
+    try {
+      const data = await this.scoresService.findOne(+id);
+      return response.status(HttpStatus.OK).send(data);
+    } catch (err) {
+      throw mapUnknownToHttpException(err);
+    }
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateScoreDto: UpdateScoreDto) {
-    return this.scoresService.update(+id, updateScoreDto);
+  async update(
+    @Res() response: FastifyReply,
+    @Param('id') id: string,
+    @Body() updateScoreDto: UpdateScoreDto,
+  ) {
+    try {
+      const data = await this.scoresService.update(+id, updateScoreDto);
+      return response.status(HttpStatus.OK).send(data);
+    } catch (err) {
+      throw mapUnknownToHttpException(err);
+    }
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.scoresService.remove(+id);
+  async remove(@Res() response: FastifyReply, @Param('id') id: string) {
+    try {
+      const data = await this.scoresService.remove(+id);
+      return response.status(HttpStatus.OK).send(data);
+    } catch (err) {
+      throw mapUnknownToHttpException(err);
+    }
   }
 }

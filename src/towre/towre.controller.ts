@@ -5,6 +5,7 @@ import {
   Delete,
   Get,
   HttpStatus,
+  NotFoundException,
   Param,
   Post,
   Put,
@@ -29,6 +30,10 @@ import { CreateCorrectPracticeWordDto } from './dto/correctPracticeWord.dto';
 import { CreateCorrectVocabularyWordDto } from './dto/correctRecalledWord.dto';
 import { Towre } from '../schemas/towre.schema';
 import { JwtAuthGuard } from 'src/auth/auth.guard';
+import {
+  ErrorCodes,
+  mapUnknownToHttpException,
+} from 'src/common/exceptions/api.exceptions';
 import { FastifyReply, FastifyRequest } from 'fastify';
 
 @UseGuards(JwtAuthGuard)
@@ -94,10 +99,7 @@ export class TowreController {
         data: responsedata,
       });
     } catch (err) {
-      return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
-        status: 'error',
-        message: 'Server error - ' + err.message,
-      });
+      throw mapUnknownToHttpException(err);
     }
   }
 
@@ -109,8 +111,8 @@ export class TowreController {
     try {
       const result = await this.towreService.softDeleteById(id);
       if (!result) {
-        return response.status(HttpStatus.NOT_FOUND).send({
-          status: 'error',
+        throw new NotFoundException({
+          code: ErrorCodes.NOT_FOUND,
           message: 'Record not found',
         });
       }
@@ -120,10 +122,7 @@ export class TowreController {
         data: result,
       });
     } catch (err) {
-      return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
-        status: 'error',
-        message: 'Server error - ' + err.message,
-      });
+      throw mapUnknownToHttpException(err);
     }
   }
 
@@ -155,10 +154,7 @@ export class TowreController {
         data: savedWords,
       });
     } catch (err) {
-      return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
-        status: 'error',
-        message: 'Server error - ' + err.message,
-      });
+      throw mapUnknownToHttpException(err);
     }
   }
 
@@ -206,10 +202,7 @@ export class TowreController {
         data: latestWords,
       });
     } catch (err) {
-      return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
-        status: 'error',
-        message: 'Server error - ' + err.message,
-      });
+      throw mapUnknownToHttpException(err);
     }
   }
 
@@ -240,10 +233,7 @@ export class TowreController {
         data: savedWords,
       });
     } catch (err) {
-      return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
-        status: 'error',
-        message: 'Server error - ' + err.message,
-      });
+      throw mapUnknownToHttpException(err);
     }
   }
 
@@ -302,10 +292,7 @@ export class TowreController {
         data: result,
       });
     } catch (err) {
-      return response.status(HttpStatus.INTERNAL_SERVER_ERROR).send({
-        status: 'error',
-        message: 'Server error - ' + err.message,
-      });
+      throw mapUnknownToHttpException(err);
     }
   }
 }
