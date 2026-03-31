@@ -5904,6 +5904,15 @@ export class ScoresController {
       let sessionResult = 'No Result';
       let max_level = getSetResult.max_level;
       let hasAnsSelectionStatus = false;
+      const setNo = getSetResult.setNo;
+
+      const getGetSetResultHistory =
+        await this.scoresService.getGetSetResultHistory(
+          user_id,
+          getSetResult.session_id,
+          getSetResult.language,
+        );
+      const previousSessionContentType = getGetSetResultHistory?.contentType;
 
       let targets = await this.scoresService.getTargetsBysubSession(
         user_id,
@@ -6551,6 +6560,7 @@ export class ScoresController {
             getSetResult.collectionId !== '' &&
             getSetResult.collectionId !== undefined
           ) {
+            // this is set 3 word 4 syllabule
             if (
               getSetResult.collectionId ===
               '91a5279d-f4a2-4c4d-bc8f-0b15ba6e5995' ||
@@ -6561,11 +6571,42 @@ export class ScoresController {
               getSetResult.collectionId ===
               '775c974a-4bda-4cfc-bc47-2aff56e39c46'
             ) {
-              if (sessionResult === 'pass') {
+              if (
+                sessionResult === 'pass' &&
+                setNo === 'set3' &&
+                previousSessionContentType === 'Sentence'
+              ) {
+                milestone_level = 'm3';
+              } else if (
+                sessionResult === 'fail' &&
+                setNo === 'set3' &&
+                previousSessionContentType === 'Sentence'
+              ) {
                 milestone_level = 'm2';
-              } else {
+              } else if (
+                sessionResult === 'pass' &&
+                setNo === 'set3' &&
+                previousSessionContentType === 'Word'
+              ) {
+                milestone_level = 'm2';
+              } else if (
+                sessionResult === 'fail' &&
+                setNo === 'set3' &&
+                previousSessionContentType === 'Word'
+              ) {
                 milestone_level = 'm1';
               }
+            }else if (
+              getSetResult.collectionId ===
+              '6b98b4f6-d401-4835-b9d5-89e3a82743e0' ||
+              getSetResult.collectionId ===
+              '98e6a05a-7915-4e2d-802c-3e5011b4ab08' ||
+              getSetResult.collectionId ===
+              'c65782eb-60af-459a-b503-5438d97de392' ||
+              getSetResult.collectionId ===
+              'fa6725f1-bd48-41bc-8674-ef22ed7bff2c'
+            ) {
+              milestoneEntry = false;
             } else if (
               getSetResult.collectionId ===
               'f9eb8c70-524f-46a1-a737-1eec64a42e6f' ||
@@ -6960,7 +7001,9 @@ export class ScoresController {
           totalCorrectnessScore:
             (correct_score[0]?.total_correctness_score ?? 0) / contentLimit,
           comprehensionScore: overallScore,
-          collectionId: getSetResult.collectionId || ""
+          collectionId: getSetResult.collectionId || "",
+          setNo: getSetResult.setNo || "",
+          contentType: getSetResult.contentType || "",
         });
       } catch (logError) {
         console.error('Failed to log session result:', logError);
