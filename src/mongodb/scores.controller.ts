@@ -7151,7 +7151,7 @@ export class ScoresController {
 
       if (milestoneEntry) {
         let sub_milestone_level = '';
-        if (milestone_level === "B" && previous_level === "B" &&
+        if (milestone_level === "B" && previous_level === "m0" &&
           (getSetResult.language === "en" || getSetResult.language === "te" || getSetResult.language === "hi" || getSetResult.language === "kn")) {
           sub_milestone_level = 'F1';
         }
