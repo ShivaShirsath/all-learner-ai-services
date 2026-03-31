@@ -6450,11 +6450,43 @@ export class ScoresController {
               getSetResult.collectionId ===
               '55767bfa-0e12-4d8f-999b-e84daf6c7587'
             ) {
-              if (sessionResult === 'pass') {
+              if (
+                sessionResult === 'pass' &&
+                setNo === 'set3' &&
+                previousSessionContentType === 'Sentence'
+              ) {
+                milestone_level = 'm3';
+              } else if (
+                sessionResult === 'fail' &&
+                setNo === 'set3' &&
+                previousSessionContentType === 'Sentence'
+              ) {
                 milestone_level = 'm2';
-              } else {
+              } else if (
+                sessionResult === 'pass' &&
+                setNo === 'set3' &&
+                previousSessionContentType === 'Word'
+              ) {
+                milestone_level = 'm2';
+              } else if (
+                sessionResult === 'fail' &&
+                setNo === 'set3' &&
+                previousSessionContentType === 'Word'
+              ) {
                 milestone_level = 'm1';
               }
+              // set 2 word 3 syllable (easy)
+            } else if (
+              getSetResult.collectionId ===
+              '1efb5897-9eb3-4e71-8fd2-892a505d0dc9' ||
+              getSetResult.collectionId ===
+              '42259cda-9db5-4b0d-8589-880eb7c949b5' ||
+              getSetResult.collectionId ===
+              'aca41722-3f1e-45eb-a563-4d79c27aa50e' ||
+              getSetResult.collectionId ===
+              'e4ab8ac2-38c2-4dcc-83f1-654548629a50'
+            ) {
+              milestoneEntry = false;
               // this collection id is for M3
             } else if (
               getSetResult.collectionId ===
@@ -6502,6 +6534,7 @@ export class ScoresController {
             getSetResult.collectionId !== '' &&
             getSetResult.collectionId !== undefined
           ) {
+            // set 3 word 4 syllable (hard)
             if (
               getSetResult.collectionId ===
               'b755df98-198b-440a-90e0-391579ef4bfb' ||
@@ -6512,11 +6545,43 @@ export class ScoresController {
               getSetResult.collectionId ===
               '6a89f990-8727-49da-b128-b7ea1839d025'
             ) {
-              if (sessionResult === 'pass') {
+              if (
+                sessionResult === 'pass' &&
+                setNo === 'set3' &&
+                previousSessionContentType === 'Sentence'
+              ) {
+                milestone_level = 'm3';
+              } else if (
+                sessionResult === 'fail' &&
+                setNo === 'set3' &&
+                previousSessionContentType === 'Sentence'
+              ) {
                 milestone_level = 'm2';
-              } else {
+              } else if (
+                sessionResult === 'pass' &&
+                setNo === 'set3' &&
+                previousSessionContentType === 'Word'
+              ) {
+                milestone_level = 'm2';
+              } else if (
+                sessionResult === 'fail' &&
+                setNo === 'set3' &&
+                previousSessionContentType === 'Word'
+              ) {
                 milestone_level = 'm1';
               }
+              // set 2 word 3 syllable (easy)
+            } else if (
+              getSetResult.collectionId ===
+              '1ff67529-0b3d-44d5-9b2e-19cb38055d33' ||
+              getSetResult.collectionId ===
+              '6c9a6588-bd2f-410e-9ccc-48b630986b0e' ||
+              getSetResult.collectionId ===
+              'b38fa83c-82f0-4ab4-9889-63bfd87a41d3' ||
+              getSetResult.collectionId ===
+              'c280f485-f71c-4d36-8ddf-81ff1585306c'
+            ) {
+              milestoneEntry = false;
             } else if (
               getSetResult.collectionId ===
               '29bb9cff-9510-4693-bec5-9436a686b836' ||
@@ -6596,6 +6661,7 @@ export class ScoresController {
               ) {
                 milestone_level = 'm1';
               }
+            // set 2 word 3 syllabule
             } else if (
               getSetResult.collectionId ===
               '6b98b4f6-d401-4835-b9d5-89e3a82743e0' ||
@@ -6618,6 +6684,7 @@ export class ScoresController {
               '87c2866e-6249-4fe1-9b1b-8b22ddd05ea7'
             ) {
               milestoneEntry = false;
+            // set 6 
             } else if (
               getSetResult.collectionId ===
               'e62061ea-4195-4460-b8e3-c0433bf8624e' ||
@@ -6650,6 +6717,7 @@ export class ScoresController {
             getSetResult.collectionId !== '' &&
             getSetResult.collectionId !== undefined
           ) {
+            // set 3 word 4 syllable (hard)
             if (
               getSetResult.collectionId ===
               '9682eee7-f6dc-4277-9ff7-1d1f4f079020' ||
@@ -6660,11 +6728,43 @@ export class ScoresController {
               getSetResult.collectionId ===
               '5a5560e8-e22a-402c-a6da-fb93bfc2b335'
             ) {
-              if (sessionResult === 'pass') {
+              if (
+                sessionResult === 'pass' &&
+                setNo === 'set3' &&
+                previousSessionContentType === 'Sentence'
+              ) {
+                milestone_level = 'm3';
+              } else if (
+                sessionResult === 'fail' &&
+                setNo === 'set3' &&
+                previousSessionContentType === 'Sentence'
+              ) {
                 milestone_level = 'm2';
-              } else {
+              } else if (
+                sessionResult === 'pass' &&
+                setNo === 'set3' &&
+                previousSessionContentType === 'Word'
+              ) {
+                milestone_level = 'm2';
+              } else if (
+                sessionResult === 'fail' &&
+                setNo === 'set3' &&
+                previousSessionContentType === 'Word'
+              ) {
                 milestone_level = 'm1';
               }
+              // set 2 word 3 syllable (easy)
+            } else if (
+              getSetResult.collectionId ===
+              '07971210-fcb0-478f-9710-43f37fb98fa2' ||
+              getSetResult.collectionId ===
+              '3fc7204a-de05-4e83-814e-8648d1b2a74d' ||
+              getSetResult.collectionId ===
+              'cfc532a1-2fba-439d-834d-d153c8c7d33e' ||
+              getSetResult.collectionId ===
+              'd78033a0-d14e-4dac-9dac-afbdc2ac75a6'
+            ) {
+              milestoneEntry = false;
             } else if (
               getSetResult.collectionId ===
               '3b339169-df4e-4490-8ff4-4616370ba9af' ||
@@ -6680,6 +6780,7 @@ export class ScoresController {
               } else {
                 milestoneEntry = false;
               }
+            // set 6
             } else if (
               getSetResult.collectionId ===
               '56b06985-fe48-4a89-9b1f-a9f3c6cf1e28' ||
@@ -6710,6 +6811,7 @@ export class ScoresController {
 
             // this collection id is for M2
           ) {
+            // set 3 word 4 syllable (hard)
             if (
               getSetResult.collectionId ===
               'e1e87800-f530-4868-aebe-4f2402d29eb8' ||
@@ -6720,11 +6822,43 @@ export class ScoresController {
               getSetResult.collectionId ===
               '42e4140b-4294-424f-b488-f0c53fc376c9'
             ) {
-              if (sessionResult === 'pass') {
+              if (
+                sessionResult === 'pass' &&
+                setNo === 'set3' &&
+                previousSessionContentType === 'Sentence'
+              ) {
+                milestone_level = 'm3';
+              } else if (
+                sessionResult === 'fail' &&
+                setNo === 'set3' &&
+                previousSessionContentType === 'Sentence'
+              ) {
                 milestone_level = 'm2';
-              } else {
+              } else if (
+                sessionResult === 'pass' &&
+                setNo === 'set3' &&
+                previousSessionContentType === 'Word'
+              ) {
+                milestone_level = 'm2';
+              } else if (
+                sessionResult === 'fail' &&
+                setNo === 'set3' &&
+                previousSessionContentType === 'Word'
+              ) {
                 milestone_level = 'm1';
               }
+              // set 2 word 3 syllable (easy)
+            } else if (
+              getSetResult.collectionId ===
+              '0023563e-12da-40a7-9549-8c735a2fb98f' ||
+              getSetResult.collectionId ===
+              '586a483a-d299-4bde-8022-1ff476988543' ||
+              getSetResult.collectionId ===
+              'c163408f-c3be-4836-8b61-2d1f0cbbc765' ||
+              getSetResult.collectionId ===
+              'f9375cdb-c9e4-4df0-b884-2ff4679c7f10'
+            ) {
+              milestoneEntry = false;
               // this collection id is for M3
             } else if (
               getSetResult.collectionId ===
@@ -6773,6 +6907,7 @@ export class ScoresController {
 
             // this collection id is for M2
           ) {
+            // set 3 word 4 syllable (hard)
             if (
               getSetResult.collectionId ===
               '6f64d4a2-b6e5-4a2b-91e5-f6be9f2d4d8b' ||
@@ -6783,11 +6918,43 @@ export class ScoresController {
               getSetResult.collectionId ===
               'e0bdd73c-dd8b-4c2b-92cf-be753fd32c46'
             ) {
-              if (sessionResult === 'pass') {
+              if (
+                sessionResult === 'pass' &&
+                setNo === 'set3' &&
+                previousSessionContentType === 'Sentence'
+              ) {
+                milestone_level = 'm3';
+              } else if (
+                sessionResult === 'fail' &&
+                setNo === 'set3' &&
+                previousSessionContentType === 'Sentence'
+              ) {
                 milestone_level = 'm2';
-              } else {
+              } else if (
+                sessionResult === 'pass' &&
+                setNo === 'set3' &&
+                previousSessionContentType === 'Word'
+              ) {
+                milestone_level = 'm2';
+              } else if (
+                sessionResult === 'fail' &&
+                setNo === 'set3' &&
+                previousSessionContentType === 'Word'
+              ) {
                 milestone_level = 'm1';
               }
+              // set 2 word 3 syllable (easy)
+            } else if (
+              getSetResult.collectionId ===
+              '4f3343b0-bdf4-4801-b4e5-89243629ccb6' ||
+              getSetResult.collectionId ===
+              '8cd631b3-fd13-406f-897a-8a6bd9f3c1d6' ||
+              getSetResult.collectionId ===
+              'cb2143b7-c991-4d9c-bc8f-fa593b731743' ||
+              getSetResult.collectionId ===
+              'f18f2a47-b762-4798-a15f-9ba1202abc42'
+            ) {
+              milestoneEntry = false;
               // this collection id is for M3
             } else if (
               getSetResult.collectionId ===
@@ -6835,7 +7002,7 @@ export class ScoresController {
             getSetResult.collectionId !== '' &&
             getSetResult.collectionId !== undefined
           ) {
-            // this collection id is for M2
+            // set 3 word 4 syllable (hard)
             if (
               getSetResult.collectionId ===
               'f1c48b67-9876-4058-a2d0-d38c8bb4e3fd' ||
@@ -6846,11 +7013,43 @@ export class ScoresController {
               getSetResult.collectionId ===
               '52e6cdfc-3f1e-4ca6-84ff-4a2ab04c2cfc'
             ) {
-              if (sessionResult === 'pass') {
+              if (
+                sessionResult === 'pass' &&
+                setNo === 'set3' &&
+                previousSessionContentType === 'Sentence'
+              ) {
+                milestone_level = 'm3';
+              } else if (
+                sessionResult === 'fail' &&
+                setNo === 'set3' &&
+                previousSessionContentType === 'Sentence'
+              ) {
                 milestone_level = 'm2';
-              } else {
+              } else if (
+                sessionResult === 'pass' &&
+                setNo === 'set3' &&
+                previousSessionContentType === 'Word'
+              ) {
+                milestone_level = 'm2';
+              } else if (
+                sessionResult === 'fail' &&
+                setNo === 'set3' &&
+                previousSessionContentType === 'Word'
+              ) {
                 milestone_level = 'm1';
               }
+              // set 2 word 3 syllable (easy)
+            } else if (
+              getSetResult.collectionId ===
+              '46ac2621-a0c4-4488-8328-85da8bd1a7da' ||
+              getSetResult.collectionId ===
+              '7c38a405-5880-43a4-b3a3-e779c5f9ee57' ||
+              getSetResult.collectionId ===
+              '811ac935-a0af-43bb-bcee-93f2b604d221' ||
+              getSetResult.collectionId ===
+              'f3b29ee3-c435-4d4a-a870-f18706296dd8'
+            ) {
+              milestoneEntry = false;
               // this collection id is for M3
             } else if (
               getSetResult.collectionId ===
