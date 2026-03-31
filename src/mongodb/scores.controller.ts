@@ -6710,7 +6710,11 @@ export class ScoresController {
               getSetResult.collectionId ===
               'b12b79ec-f7cb-44b4-99c9-5ea747d4f99a'
             ) {
-              milestone_level = 'm1';
+              if (sessionResult === 'fail') {
+                milestone_level = 'B';
+              } else {
+                milestone_level = 'm1';
+              }
             }
           } else if (
             getSetResult.language === 'te' &&
