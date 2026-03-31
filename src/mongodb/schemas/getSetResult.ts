@@ -56,6 +56,12 @@ export class getSetResult extends Document {
 
   @Prop()
   collectionId: string;
+
+  @Prop()
+  setNo: string;
+
+  @Prop()
+  contentType: string;
 }
 
 export type getSetResultDocument = getSetResult & Document;

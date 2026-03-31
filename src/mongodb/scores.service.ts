@@ -2325,6 +2325,27 @@ export class ScoresService {
     }
   }
 
+  async getGetSetResultHistory(
+    userId: string,
+    sessionId: string,
+    language: string,
+  ): Promise<any | null> {
+    try {
+      return await this.getSetResultModel
+        .findOne({
+          userId,
+          sessionId,
+          langauge: language,
+        })
+        .sort({ createdAt: -1 })
+        .lean()
+        .exec();
+    } catch (err) {
+      console.error('Error fetching getSetResult history:', err);
+      return null;
+    }
+  }
+
   async getSubessionIds(user_id: string) {
     const RecordData = await this.scoreModel.aggregate([
       {
