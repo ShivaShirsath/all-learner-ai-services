@@ -7105,7 +7105,7 @@ export class ScoresController {
         } else if (milestone_level === 'm1' || milestone_level === 'm2' || milestone_level === 'm3') {
           // Preserve m1/m2/m3 set by collectionId logic (but not if previous_level was B)
         } else if (getSetResult.contentType.toLowerCase() === 'word' && isM0OrUndefined) {
-          milestone_level = 'B';
+          milestone_level = milestoneEntry ? 'B' : previous_level;
         } else if (getSetResult.contentType.toLowerCase() === 'word') {
           milestone_level = previous_level;
         } else {
