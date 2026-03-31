@@ -6618,7 +6618,11 @@ export class ScoresController {
               getSetResult.collectionId ===
               '61b65b9b-94b8-4212-94e5-33ce8e80435a'
             ) {
-              milestone_level = 'm1';
+              if (sessionResult === 'fail') {
+                milestone_level = 'B';
+              } else {
+                milestone_level = 'm1';
+              }
             }
           } else if (
             getSetResult.language === 'en' &&
@@ -6806,7 +6810,11 @@ export class ScoresController {
               getSetResult.collectionId ===
               '55149fbb-4fb1-4e4d-9b77-16e30e537b21'
             ) {
-              milestone_level = 'm1';
+              if (sessionResult === 'fail') {
+                milestone_level = 'B';
+              } else {
+                milestone_level = 'm1';
+              }
             }
           } else if (
             getSetResult.language === 'gu' &&
@@ -6998,7 +7006,11 @@ export class ScoresController {
               getSetResult.collectionId ===
               'e0021945-8948-4467-a256-13b5bfbbe6af'
             ) {
-              milestone_level = 'm1';
+              if (sessionResult === 'fail') {
+                milestone_level = 'B';
+              } else {
+                milestone_level = 'm1';
+              }
             }
           }
           if (
