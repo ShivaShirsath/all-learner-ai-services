@@ -1353,11 +1353,20 @@ export class ScoresService {
     return RecordData;
   }
 
-  async getCorrectnessBysubSession(subSessionId: string, language: string) {
+  async getCorrectnessBysubSession(
+    userId: string,
+    subSessionId: string,
+    language: string,
+  ) {
     const threshold = 50;
     let RecordData = [];
 
     RecordData = await this.scoreModel.aggregate([
+      {
+        $match: {
+          user_id: userId,
+        },
+      },
       {
         $unwind: '$sessions',
       },
@@ -3088,14 +3097,20 @@ export class ScoresService {
   }
 
   public async getSubSessionScores(
+    userId: string,
     subSessionId: string,
     language: string,
   ): Promise<any[]> {
-    // Find documents where at least one session in the sessions array has the matching sub_session_id and language.
+    // Scope to user_id first — avoids scanning the whole scores collection in production.
     const docs = await this.scoreModel
       .find({
-        'sessions.sub_session_id': subSessionId,
-        'sessions.language': language,
+        user_id: userId,
+        sessions: {
+          $elemMatch: {
+            sub_session_id: subSessionId,
+            language: language,
+          },
+        },
       })
       .lean();
 
@@ -3113,8 +3128,16 @@ export class ScoresService {
     return sessions;
   }
 
-  public async getComprehensionScore(subSessionId: string, language: string) {
-    const sessions = await this.getSubSessionScores(subSessionId, language);
+  public async getComprehensionScore(
+    userId: string,
+    subSessionId: string,
+    language: string,
+  ) {
+    const sessions = await this.getSubSessionScores(
+      userId,
+      subSessionId,
+      language,
+    );
     const comprehensionScores: any[] = [];
     sessions.forEach((session: any) => {
       if (session.comprehension !== undefined) {

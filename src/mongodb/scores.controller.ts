@@ -5899,45 +5899,78 @@ export class ScoresController {
       let totalSyllables = 0;
       let originalTextSyllables = [];
       let is_mechanics = getSetResult.is_mechanics;
-
       let overallScore, isComprehension;
       let sessionResult = 'No Result';
       let max_level = getSetResult.max_level;
       let hasAnsSelectionStatus = false;
       const setNo = getSetResult.setNo;
+      const subSessionId = getSetResult.sub_session_id;
+      const requestLanguage = getSetResult.language;
 
-      const getGetSetResultHistory =
-        await this.scoresService.getGetSetResultHistory(
+      const [
+        getGetSetResultHistory,
+        targetsInitial,
+        fluency,
+        familiarity,
+        correct_score,
+        comprehensionResult,
+        recordDataInitial,
+        ansSelectionResult,
+        originalTextSyllablesResult,
+      ] = await Promise.all([
+        this.scoresService.getGetSetResultHistory(
           user_id,
           getSetResult.session_id,
-          getSetResult.language,
-        );
-      const previousSessionContentType = getGetSetResultHistory?.contentType;
+          requestLanguage,
+        ),
+        this.scoresService.getTargetsBysubSession(
+          user_id,
+          subSessionId,
+          requestLanguage,
+        ),
+        this.scoresService.getFluencyBysubSession(
+          user_id,
+          subSessionId,
+          requestLanguage,
+        ),
+        this.scoresService.getFamiliarityBysubSession(
+          user_id,
+          subSessionId,
+          requestLanguage,
+        ),
+        this.scoresService.getCorrectnessBysubSession(
+          user_id,
+          subSessionId,
+          requestLanguage,
+        ),
+        this.scoresService.getComprehensionScore(
+          user_id,
+          subSessionId,
+          requestLanguage,
+        ),
+        this.scoresService.getlatestmilestone(
+          user_id, 
+          requestLanguage
+        ),
+        this.scoresService.calculateAnsSelectionResult(
+          user_id,
+          getSetResult.session_id,
+          subSessionId,
+          requestLanguage,
+        ),
+        requestLanguage !== 'en'
+          ? this.scoresService.getSubsessionOriginalTextSyllables(
+              user_id,
+              subSessionId,
+            )
+          : Promise.resolve(null),
+      ]);
 
-      let targets = await this.scoresService.getTargetsBysubSession(
-        user_id,
-        getSetResult.sub_session_id,
-        getSetResult.language,
-      );
-      let fluency = await this.scoresService.getFluencyBysubSession(
-        user_id,
-        getSetResult.sub_session_id,
-        getSetResult.language,
-      );
-      let familiarity = await this.scoresService.getFamiliarityBysubSession(
-        user_id,
-        getSetResult.sub_session_id,
-        getSetResult.language,
-      );
-      let correct_score = await this.scoresService.getCorrectnessBysubSession(
-        getSetResult.sub_session_id,
-        getSetResult.language,
-      );
-      ({ overallScore, isComprehension } =
-        await this.scoresService.getComprehensionScore(
-          getSetResult.sub_session_id,
-          getSetResult.language,
-        ));
+      let targets = targetsInitial;
+      let recordData = recordDataInitial;
+
+      const previousSessionContentType = getGetSetResultHistory?.contentType;
+      ({ overallScore, isComprehension } = comprehensionResult);
 
 
       if (is_mechanics && isComprehension) {
@@ -5949,10 +5982,10 @@ export class ScoresController {
       }
 
       if (getSetResult.language != 'en') {
-
-        originalTextSyllables = await this.scoresService.getSubsessionOriginalTextSyllables(user_id, getSetResult.sub_session_id);
-        targets = targets.filter((targetsEle) => { return originalTextSyllables.includes(targetsEle.character) });
-
+        originalTextSyllables = originalTextSyllablesResult || [];
+        targets = targets.filter((targetsEle) => {
+          return originalTextSyllables.includes(targetsEle.character);
+        });
       }
       let totalTargets = targets.length;
 
@@ -5976,19 +6009,7 @@ export class ScoresController {
       targetsPercentage = targetsPercentage < 0 ? 0 : targetsPercentage;
       passingPercentage = passingPercentage < 0 ? 0 : passingPercentage;
 
-      let recordData: any = await this.scoresService.getlatestmilestone(
-        user_id,
-        getSetResult.language,
-      );
       let previous_level = recordData[0]?.milestone_level || undefined;
-
-      // Check ansSelectionStatus %
-      const ansSelectionResult = await this.scoresService.calculateAnsSelectionResult(
-        user_id,
-        getSetResult.session_id,
-        getSetResult.sub_session_id,
-        getSetResult.language
-      );
 
       let ansSelectionPercentage = 0;
       // Only override sessionResult if ansSelectionStatus was found (new flow)
@@ -6061,6 +6082,21 @@ export class ScoresController {
         sessionResult = 'fail';
       }
 
+      const langLowerShowcase = requestLanguage.toLowerCase();
+      const showcaseLangs = ['en', 'kn', 'te', 'hi', 'ta', 'or', 'gu'];
+      let cachedSubSessionScoresForShowcase: any[] | null = null;
+      const loadShowcaseSubSessionScores = async () => {
+        if (!cachedSubSessionScoresForShowcase) {
+          cachedSubSessionScoresForShowcase =
+            await this.scoresService.getSubSessionScores(
+              user_id,
+              subSessionId,
+              langLowerShowcase,
+            );
+        }
+        return cachedSubSessionScoresForShowcase;
+      };
+
       // NEW: Compute fluencyResult.
       let fluencyResult: string;
       if (
@@ -6068,7 +6104,10 @@ export class ScoresController {
         !getSetResult.collectionId
       ) {
         const userLevelNum = parseInt(previous_level?.replace('m', ''), 10);
-        if (['en', 'kn', 'te', 'hi', 'ta', 'or', 'gu'].includes(getSetResult.language.toLowerCase()) && userLevelNum < 10) {
+        if (
+          showcaseLangs.includes(langLowerShowcase) &&
+          userLevelNum < 10
+        ) {
           // Determine pass threshold based on milestone level.
           // For M4+ (e.g. level >= 4) threshold is 3.0; otherwise, 2.6.
 
@@ -6076,10 +6115,7 @@ export class ScoresController {
 
           // Retrieve all audio records for the given sub-session and languages.
 
-          const allAudioRecords = await this.scoresService.getSubSessionScores(
-            getSetResult.sub_session_id,
-            getSetResult.language.toLowerCase(),
-          );
+          const allAudioRecords = await loadShowcaseSubSessionScores();
 
           const totalAudios = allAudioRecords.length;
           let passCount = 0;
@@ -6170,16 +6206,13 @@ export class ScoresController {
         !getSetResult.hasOwnProperty('collectionId') ||
         !getSetResult.collectionId
       ) {
-        if (['en', 'kn', 'te', 'hi', 'ta', 'or', 'gu'].includes(getSetResult.language.toLowerCase())) {
+        if (showcaseLangs.includes(langLowerShowcase)) {
           const userLevelNum = previous_level
             ? parseInt(previous_level.replace('m', ''), 10)
             : 0;
           if (userLevelNum >= 6) {
             const allAudioRecordsProsody =
-              await this.scoresService.getSubSessionScores(
-                getSetResult.sub_session_id,
-                getSetResult.language.toLowerCase(),
-              );
+              await loadShowcaseSubSessionScores();
 
             const totalAudiosProsody = allAudioRecordsProsody.length;
             let passCountProsody = 0;
@@ -6314,805 +6347,55 @@ export class ScoresController {
           }
         }
       } else {
-        // This collection_id is for the M0 collection
-        // This collection_id is for the Ta
-        if (
-          getSetResult.collectionId ===
-          '5221f84c-8abb-4601-a9d0-f8d8dd496566' ||
-          getSetResult.collectionId ===
-          'e9c7d535-3e98-4de1-b638-fae9413d7c09' ||
-          getSetResult.collectionId ===
-          '575fbb16-5b6c-43d8-96ca-f2288251b45e' ||
-          (getSetResult.collectionId ===
-            '7c736010-6c8f-42b7-b61a-e6f801b3e163' &&
-            getSetResult.language === 'ta')
-        ) {
-          milestone_level = 'm0';
-
-          if (previous_level === undefined) {
-            previous_level = 'm0';
-          }
-
-          // This collection_id is for the Kn
-        } else if (
-          getSetResult.collectionId ===
-          '1cc3b4d4-79ad-4412-9325-b7fb6ca875bf' ||
-          getSetResult.collectionId ===
-          '976a7631-3887-4d18-9576-7ca8205b82e8' ||
-          getSetResult.collectionId ===
-          '9374ae97-80e4-419b-8e96-784734317e82' ||
-          (getSetResult.collectionId ===
-            'e6f3537d-7a34-4b08-9824-0ddbc4c49be3' &&
-            getSetResult.language === 'kn')
-        ) {
+        // Discovery milestone by setNo 
+        if (setNo === 'set4') {
           milestone_level = 'm0';
           if (previous_level === undefined) {
             previous_level = 'm0';
           }
-
-          // This collection_id is for the En
-        } else if (
-          getSetResult.collectionId ===
-          '36e4cff0-0552-4107-b8f4-9f9c5a3ff3c1' ||
-          getSetResult.collectionId ===
-          'fba7282d-aba3-4e95-8916-40b79f9e3f50' ||
-          getSetResult.collectionId ===
-          '3c62cb34-9565-4b81-8e96-da86d90b6072' ||
-          (getSetResult.collectionId ===
-            'c637ac92-2ecf-4015-82e9-c4002479ae32' &&
-            getSetResult.language === 'en')
-        ) {
-          milestone_level = 'm0';
-          if (previous_level === undefined) {
-            previous_level = 'm0';
-          }
-
-          // This collection_id is for the Te
-        } else if (
-          getSetResult.collectionId ===
-          '8b5023d6-bafe-4cbe-8967-1f3f19481e4f' ||
-          getSetResult.collectionId ===
-          '1df7cb53-4609-4ba0-a0dc-2e4dc188619a' ||
-          getSetResult.collectionId ===
-          'cfbd93f9-10f6-4064-ab0f-f2f8d6e45e6a' ||
-          (getSetResult.collectionId ===
-            'd6f84966-53fa-44bb-93d9-598c84974f04' &&
-            getSetResult.language === 'te')
-        ) {
-          milestone_level = 'm0';
-          if (previous_level === undefined) {
-            previous_level = 'm0';
-          }
-
-          // This collection_id is for the Gu
-        } else if (
-          getSetResult.collectionId ===
-          '1394ade3-cc95-48cd-98ca-f3288860b0e1' ||
-          getSetResult.collectionId ===
-          'eea19621-ae97-4a5d-9933-882a493c84d8' ||
-          getSetResult.collectionId ===
-          '61ef8260-98c5-4bc0-9ccd-43cd34c6ecab' ||
-          (getSetResult.collectionId ===
-            '3ac7bf14-4455-4e20-9dd4-2af2a04a8227' &&
-            getSetResult.language === 'gu')
-        ) {
-          milestone_level = 'm0';
-          if (previous_level === undefined) {
-            previous_level = 'm0';
-          }
-
-          // This collection_id is for the Hi
-        } else if (
-          getSetResult.collectionId ===
-          '0d00c89d-5c73-4de1-9153-c300c972ad64' ||
-          getSetResult.collectionId ===
-          'f10b7f82-8a1a-4448-b319-6eea17acff26' ||
-          getSetResult.collectionId ===
-          '9e77a188-6785-4e56-b2d0-bfac97bcc6a2' ||
-          (getSetResult.collectionId ===
-            '7765ff21-e07a-4a68-9b42-18751f504ef0' &&
-            getSetResult.language === 'hi')
-        ) {
-          milestone_level = 'm0';
-          if (previous_level === undefined) {
-            previous_level = 'm0';
-          }
-          // This collection_id is for the or
-        } else if (
-          getSetResult.collectionId ===
-          '010ba3e3-f6b4-4a4a-856e-e323a288b98e' ||
-          getSetResult.collectionId ===
-          '971cdd0b-989f-429b-999a-620c10c670b5' ||
-          getSetResult.collectionId ===
-          '104fff5c-9f00-4268-92bb-9697f943035a' ||
-          (getSetResult.collectionId ===
-            'a4947dd3-e9af-4e0c-b8e9-52ed77a1e8cf' &&
-            getSetResult.language === 'or')
-        ) {
-          milestone_level = 'm0';
-          if (previous_level === undefined) {
-            previous_level = 'm0';
-          }
-        } else {
+        } else if (setNo === 'set3') {
           if (
-            getSetResult.language === 'ta' &&
-            getSetResult.collectionId !== '' &&
-            getSetResult.collectionId !== undefined
+            sessionResult === 'pass' &&
+            previousSessionContentType === 'Sentence'
           ) {
-            // this collection id is for M2
-            if (
-              getSetResult.collectionId ===
-              'bd20fee5-31c3-48d9-ab6f-842eeebf17ff' ||
-              getSetResult.collectionId ===
-              '61bc9579-0f9b-47ae-b446-7cdd525ce413' ||
-              getSetResult.collectionId ===
-              '76ef507c-5d56-457c-aa3a-647cf5dba545' ||
-              getSetResult.collectionId ===
-              '55767bfa-0e12-4d8f-999b-e84daf6c7587'
-            ) {
-              if (
-                sessionResult === 'pass' &&
-                setNo === 'set3' &&
-                previousSessionContentType === 'Sentence'
-              ) {
-                milestone_level = 'm3';
-              } else if (
-                sessionResult === 'fail' &&
-                setNo === 'set3' &&
-                previousSessionContentType === 'Sentence'
-              ) {
-                milestone_level = 'm2';
-              } else if (
-                sessionResult === 'pass' &&
-                setNo === 'set3' &&
-                previousSessionContentType === 'Word'
-              ) {
-                milestone_level = 'm2';
-              } else if (
-                sessionResult === 'fail' &&
-                setNo === 'set3' &&
-                previousSessionContentType === 'Word'
-              ) {
-                milestone_level = 'm1';
-              }
-              // set 2 word 3 syllable (easy)
-            } else if (
-              getSetResult.collectionId ===
-              '1efb5897-9eb3-4e71-8fd2-892a505d0dc9' ||
-              getSetResult.collectionId ===
-              '42259cda-9db5-4b0d-8589-880eb7c949b5' ||
-              getSetResult.collectionId ===
-              'aca41722-3f1e-45eb-a563-4d79c27aa50e' ||
-              getSetResult.collectionId ===
-              'e4ab8ac2-38c2-4dcc-83f1-654548629a50'
-            ) {
-              milestoneEntry = false;
-              // this collection id is for M3
-            } else if (
-              getSetResult.collectionId ===
-              '986ff23e-8b56-4366-8510-8a7e7e0f36da' ||
-              getSetResult.collectionId ===
-              '85d58650-0771-4b28-b185-d074b5a5982d' ||
-              getSetResult.collectionId ===
-              '461d9b9e-0db6-48ce-9088-d377d0cd33a6' ||
-              getSetResult.collectionId ===
-              '2b196c2a-5f8e-4507-ac60-98d9fe6ae12b'
-            ) {
-              if (sessionResult === 'fail') {
-                milestone_level = 'm3';
-              } else {
-                milestoneEntry = false;
-              }
-              // This collection id is for m4
-            } else if (
-              getSetResult.collectionId ===
-              '67b820f5-096d-42c2-acce-b781d59efe7e' ||
-              getSetResult.collectionId ===
-              '895518d8-64ec-406d-a3d9-44c4ba8d2e57' ||
-              getSetResult.collectionId ===
-              'b83971a5-22a8-46ea-90ab-485182c7cd9d' ||
-              getSetResult.collectionId ===
-              '68dfd9cb-a33d-4d15-a3ea-54755f8311c8'
-            ) {
-              milestone_level = 'm4';
-
-              // This Collection id is for m1
-            } else if (
-              getSetResult.collectionId ===
-              '94312c93-5bb8-4144-8822-9a61ad1cd5a8' ||
-              getSetResult.collectionId ===
-              '67697c4f-fdd2-446b-b765-f610bc2c355c' ||
-              getSetResult.collectionId ===
-              'f9ea2715-0d1b-465e-83f9-54c77341f388' ||
-              getSetResult.collectionId ===
-              'ed47eb63-87c8-41f4-821d-1400fef37b78'
-            ) {
-              milestone_level = 'm1';
-            }
+            milestone_level = 'm3';
           } else if (
-            getSetResult.language === 'kn' &&
-            getSetResult.collectionId !== '' &&
-            getSetResult.collectionId !== undefined
+            sessionResult === 'fail' &&
+            previousSessionContentType === 'Sentence'
           ) {
-            // set 3 word 4 syllable (hard)
-            if (
-              getSetResult.collectionId ===
-              'b755df98-198b-440a-90e0-391579ef4bfb' ||
-              getSetResult.collectionId ===
-              '4a8bddeb-cddd-4b64-9845-662a0d287c34' ||
-              getSetResult.collectionId ===
-              'f9b877d2-4994-4eab-998c-aacaf0076b5a' ||
-              getSetResult.collectionId ===
-              '6a89f990-8727-49da-b128-b7ea1839d025'
-            ) {
-              if (
-                sessionResult === 'pass' &&
-                setNo === 'set3' &&
-                previousSessionContentType === 'Sentence'
-              ) {
-                milestone_level = 'm3';
-              } else if (
-                sessionResult === 'fail' &&
-                setNo === 'set3' &&
-                previousSessionContentType === 'Sentence'
-              ) {
-                milestone_level = 'm2';
-              } else if (
-                sessionResult === 'pass' &&
-                setNo === 'set3' &&
-                previousSessionContentType === 'Word'
-              ) {
-                milestone_level = 'm2';
-              } else if (
-                sessionResult === 'fail' &&
-                setNo === 'set3' &&
-                previousSessionContentType === 'Word'
-              ) {
-                milestone_level = 'm1';
-              }
-              // set 2 word 3 syllable (easy)
-            } else if (
-              getSetResult.collectionId ===
-              '1ff67529-0b3d-44d5-9b2e-19cb38055d33' ||
-              getSetResult.collectionId ===
-              '6c9a6588-bd2f-410e-9ccc-48b630986b0e' ||
-              getSetResult.collectionId ===
-              'b38fa83c-82f0-4ab4-9889-63bfd87a41d3' ||
-              getSetResult.collectionId ===
-              'c280f485-f71c-4d36-8ddf-81ff1585306c'
-            ) {
-              milestoneEntry = false;
-            } else if (
-              getSetResult.collectionId ===
-              '29bb9cff-9510-4693-bec5-9436a686b836' ||
-              getSetResult.collectionId ===
-              '5828539f-4b1f-4502-b648-b2843d61f35d' ||
-              getSetResult.collectionId ===
-              '37a406a5-d82e-447d-9762-17c76f5005ef' ||
-              getSetResult.collectionId ===
-              '69b5512e-7b9f-43a6-9e6c-b25fb83b8661'
-            ) {
-              if (sessionResult === 'fail') {
-                milestone_level = 'm3';
-              } else {
-                milestoneEntry = false;
-              }
-            } else if (
-              getSetResult.collectionId ===
-              'a2c5e2ef-27b8-43d0-9c17-38cdcfe50f4c' ||
-              getSetResult.collectionId ===
-              '390c8719-fc52-42f3-b49d-41547a0639d7' ||
-              getSetResult.collectionId ===
-              'aee5f3f4-213c-4596-8074-0addab60122a' ||
-              getSetResult.collectionId ===
-              'e28d2463-adca-46e6-8159-04c99d6158d3'
-            ) {
-              milestone_level = 'm4';
-            } else if (
-              getSetResult.collectionId ===
-              'ac930427-4a73-41a8-94d5-be74defd2993' ||
-              getSetResult.collectionId ===
-              '086482ed-9748-4c74-93b1-fe24dd6c98c7' ||
-              getSetResult.collectionId ===
-              '272a648e-f2a3-41a4-a3dd-6ebf4b5ec40d' ||
-              getSetResult.collectionId ===
-              '61b65b9b-94b8-4212-94e5-33ce8e80435a'
-            ) {
-              if (sessionResult === 'fail') {
-                milestone_level = 'B';
-              } else {
-                milestone_level = 'm1';
-              }
-            }
+            milestone_level = 'm2';
           } else if (
-            getSetResult.language === 'en' &&
-            getSetResult.collectionId !== '' &&
-            getSetResult.collectionId !== undefined
+            sessionResult === 'pass' &&
+            previousSessionContentType === 'Word'
           ) {
-            // this is set 3 word 4 syllabule
-            if (
-              getSetResult.collectionId ===
-              '91a5279d-f4a2-4c4d-bc8f-0b15ba6e5995' ||
-              getSetResult.collectionId ===
-              'd6d95b4a-9d74-48ff-8f75-a606d5672764' ||
-              getSetResult.collectionId ===
-              'f99ff325-05c0-4cff-b825-b2cbb9638300' ||
-              getSetResult.collectionId ===
-              '775c974a-4bda-4cfc-bc47-2aff56e39c46'
-            ) {
-              if (
-                sessionResult === 'pass' &&
-                setNo === 'set3' &&
-                previousSessionContentType === 'Sentence'
-              ) {
-                milestone_level = 'm3';
-              } else if (
-                sessionResult === 'fail' &&
-                setNo === 'set3' &&
-                previousSessionContentType === 'Sentence'
-              ) {
-                milestone_level = 'm2';
-              } else if (
-                sessionResult === 'pass' &&
-                setNo === 'set3' &&
-                previousSessionContentType === 'Word'
-              ) {
-                milestone_level = 'm2';
-              } else if (
-                sessionResult === 'fail' &&
-                setNo === 'set3' &&
-                previousSessionContentType === 'Word'
-              ) {
-                milestone_level = 'm1';
-              }
-            // set 2 word 3 syllabule
-            } else if (
-              getSetResult.collectionId ===
-              '6b98b4f6-d401-4835-b9d5-89e3a82743e0' ||
-              getSetResult.collectionId ===
-              '98e6a05a-7915-4e2d-802c-3e5011b4ab08' ||
-              getSetResult.collectionId ===
-              'c65782eb-60af-459a-b503-5438d97de392' ||
-              getSetResult.collectionId ===
-              'fa6725f1-bd48-41bc-8674-ef22ed7bff2c'
-            ) {
-              milestoneEntry = false;
-            } else if (
-              getSetResult.collectionId ===
-              'f9eb8c70-524f-46a1-a737-1eec64a42e6f' ||
-              getSetResult.collectionId ===
-              'f24d6660-c759-44f9-a4ae-5b46b62098b2' ||
-              getSetResult.collectionId ===
-              'f6b5638d-4398-4cf4-833c-42a4695a6425' ||
-              getSetResult.collectionId ===
-              '87c2866e-6249-4fe1-9b1b-8b22ddd05ea7'
-            ) {
-              milestoneEntry = false;
-            // set 6 
-            } else if (
-              getSetResult.collectionId ===
-              'e62061ea-4195-4460-b8e3-c0433bf8624e' ||
-              getSetResult.collectionId ===
-              'e276d47b-b262-4af1-b424-ead68b2b83bf' ||
-              getSetResult.collectionId ===
-              'b9ab3b2f-5c21-4c61-b9c8-90898b5278dd' ||
-              getSetResult.collectionId ===
-              '809039e5-119d-42ae-925f-b2546b1e3d7b'
-            ) {
-              if (sessionResult === 'fail') {
-                milestone_level = 'm3';
-              } else {
-                milestone_level = 'm4';
-              }
-            } else if (
-              getSetResult.collectionId ===
-              '5b69052e-f609-4004-adce-cf0fcfdac98b' ||
-              getSetResult.collectionId ===
-              '30c5800e-4a02-4259-8328-abf57e4255ca' ||
-              getSetResult.collectionId ===
-              'b2eb8d4a-5d2b-441a-8269-0151e089c253' ||
-              getSetResult.collectionId ===
-              'b12b79ec-f7cb-44b4-99c9-5ea747d4f99a'
-            ) {
-              if (sessionResult === 'fail') {
-                milestone_level = 'B';
-              } else {
-                milestone_level = 'm1';
-              }
-            }
+            milestone_level = 'm2';
           } else if (
-            getSetResult.language === 'te' &&
-            getSetResult.collectionId !== '' &&
-            getSetResult.collectionId !== undefined
+            sessionResult === 'fail' &&
+            previousSessionContentType === 'Word'
           ) {
-            // set 3 word 4 syllable (hard)
-            if (
-              getSetResult.collectionId ===
-              '9682eee7-f6dc-4277-9ff7-1d1f4f079020' ||
-              getSetResult.collectionId ===
-              '45e148f0-c591-479f-becd-2e1f85caf11e' ||
-              getSetResult.collectionId ===
-              '33fb7dfa-4c51-42dd-b4cd-7a38747b96f4' ||
-              getSetResult.collectionId ===
-              '5a5560e8-e22a-402c-a6da-fb93bfc2b335'
-            ) {
-              if (
-                sessionResult === 'pass' &&
-                setNo === 'set3' &&
-                previousSessionContentType === 'Sentence'
-              ) {
-                milestone_level = 'm3';
-              } else if (
-                sessionResult === 'fail' &&
-                setNo === 'set3' &&
-                previousSessionContentType === 'Sentence'
-              ) {
-                milestone_level = 'm2';
-              } else if (
-                sessionResult === 'pass' &&
-                setNo === 'set3' &&
-                previousSessionContentType === 'Word'
-              ) {
-                milestone_level = 'm2';
-              } else if (
-                sessionResult === 'fail' &&
-                setNo === 'set3' &&
-                previousSessionContentType === 'Word'
-              ) {
-                milestone_level = 'm1';
-              }
-              // set 2 word 3 syllable (easy)
-            } else if (
-              getSetResult.collectionId ===
-              '07971210-fcb0-478f-9710-43f37fb98fa2' ||
-              getSetResult.collectionId ===
-              '3fc7204a-de05-4e83-814e-8648d1b2a74d' ||
-              getSetResult.collectionId ===
-              'cfc532a1-2fba-439d-834d-d153c8c7d33e' ||
-              getSetResult.collectionId ===
-              'd78033a0-d14e-4dac-9dac-afbdc2ac75a6'
-            ) {
-              milestoneEntry = false;
-            } else if (
-              getSetResult.collectionId ===
-              '3b339169-df4e-4490-8ff4-4616370ba9af' ||
-              getSetResult.collectionId ===
-              '7d1d2108-c742-470b-9af9-988411bc05d6' ||
-              getSetResult.collectionId ===
-              'edc2b898-ba23-4cc6-83c4-54a567a83f09' ||
-              getSetResult.collectionId ===
-              '835f0357-f0fe-45ba-8ec1-d55f19d80b3c'
-            ) {
-                milestoneEntry = false;
-            // set 6
-            } else if (
-              getSetResult.collectionId ===
-              '56b06985-fe48-4a89-9b1f-a9f3c6cf1e28' ||
-              getSetResult.collectionId ===
-              'c76fe38d-0881-4b36-aaa2-85dc679a5640' ||
-              getSetResult.collectionId ===
-              '81faf48a-e37c-4909-80de-4ff7d7f204f0' ||
-              getSetResult.collectionId ===
-              'd4652c35-a39c-44ca-b833-74504efc69ab'
-            ) {
-              if (sessionResult === 'fail') {
-                milestone_level = 'm3';
-              } else {
-                milestone_level = 'm4';
-              }
-            } else if (
-              getSetResult.collectionId ===
-              '21a6619e-bb15-4b49-823e-68bfc703e394' ||
-              getSetResult.collectionId ===
-              '74102541-9127-4c2e-aa6f-e19f9b914f42' ||
-              getSetResult.collectionId ===
-              '34651976-b302-4ddf-b858-236b5e4eb093' ||
-              getSetResult.collectionId ===
-              '55149fbb-4fb1-4e4d-9b77-16e30e537b21'
-            ) {
-              if (sessionResult === 'fail') {
-                milestone_level = 'B';
-              } else {
-                milestone_level = 'm1';
-              }
-            }
-          } else if (
-            getSetResult.language === 'gu' &&
-            getSetResult.collectionId !== '' &&
-            getSetResult.collectionId !== undefined
-
-            // this collection id is for M2
-          ) {
-            // set 3 word 4 syllable (hard)
-            if (
-              getSetResult.collectionId ===
-              'e1e87800-f530-4868-aebe-4f2402d29eb8' ||
-              getSetResult.collectionId ===
-              '9fa1173e-307f-4c47-af07-482228667f2c' ||
-              getSetResult.collectionId ===
-              '3d0a5345-2acb-4ed1-919d-fc6511417ed2' ||
-              getSetResult.collectionId ===
-              '42e4140b-4294-424f-b488-f0c53fc376c9'
-            ) {
-              if (
-                sessionResult === 'pass' &&
-                setNo === 'set3' &&
-                previousSessionContentType === 'Sentence'
-              ) {
-                milestone_level = 'm3';
-              } else if (
-                sessionResult === 'fail' &&
-                setNo === 'set3' &&
-                previousSessionContentType === 'Sentence'
-              ) {
-                milestone_level = 'm2';
-              } else if (
-                sessionResult === 'pass' &&
-                setNo === 'set3' &&
-                previousSessionContentType === 'Word'
-              ) {
-                milestone_level = 'm2';
-              } else if (
-                sessionResult === 'fail' &&
-                setNo === 'set3' &&
-                previousSessionContentType === 'Word'
-              ) {
-                milestone_level = 'm1';
-              }
-              // set 2 word 3 syllable (easy)
-            } else if (
-              getSetResult.collectionId ===
-              '0023563e-12da-40a7-9549-8c735a2fb98f' ||
-              getSetResult.collectionId ===
-              '586a483a-d299-4bde-8022-1ff476988543' ||
-              getSetResult.collectionId ===
-              'c163408f-c3be-4836-8b61-2d1f0cbbc765' ||
-              getSetResult.collectionId ===
-              'f9375cdb-c9e4-4df0-b884-2ff4679c7f10'
-            ) {
-              milestoneEntry = false;
-              // this collection id is for M3
-            } else if (
-              getSetResult.collectionId ===
-              '6e856dc6-073d-43fe-9086-2bc5869eca86' ||
-              getSetResult.collectionId ===
-              '4c7e2f94-25e1-4bd7-a04c-7bfa7a54d187' ||
-              getSetResult.collectionId ===
-              '8da5ddf4-8e22-4c69-97bc-2edf1f5d5e18' ||
-              getSetResult.collectionId ===
-              'f70b2c60-f321-4ddf-90c9-5038a23b6595'
-            ) {
-              if (sessionResult === 'fail') {
-                milestone_level = 'm3';
-              } else {
-                milestoneEntry = false;
-              }
-              // This collection id is for m4
-            } else if (
-              getSetResult.collectionId ===
-              '0601c390-01a8-4887-8029-1cd9852abac6' ||
-              getSetResult.collectionId ===
-              '85e45847-bdc1-4421-b9d0-b3592b9a068a' ||
-              getSetResult.collectionId ===
-              '4299a52a-0932-4ebd-b33f-5dab9ecb7e76' ||
-              getSetResult.collectionId ===
-              'c78fdc09-11d9-4209-acd1-3e4d550857bf'
-            ) {
-              milestone_level = 'm4';
-              // This Collection id is for m1
-            } else if (
-              getSetResult.collectionId ===
-              '24d4b913-1f5a-45cd-8b72-7e7125f56920' ||
-              getSetResult.collectionId ===
-              '5eb9babf-2ec1-4760-9e6e-d515ddb8f405' ||
-              getSetResult.collectionId ===
-              'b8830bb6-dee3-46f9-b7e3-09aca044ceef' ||
-              getSetResult.collectionId ===
-              '14209021-7373-42ac-b02d-a32f0ee89ef9'
-            ) {
-              milestone_level = 'm1';
-            }
-          } else if (
-            getSetResult.language === 'hi' &&
-            getSetResult.collectionId !== '' &&
-            getSetResult.collectionId !== undefined
-
-            // this collection id is for M2
-          ) {
-            // set 3 word 4 syllable (hard)
-            if (
-              getSetResult.collectionId ===
-              '6f64d4a2-b6e5-4a2b-91e5-f6be9f2d4d8b' ||
-              getSetResult.collectionId ===
-              '00644696-a8b6-48fc-b73f-25a0da567a14' ||
-              getSetResult.collectionId ===
-              '2a1a6894-d953-4a26-a294-a7f66469b209' ||
-              getSetResult.collectionId ===
-              'e0bdd73c-dd8b-4c2b-92cf-be753fd32c46'
-            ) {
-              if (
-                sessionResult === 'pass' &&
-                setNo === 'set3' &&
-                previousSessionContentType === 'Sentence'
-              ) {
-                milestone_level = 'm3';
-              } else if (
-                sessionResult === 'fail' &&
-                setNo === 'set3' &&
-                previousSessionContentType === 'Sentence'
-              ) {
-                milestone_level = 'm2';
-              } else if (
-                sessionResult === 'pass' &&
-                setNo === 'set3' &&
-                previousSessionContentType === 'Word'
-              ) {
-                milestone_level = 'm2';
-              } else if (
-                sessionResult === 'fail' &&
-                setNo === 'set3' &&
-                previousSessionContentType === 'Word'
-              ) {
-                milestone_level = 'm1';
-              }
-              // set 2 word 3 syllable (easy)
-            } else if (
-              getSetResult.collectionId ===
-              '4f3343b0-bdf4-4801-b4e5-89243629ccb6' ||
-              getSetResult.collectionId ===
-              '8cd631b3-fd13-406f-897a-8a6bd9f3c1d6' ||
-              getSetResult.collectionId ===
-              'cb2143b7-c991-4d9c-bc8f-fa593b731743' ||
-              getSetResult.collectionId ===
-              'f18f2a47-b762-4798-a15f-9ba1202abc42'
-            ) {
-              milestoneEntry = false;
-              // this collection id is for M3
-            } else if (
-              getSetResult.collectionId ===
-              'ab289254-45b1-40ed-9b84-3e414577120f' ||
-              getSetResult.collectionId ===
-              '98a53df5-c4e3-4045-870d-1154f1e5023a' ||
-              getSetResult.collectionId ===
-              '8c438757-e35b-4beb-ae5f-015a9ed3f7f6' ||
-              getSetResult.collectionId ===
-              'a8492aad-b904-406a-bae1-e3f6ebda48ca'
-            ) {
-              if (sessionResult === 'fail') {
-                milestone_level = 'm3';
-              } else {
-                milestoneEntry = false;
-              }
-              // This collection id is for m4
-            } else if (
-              getSetResult.collectionId ===
-              'ee548dec-f599-47a4-8767-bddadb20ed70' ||
-              getSetResult.collectionId ===
-              'a1cd9d37-2fe1-429f-8830-dde473b9e87f' ||
-              getSetResult.collectionId ===
-              '1da05e37-8ddc-4a5e-b059-abaa3ef45198' ||
-              getSetResult.collectionId ===
-              '62fca34f-12da-4017-83f5-ae88bf99c48d'
-            ) {
-              milestone_level = 'm4';
-              // This Collection id is for m1
-            } else if (
-              getSetResult.collectionId ===
-              '919aba0b-7443-4d6c-a1dc-e7b42a803496' ||
-              getSetResult.collectionId ===
-              'd95a1672-70d3-437f-92da-9013a4e5e593' ||
-              getSetResult.collectionId ===
-              'dfe36bd6-91d5-436e-b283-0dc3704f19f5' ||
-              getSetResult.collectionId ===
-              'e0021945-8948-4467-a256-13b5bfbbe6af'
-            ) {
-              if (sessionResult === 'fail') {
-                milestone_level = 'B';
-              } else {
-                milestone_level = 'm1';
-              }
-            }
+            milestone_level = 'm1';
           }
-          if (
-            getSetResult.language === 'or' &&
-            getSetResult.collectionId !== '' &&
-            getSetResult.collectionId !== undefined
-          ) {
-            // set 3 word 4 syllable (hard)
-            if (
-              getSetResult.collectionId ===
-              'f1c48b67-9876-4058-a2d0-d38c8bb4e3fd' ||
-              getSetResult.collectionId ===
-              '7dcb258c-8cb8-41cd-971f-15e46fa2136d' ||
-              getSetResult.collectionId ===
-              '647d40b3-35d6-415f-9a41-2388d8ca147f' ||
-              getSetResult.collectionId ===
-              '52e6cdfc-3f1e-4ca6-84ff-4a2ab04c2cfc'
-            ) {
-              if (
-                sessionResult === 'pass' &&
-                setNo === 'set3' &&
-                previousSessionContentType === 'Sentence'
-              ) {
-                milestone_level = 'm3';
-              } else if (
-                sessionResult === 'fail' &&
-                setNo === 'set3' &&
-                previousSessionContentType === 'Sentence'
-              ) {
-                milestone_level = 'm2';
-              } else if (
-                sessionResult === 'pass' &&
-                setNo === 'set3' &&
-                previousSessionContentType === 'Word'
-              ) {
-                milestone_level = 'm2';
-              } else if (
-                sessionResult === 'fail' &&
-                setNo === 'set3' &&
-                previousSessionContentType === 'Word'
-              ) {
-                milestone_level = 'm1';
-              }
-              // set 2 word 3 syllable (easy)
-            } else if (
-              getSetResult.collectionId ===
-              '46ac2621-a0c4-4488-8328-85da8bd1a7da' ||
-              getSetResult.collectionId ===
-              '7c38a405-5880-43a4-b3a3-e779c5f9ee57' ||
-              getSetResult.collectionId ===
-              '811ac935-a0af-43bb-bcee-93f2b604d221' ||
-              getSetResult.collectionId ===
-              'f3b29ee3-c435-4d4a-a870-f18706296dd8'
-            ) {
-              milestoneEntry = false;
-              // this collection id is for M3
-            } else if (
-              getSetResult.collectionId ===
-              'baf0e828-caad-4597-80c3-e76503b62bbe' ||
-              getSetResult.collectionId ===
-              'ea3c6696-498b-4827-bc6c-3740fad6adfd' ||
-              getSetResult.collectionId ===
-              '543a324d-9ade-4621-aa04-2ef16540ac87' ||
-              getSetResult.collectionId ===
-              '19b1e674-e633-4339-9365-e1ade2fc5f59'
-            ) {
-              if (sessionResult === 'fail') {
-                milestone_level = 'm3';
-              } else {
-                milestoneEntry = false;
-              }
-              // This collection id is for m4
-            } else if (
-              getSetResult.collectionId ===
-              '3ffd72bc-d45d-4148-a3d5-b786b0a00924' ||
-              getSetResult.collectionId ===
-              'c647f7e8-29f8-4b92-98f4-7995d6dd05e4' ||
-              getSetResult.collectionId ===
-              '1501b007-1136-4360-838f-84c4a2a50a8c' ||
-              getSetResult.collectionId ===
-              '4a261a24-187e-4616-954c-c2e9d38189ac'
-            ) {
-              milestone_level = 'm4';
-
-              // This Collection id is for m1
-            } else if (
-              getSetResult.collectionId ===
-              '59f80fb8-5ff4-4739-b7ad-3811af25b575' ||
-              getSetResult.collectionId ===
-              'e5f7a86f-3b9f-4dc4-b64f-ff8ade0b88c3' ||
-              getSetResult.collectionId ===
-              'c9564b7a-7854-4989-a43c-1a20a253d6b2' ||
-              getSetResult.collectionId ===
-              'bf48828e-2b54-462d-a12b-59025e2c1fd7'
-            ) {
-              milestone_level = 'm1';
-            }
+        } else if (setNo === 'set2') {
+          milestoneEntry = false;
+        } else if (setNo === 'set5') {
+         milestoneEntry = false;
+        } else if (setNo === 'set6') {
+          if (sessionResult === 'fail') {
+            milestone_level = 'm3';
+          } else {
+            milestone_level = 'm4';
+          }
+          milestone_level = 'm1';
+        } else if (setNo === 'set1') {
+          if (sessionResult === 'fail') {
+            milestone_level = 'B';
+          } else {
+            milestone_level = 'm1';
           }
         }
       }
 
-      // Apply content type specific milestone logic for collectionId cases
+      // Apply content type specific milestone logic for discovery (setNo) cases
       if (sessionResult === 'fail') {
         const isM0OrUndefined = previous_level === 'm0' || previous_level === undefined;
         // If user was at B and fails, always stay at B (don't advance to m1)
@@ -7124,7 +6407,7 @@ export class ScoresController {
           milestone_level === 'm3' ||
           milestone_level === 'B'
         ) {
-          // Preserve milestone set by collectionId logic (including B)
+          // Preserve milestone set by discovery setNo logic (including B)
         } else if (getSetResult.contentType.toLowerCase() === 'word' && isM0OrUndefined) {
           milestone_level = milestoneEntry ? 'B' : previous_level;
         } else if (getSetResult.contentType.toLowerCase() === 'word') {
