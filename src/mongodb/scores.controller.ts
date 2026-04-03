@@ -5949,7 +5949,7 @@ export class ScoresController {
           requestLanguage,
         ),
         this.scoresService.getlatestmilestone(
-          user_id, 
+          user_id,
           requestLanguage
         ),
         this.scoresService.calculateAnsSelectionResult(
@@ -5960,9 +5960,9 @@ export class ScoresController {
         ),
         requestLanguage !== 'en'
           ? this.scoresService.getSubsessionOriginalTextSyllables(
-              user_id,
-              subSessionId,
-            )
+            user_id,
+            subSessionId,
+          )
           : Promise.resolve(null),
       ]);
 
@@ -6378,14 +6378,13 @@ export class ScoresController {
         } else if (setNo === 'set2') {
           milestoneEntry = false;
         } else if (setNo === 'set5') {
-         milestoneEntry = false;
+          milestoneEntry = false;
         } else if (setNo === 'set6') {
           if (sessionResult === 'fail') {
             milestone_level = 'm3';
           } else {
             milestone_level = 'm4';
           }
-          milestone_level = 'm1';
         } else if (setNo === 'set1') {
           if (sessionResult === 'fail') {
             milestone_level = 'B';
