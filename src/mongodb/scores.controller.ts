@@ -1666,22 +1666,6 @@ export class ScoresController {
     try {
       const user_id = (request as any).user.virtual_id.toString();
       let createScoreData;
-      if (
-        CreateLearnerProfileDto['output'] === undefined &&
-        CreateLearnerProfileDto.audio !== undefined
-      ) {
-        const audioFile = CreateLearnerProfileDto.audio;
-        const decoded = Buffer.isBuffer(audioFile)
-          ? audioFile.toString('base64')
-          : audioFile; // if it's already a base64 string
-
-        const audioOutput = await this.scoresService.audioFileToAsrOutput(
-          decoded,
-          'hi',
-          CreateLearnerProfileDto['contentType'],
-        );
-        CreateLearnerProfileDto['output'] = audioOutput.output;
-      }
 
       const vowelSignArr = hi_config.vowel;
       const language = hi_config.language_code;
