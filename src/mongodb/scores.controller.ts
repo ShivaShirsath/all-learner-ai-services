@@ -62,6 +62,37 @@ export class ScoresController {
     private readonly httpService: HttpService,
   ) { }
 
+  /** Same shape as profanity minimal save — tracks empty ASR for analytics. */
+  private async persistEmptyAsrLearnerProfile(
+    userId: string,
+    dto: CreateLearnerProfileDto,
+    language: string,
+    originalText: string,
+    createdAt: string,
+  ): Promise<void> {
+    const emptyAsrScoreData = {
+      user_id: userId,
+      session: {
+        session_id: dto.session_id,
+        sub_session_id: dto.sub_session_id || '',
+        contentType: dto.contentType,
+        contentId: dto.contentId || '',
+        createdAt,
+        language,
+        original_text: originalText,
+        response_text: '',
+        construct_text: '',
+        feedback: 'Audio not found',
+        asrOutput: '',
+      },
+    };
+    try {
+      await this.scoresService.create(emptyAsrScoreData);
+    } catch (dbError) {
+      console.error('Failed to save empty ASR learner profile to DB:', dbError);
+    }
+  }
+
   @ApiBody({
     description: 'Request body for storing Tamil language learner profile data. Processes audio through ASR and evaluates pronunciation accuracy.',
     schema: {
@@ -261,6 +292,13 @@ export class ScoresController {
             }
 
             if (CreateLearnerProfileDto.output[0].source === '') {
+              await this.persistEmptyAsrLearnerProfile(
+                user_id,
+                CreateLearnerProfileDto,
+                language,
+                originalText,
+                createdAt,
+              );
               throw new BadRequestException({
                 code: ErrorCodes.BAD_REQUEST,
                 message:
@@ -780,6 +818,13 @@ export class ScoresController {
           }
 
           if (CreateLearnerProfileDto.output[0].source === '') {
+            await this.persistEmptyAsrLearnerProfile(
+              user_id,
+              CreateLearnerProfileDto,
+              language,
+              originalText,
+              createdAt,
+            );
             throw new BadRequestException({
               code: ErrorCodes.BAD_REQUEST,
               message:
@@ -1296,6 +1341,13 @@ export class ScoresController {
           }
 
           if (CreateLearnerProfileDto.output[0].source === '') {
+            await this.persistEmptyAsrLearnerProfile(
+              user_id,
+              CreateLearnerProfileDto,
+              language,
+              originalText,
+              createdAt,
+            );
             throw new BadRequestException({
               code: ErrorCodes.BAD_REQUEST,
               message:
@@ -1756,6 +1808,13 @@ export class ScoresController {
           }
 
           if (CreateLearnerProfileDto.output[0].source === '') {
+            await this.persistEmptyAsrLearnerProfile(
+              user_id,
+              CreateLearnerProfileDto,
+              language,
+              originalText,
+              createdAt,
+            );
             throw new BadRequestException({
               code: ErrorCodes.BAD_REQUEST,
               message:
@@ -2248,6 +2307,13 @@ export class ScoresController {
             }
 
             if (CreateLearnerProfileDto.output[0].source === '') {
+              await this.persistEmptyAsrLearnerProfile(
+                user_id,
+                CreateLearnerProfileDto,
+                language,
+                originalText,
+                createdAt,
+              );
               throw new BadRequestException({
                 code: ErrorCodes.BAD_REQUEST,
                 message:
@@ -3164,6 +3230,13 @@ export class ScoresController {
             }
 
             if (CreateLearnerProfileDto.output[0].source === '') {
+              await this.persistEmptyAsrLearnerProfile(
+                user_id,
+                CreateLearnerProfileDto,
+                language,
+                originalText,
+                createdAt,
+              );
               throw new BadRequestException({
                 code: ErrorCodes.BAD_REQUEST,
                 message:
@@ -3882,6 +3955,13 @@ export class ScoresController {
           }
 
           if (CreateLearnerProfileDto.output[0].source === '') {
+            await this.persistEmptyAsrLearnerProfile(
+              user_id,
+              CreateLearnerProfileDto,
+              language,
+              originalText,
+              createdAt,
+            );
             throw new BadRequestException({
               code: ErrorCodes.BAD_REQUEST,
               message:
