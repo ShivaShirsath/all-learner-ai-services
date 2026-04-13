@@ -148,10 +148,14 @@ export class TowreController {
     try {
       const user_id = (request as any).user.virtual_id.toString();
       const savedWords = await this.towreService.addCorrectWords(user_id, dto);
+      const data = savedWords.map((doc) => {
+        const { user_id: _omit, ...rest } = doc.toObject();
+        return rest;
+      });
       return response.status(HttpStatus.CREATED).send({
         status: 'success',
         message: 'Correct practice words added successfully',
-        data: savedWords,
+        data,
       });
     } catch (err) {
       throw mapUnknownToHttpException(err);
