@@ -3715,15 +3715,13 @@ export class ScoresController {
         CreateLearnerProfileDto.language,
       );
 
-
+    
       return response.status(HttpStatus.CREATED).send({
         status: 'success',
         msg: 'Successfully stored data to learner profile',
         responseText: responseText,
         subsessionTargetsCount: totalTargets,
-        subsessionFluency: parseFloat(fluency.toFixed(2)),
-        createScoreData: createScoreData,
-        feedback: feedback,
+        subsessionFluency: parseFloat(fluency.toFixed(2))
       });
     } catch (err) {
       throw mapUnknownToHttpException(err);
