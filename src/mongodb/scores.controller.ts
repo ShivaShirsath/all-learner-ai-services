@@ -7344,7 +7344,8 @@ export class ScoresController {
         user_id,
         milestone_level,
         content_type,
-        token
+        token,
+        language
       )
 
       return response.status(HttpStatus.OK).send(recommendationData);
