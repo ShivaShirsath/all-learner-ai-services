@@ -27,6 +27,12 @@ import {
   ErrorCodes,
   mapAxiosToUpstreamHttpException,
 } from 'src/common/exceptions/api.exceptions';
+import {
+  FluencyClassification,
+  ProsodyClassification,
+  SessionResult,
+  SUPPORTED_LANGUAGES,
+} from 'src/common/enums/scores.enum';
 
 @Injectable()
 export class ScoresService {
@@ -3083,14 +3089,13 @@ export class ScoresService {
 
   public classificationToScore(classification: string): number {
     switch (classification) {
-      case 'Fluent':
+      case FluencyClassification.FLUENT:
         return 4;
-      case 'Moderately Fluent':
+      case FluencyClassification.MODERATELY_FLUENT:
         return 3;
-      case 'Disfluent':
+      case FluencyClassification.DISFLUENT:
         return 2;
-      case 'Very Disfluent':
-        return 1;
+      case FluencyClassification.VERY_DISFLUENT:
       default:
         return 1;
     }
@@ -3126,6 +3131,117 @@ export class ScoresService {
       return acc;
     }, []);
     return sessions;
+  }
+
+  async computeFluencyAndProsodyResults(
+    userId: string,
+    subSessionId: string,
+    language: string,
+    collectionId: string | undefined,
+    previousLevel: string | undefined,
+  ): Promise<{ fluencyResult: SessionResult | undefined; prosodyResult: SessionResult | undefined }> {
+    const langLower = language.toLowerCase();
+
+    if (collectionId || !SUPPORTED_LANGUAGES.includes(langLower)) {
+      return { fluencyResult: undefined, prosodyResult: undefined };
+    }
+
+    const userLevelNum = previousLevel ? parseInt(previousLevel.replace('m', ''), 10) : NaN;
+    const needsFluency = !isNaN(userLevelNum) && userLevelNum < 10;
+    const needsProsody = !isNaN(userLevelNum) && userLevelNum >= 6;
+
+    if (!needsFluency && !needsProsody) {
+      return { fluencyResult: undefined, prosodyResult: undefined };
+    }
+
+    // Single DB call shared between both computations.
+    const audioRecords = await this.getSubSessionScores(userId, subSessionId, langLower);
+    const total = audioRecords.length;
+
+    const { passThresholdM4Plus, passThresholdBelowM4, weights } =
+      lang_common_config.fluencyAndProsody;
+
+    let fluencyResult: SessionResult | undefined;
+    if (needsFluency) {
+      const passThreshold = userLevelNum >= 4 ? passThresholdM4Plus : passThresholdBelowM4;
+      let passCount = 0;
+
+      for (const record of audioRecords) {
+        const prosody = record.prosody_fluency || {};
+        const exprClass: string = prosody.expression_classification || FluencyClassification.VERY_DISFLUENT;
+        const smoothClass: string = prosody.smoothness?.smoothness_classification || FluencyClassification.VERY_DISFLUENT;
+        const accClass: string = prosody.accuracy?.accuracy_classification || FluencyClassification.VERY_DISFLUENT;
+        const rateClass: string = prosody.rate?.rate_classification || FluencyClassification.VERY_DISFLUENT;
+
+        const weightedScore =
+          this.classificationToScore(exprClass) * weights.expression +
+          this.classificationToScore(smoothClass) * weights.smoothness +
+          this.classificationToScore(accClass) * weights.accuracy +
+          this.classificationToScore(rateClass) * weights.rate;
+
+        let recordPass: boolean;
+        if (userLevelNum >= 4) {
+          if (weightedScore >= passThreshold) {
+            recordPass = true;
+          } else {
+            // Exception: three borderline combinations score 2.9 but are intentionally passing.
+            recordPass =
+              (exprClass === FluencyClassification.MODERATELY_FLUENT && smoothClass === FluencyClassification.DISFLUENT && accClass === FluencyClassification.MODERATELY_FLUENT && rateClass === FluencyClassification.MODERATELY_FLUENT) ||
+              (exprClass === FluencyClassification.DISFLUENT && smoothClass === FluencyClassification.FLUENT && accClass === FluencyClassification.MODERATELY_FLUENT && rateClass === FluencyClassification.MODERATELY_FLUENT) ||
+              (exprClass === FluencyClassification.VERY_DISFLUENT && smoothClass === FluencyClassification.MODERATELY_FLUENT && accClass === FluencyClassification.MODERATELY_FLUENT && rateClass === FluencyClassification.FLUENT);
+          }
+        } else {
+          recordPass = weightedScore >= passThreshold;
+        }
+
+        if (recordPass) {
+          passCount++;
+        }
+      }
+
+      fluencyResult = total === 0
+        ? SessionResult.FAIL
+        : total % 2 === 0
+          ? passCount >= total / 2 ? SessionResult.PASS : SessionResult.FAIL
+          : passCount > total / 2 ? SessionResult.PASS : SessionResult.FAIL;
+    }
+
+    let prosodyResult: SessionResult | undefined;
+    if (needsProsody) {
+      const validProsodyClasses: string[] = Object.values(ProsodyClassification);
+      const normalizeClass = (cls: string): string => {
+        const lower = cls.toLowerCase();
+        return validProsodyClasses.includes(lower) ? lower : ProsodyClassification.ERRATIC;
+      };
+
+      let passCountProsody = 0;
+
+      for (const record of audioRecords) {
+        const prosody = record.prosody_fluency || {};
+        const pitchClass = normalizeClass(prosody.pitch?.pitch_classification || ProsodyClassification.ERRATIC);
+        const intensityClass = normalizeClass(prosody.intensity?.intensity_classification || ProsodyClassification.ERRATIC);
+        const tempoClass = normalizeClass(prosody.tempo?.tempo_classification || ProsodyClassification.ERRATIC);
+
+        const exaggeratedCount = [pitchClass, intensityClass, tempoClass].filter(
+          (c) => c === ProsodyClassification.EXAGGERATED,
+        ).length;
+        const recordProsodyPass =
+          pitchClass !== ProsodyClassification.ERRATIC &&
+          intensityClass !== ProsodyClassification.ERRATIC &&
+          tempoClass !== ProsodyClassification.ERRATIC &&
+          exaggeratedCount < 2;
+
+        if (recordProsodyPass) passCountProsody++;
+      }
+
+      prosodyResult = total === 0
+        ? SessionResult.FAIL
+        : total % 2 === 0
+          ? passCountProsody >= total / 2 ? SessionResult.PASS : SessionResult.FAIL
+          : passCountProsody > total / 2 ? SessionResult.PASS : SessionResult.FAIL;
+    }
+
+    return { fluencyResult, prosodyResult };
   }
 
   public async getComprehensionScore(

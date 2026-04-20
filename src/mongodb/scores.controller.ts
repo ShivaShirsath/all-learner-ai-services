@@ -51,6 +51,7 @@ import hi_config from './config/language/hi';
 import kn_config from './config/language/kn';
 import { isNotEmptyObject } from 'class-validator';
 import { splitGraphemes } from "split-graphemes";
+import { SessionResult } from 'src/common/enums/scores.enum';
 
 const Public = () => SetMetadata('isPublic', true);
 @ApiTags('scores')
@@ -6144,208 +6145,20 @@ export class ScoresController {
         sessionResult = 'fail';
       }
 
-      const langLowerShowcase = requestLanguage.toLowerCase();
-      const showcaseLangs = ['en', 'kn', 'te', 'hi', 'ta', 'or', 'gu'];
-      let cachedSubSessionScoresForShowcase: any[] | null = null;
-      const loadShowcaseSubSessionScores = async () => {
-        if (!cachedSubSessionScoresForShowcase) {
-          cachedSubSessionScoresForShowcase =
-            await this.scoresService.getSubSessionScores(
-              user_id,
-              subSessionId,
-              langLowerShowcase,
-            );
-        }
-        return cachedSubSessionScoresForShowcase;
-      };
-
-      // NEW: Compute fluencyResult.
-      let fluencyResult: string;
-      if (
-        !getSetResult.hasOwnProperty('collectionId') ||
-        !getSetResult.collectionId
-      ) {
-        const userLevelNum = parseInt(previous_level?.replace('m', ''), 10);
-        if (
-          showcaseLangs.includes(langLowerShowcase) &&
-          userLevelNum < 10
-        ) {
-          // Determine pass threshold based on milestone level.
-          // For M4+ (e.g. level >= 4) threshold is 3.0; otherwise, 2.6.
-
-          const passThreshold = userLevelNum >= 4 ? 3.0 : 2.6;
-
-          // Retrieve all audio records for the given sub-session and languages.
-
-          const allAudioRecords = await loadShowcaseSubSessionScores();
-
-          const totalAudios = allAudioRecords.length;
-          let passCount = 0;
-
-          // Loop through each audio record.
-          for (const record of allAudioRecords) {
-            const prosody = record.prosody_fluency || {};
-            const exprClass =
-              prosody.expression_classification || 'Very Disfluent';
-            const smoothClass =
-              (prosody.smoothness &&
-                prosody.smoothness.smoothness_classification) ||
-              'Very Disfluent';
-            const accClass =
-              (prosody.accuracy && prosody.accuracy.accuracy_classification) ||
-              'Very Disfluent';
-            const rateClass =
-              (prosody.rate && prosody.rate.rate_classification) ||
-              'Very Disfluent';
-
-            // Convert the classification strings to numeric scores.
-            const exprScore =
-              this.scoresService.classificationToScore(exprClass);
-            const smoothScore =
-              this.scoresService.classificationToScore(smoothClass);
-            const accScore = this.scoresService.classificationToScore(accClass);
-            const rateScore =
-              this.scoresService.classificationToScore(rateClass);
-
-            // Compute the weighted score.
-            const weightedScore =
-              exprScore * 0.2 +
-              smoothScore * 0.1 +
-              accScore * 0.4 +
-              rateScore * 0.3;
-
-            // Determine if this record passes.
-            let recordPass = false;
-            if (userLevelNum >= 4) {
-              if (weightedScore >= passThreshold) {
-                recordPass = true;
-              } else {
-                // Exception: for M4+, if weightedScore is below 3.0, then check for these combinations.
-                if (
-                  (exprClass === 'Moderately Fluent' &&
-                    smoothClass === 'Disfluent' &&
-                    accClass === 'Moderately Fluent' &&
-                    rateClass === 'Moderately Fluent') ||
-                  (exprClass === 'Disfluent' &&
-                    smoothClass === 'Fluent' &&
-                    accClass === 'Moderately Fluent' &&
-                    rateClass === 'Moderately Fluent') ||
-                  (exprClass === 'Very Disfluent' &&
-                    smoothClass === 'Moderately Fluent' &&
-                    accClass === 'Moderately Fluent' &&
-                    rateClass === 'Fluent')
-                ) {
-                  recordPass = true;
-                }
-              }
-            } else {
-              // For levels below M4, use the normal threshold.
-              recordPass = weightedScore >= passThreshold;
-            }
-
-            if (weightedScore >= passThreshold) {
-              passCount++;
-            }
-          }
-
-          // Even/odd logic:
-          // For even total audios: pass if passCount >= (totalAudios / 2)
-          // For odd total audios: pass if passCount > (totalAudios / 2)
-          if (totalAudios > 0) {
-            if (totalAudios % 2 === 0) {
-              fluencyResult = passCount >= totalAudios / 2 ? 'pass' : 'fail';
-            } else {
-              fluencyResult = passCount > totalAudios / 2 ? 'pass' : 'fail';
-            }
-          } else {
-            // If no audio records are present, assign a default value.
-            fluencyResult = 'fail';
-          }
-        }
-      }
-      let prosodyResult: string;
-      if (
-        !getSetResult.hasOwnProperty('collectionId') ||
-        !getSetResult.collectionId
-      ) {
-        if (showcaseLangs.includes(langLowerShowcase)) {
-          const userLevelNum = previous_level
-            ? parseInt(previous_level.replace('m', ''), 10)
-            : 0;
-          if (userLevelNum >= 6) {
-            const allAudioRecordsProsody =
-              await loadShowcaseSubSessionScores();
-
-            const totalAudiosProsody = allAudioRecordsProsody.length;
-            let passCountProsody = 0;
-
-            // Helper function: normalize classification – valid values are 'natural', 'flat', 'exaggerated', 'erratic'
-            const normalizeClassification = (cls: string): string => {
-              const valid = ['natural', 'flat', 'exaggerated', 'erratic'];
-              const lower = cls.toLowerCase();
-              return valid.includes(lower) ? lower : 'erratic';
-            };
-
-            for (const record of allAudioRecordsProsody) {
-              const prosody = record.prosody_fluency || {};
-              const pitchClass = normalizeClassification(
-                prosody.pitch?.pitch_classification || 'erratic',
-              );
-              const intensityClass = normalizeClassification(
-                prosody.intensity?.intensity_classification || 'erratic',
-              );
-              const tempoClass = normalizeClassification(
-                prosody.tempo?.tempo_classification || 'erratic',
-              );
-
-              // Rule 1: If any feature is 'erratic', record fails.
-              let recordProsodyPass = true;
-              if (
-                pitchClass === 'erratic' ||
-                intensityClass === 'erratic' ||
-                tempoClass === 'erratic'
-              ) {
-                recordProsodyPass = false;
-              } else {
-                // Rule 2: If 2 or more features are 'exaggerated', record fails.
-                let exaggeratedCount = 0;
-                if (pitchClass === 'exaggerated') exaggeratedCount++;
-                if (intensityClass === 'exaggerated') exaggeratedCount++;
-                if (tempoClass === 'exaggerated') exaggeratedCount++;
-                if (exaggeratedCount >= 2) {
-                  recordProsodyPass = false;
-                }
-              }
-              if (recordProsodyPass) {
-                passCountProsody++;
-              }
-            }
-
-            if (totalAudiosProsody > 0) {
-              prosodyResult =
-                totalAudiosProsody % 2 === 0
-                  ? passCountProsody >= totalAudiosProsody / 2
-                    ? 'pass'
-                    : 'fail'
-                  : passCountProsody > totalAudiosProsody / 2
-                    ? 'pass'
-                    : 'fail';
-            } else {
-              prosodyResult = 'fail';
-            }
-          } else {
-            // For users below level m6, we do not compute prosodyResult.
-            prosodyResult = undefined;
-          }
-        }
-      }
+      const { fluencyResult, prosodyResult } = await this.scoresService.computeFluencyAndProsodyResults(
+        user_id,
+        subSessionId,
+        requestLanguage,
+        getSetResult.collectionId,
+        previous_level,
+      );
 
       // If fluencyResult is computed and is 'fail', enforce overall sessionResult to 'fail'
       // But don't override ansSelectionStatus results for char content type
       if (
         !hasAnsSelectionStatus && // Only apply fluency override if we don't have ansSelectionStatus
-        ((typeof fluencyResult !== 'undefined' && fluencyResult === 'fail') ||
-          (typeof prosodyResult !== 'undefined' && prosodyResult === 'fail'))
+        ((typeof fluencyResult !== 'undefined' && fluencyResult === SessionResult.FAIL) ||
+          (typeof prosodyResult !== 'undefined' && prosodyResult === SessionResult.FAIL))
       ) {
         sessionResult = 'fail';
       }
@@ -6493,17 +6306,6 @@ export class ScoresController {
       }
 
       let currentLevel = milestone_level;
-
-      if (
-        !(
-          (['en', 'kn', 'te', 'hi', 'ta', 'or', 'gu'].includes(getSetResult.language.toLowerCase())) &&
-          (!getSetResult.hasOwnProperty('collectionId') ||
-            !getSetResult.collectionId)
-        )
-      ) {
-        fluencyResult = undefined;
-        prosodyResult = undefined;
-      }
 
       if (milestoneEntry) {
         let sub_milestone_level = '';
