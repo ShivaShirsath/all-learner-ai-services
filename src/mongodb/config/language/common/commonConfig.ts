@@ -11,7 +11,7 @@ var lang_common_config = {
     sub: 5,
   },
   fluencyAndProsody: {
-    passThresholdM4Plus: 3.0,
+    passThresholdM4Plus: 3,
     passThresholdBelowM4: 2.6,
     // Weighted contribution of each fluency feature to the overall score.
     weights: {

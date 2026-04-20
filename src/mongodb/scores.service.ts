@@ -3049,42 +3049,38 @@ export class ScoresService {
     return outcomes.size > 0 ? Array.from(outcomes) : [word];
   }
 
-  getAccuracyClassification(contentType: string, score: number): string {
-    const config: Record<string, [number, number, string][]> = {
+  getAccuracyClassification(contentType: string, score: number): FluencyClassification | 'N/A' {
+    const config: Record<string, [number, number, FluencyClassification][]> = {
       word: [
-        [0, 1, "Fluent"],
-        [1, 2, "Moderately Fluent"],
-        [2, 3, "Disfluent"],
-        [3, Infinity, "Very Disfluent"]
+        [0, 1, FluencyClassification.FLUENT],
+        [1, 2, FluencyClassification.MODERATELY_FLUENT],
+        [2, 3, FluencyClassification.DISFLUENT],
+        [3, Infinity, FluencyClassification.VERY_DISFLUENT],
       ],
       sentence: [
-        [0, 3, "Fluent"],
-        [3, 6, "Moderately Fluent"],
-        [6, 8, "Disfluent"],
-        [8, Infinity, "Very Disfluent"]
+        [0, 3, FluencyClassification.FLUENT],
+        [3, 6, FluencyClassification.MODERATELY_FLUENT],
+        [6, 8, FluencyClassification.DISFLUENT],
+        [8, Infinity, FluencyClassification.VERY_DISFLUENT],
       ],
       paragraph: [
-        [0, 5, "Fluent"],
-        [5, 10, "Moderately Fluent"],
-        [10, 12, "Disfluent"],
-        [12, Infinity, "Very Disfluent"]
-      ]
+        [0, 5, FluencyClassification.FLUENT],
+        [5, 10, FluencyClassification.MODERATELY_FLUENT],
+        [10, 12, FluencyClassification.DISFLUENT],
+        [12, Infinity, FluencyClassification.VERY_DISFLUENT],
+      ],
     };
-    // Normalize the content type and get its thresholds.
     const ct = contentType.toLowerCase();
     const thresholds = config[ct];
-    // If the content type is not recognized, return "N/A"
     if (!thresholds) {
-      return "N/A";
+      return 'N/A';
     }
-    // Loop through the thresholds and return the classification that matches.
     for (const [min, max, label] of thresholds) {
       if (score >= min && score <= max) {
         return label;
       }
     }
-    // Fallback in case no classification is matched.
-    return "N/A";
+    return 'N/A';
   }
 
   public classificationToScore(classification: string): number {

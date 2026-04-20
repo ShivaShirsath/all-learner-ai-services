@@ -6157,8 +6157,8 @@ export class ScoresController {
       // But don't override ansSelectionStatus results for char content type
       if (
         !hasAnsSelectionStatus && // Only apply fluency override if we don't have ansSelectionStatus
-        ((typeof fluencyResult !== 'undefined' && fluencyResult === SessionResult.FAIL) ||
-          (typeof prosodyResult !== 'undefined' && prosodyResult === SessionResult.FAIL))
+        ((fluencyResult !== undefined && fluencyResult === SessionResult.FAIL) ||
+          (prosodyResult !== undefined && prosodyResult === SessionResult.FAIL))
       ) {
         sessionResult = 'fail';
       }
