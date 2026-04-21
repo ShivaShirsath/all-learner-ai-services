@@ -3485,17 +3485,14 @@ export class ScoresService {
 
   
   async getRecommendation(
-    userId: string,
     level:string,
     contentType: string,
     token_value: string,
     language: string
   ): Promise<any> {
     const data = JSON.stringify({
-      user_id: userId,
       level: level,
       content_type: contentType,
-      token_value: token_value,
       language: language
     });
 
@@ -3506,6 +3503,7 @@ export class ScoresService {
       headers: {
         'accept': 'application/json',
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token_value}`,
       },
       data: data,
     };
