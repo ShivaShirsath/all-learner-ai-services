@@ -7143,10 +7143,10 @@ export class ScoresController {
       let milestone_level = milestoneData[0]?.milestone_level || 'm0';
 
       let recommendationData = await this.scoresService.getRecommendation(
-        user_id,
         milestone_level,
         content_type,
-        token
+        token,
+        language
       )
 
       return response.status(HttpStatus.OK).send(recommendationData);
