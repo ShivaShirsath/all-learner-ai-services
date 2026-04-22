@@ -156,7 +156,6 @@ export class ScoresService {
     language: string,
     contentType: string,
   ): Promise<any> {
-    let asrOutDenoisedOutput: any;
     let asrOutBeforeDenoised: any;
     let audio: any = data;
     let pause_count: number = 0;
@@ -197,9 +196,7 @@ export class ScoresService {
         serviceId = `ai4bharat/conformer-${language}-gpu--t4`;
     }
 
-    if (process.env.skipNonDenoiserAsrCall !== 'true') {
-      asrOutBeforeDenoised = await asrCall();
-    }
+    asrOutBeforeDenoised = await asrCall();
 
     const denoiserConfig = {
       method: 'post',
@@ -241,10 +238,6 @@ export class ScoresService {
         },
         status,
       );
-    }
-
-    if (process.env.denoiserEnabled === 'true') {
-      asrOutDenoisedOutput = await asrCall();
     }
 
     async function asrCall() {
@@ -302,7 +295,6 @@ export class ScoresService {
     }
 
     return {
-      asrOutDenoisedOutput: asrOutDenoisedOutput,
       asrOutBeforeDenoised: asrOutBeforeDenoised,
       pause_count: pause_count,
       avg_pause: avg_pause,
@@ -342,34 +334,6 @@ export class ScoresService {
   async findbyUser(id: string) {
     const UserRecordData = await this.scoreModel.find({ user_id: id }).exec();
     return UserRecordData;
-  }
-
-  async getRetryStatus(userId: string, contentId: string) {
-    try {
-      const recordData = await this.scoreModel.find({ user_id: userId }).exec();
-      const updatedRecords = [];
-      for (const record of recordData) {
-        if (record.sessions.length > 0) {
-          const lastSession = record.sessions[record.sessions.length - 1];
-          if (lastSession.contentId === contentId) {
-            lastSession.isRetry = true;
-            const updatedRecord = await this.scoreModel.updateOne(
-              {
-                'sessions._id': lastSession._id,
-              },
-              {
-                $set: { 'sessions.$': lastSession },
-              },
-            );
-            updatedRecords.push(updatedRecord);
-          }
-        }
-      }
-      return 1;
-    } catch (error) {
-      console.error('Error fetching retry status:', error);
-      throw error;
-    }
   }
 
   // Target Query
