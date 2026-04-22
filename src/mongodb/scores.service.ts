@@ -2,7 +2,6 @@ import { HttpException, Inject, Injectable } from '@nestjs/common';
 import { ScoreDocument } from './schemas/scores.schema';
 import { hexcodeMappingDocument } from './schemas/hexcodeMapping.schema';
 import { assessmentInputDocument } from './schemas/assessmentInput.schema';
-import { denoiserOutputLogsDocument } from './schemas/denoiserOutputLogs.schema';
 import { Model } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import axios from 'axios';
@@ -42,8 +41,6 @@ export class ScoresService {
     private readonly hexcodeMappingModel: Model<hexcodeMappingDocument>,
     @InjectModel('assessmentInput')
     private readonly assessmentInputModel: Model<assessmentInputDocument>,
-    @InjectModel('denoiserOutputLogs')
-    private readonly denoiserOutputLogsModel: Model<denoiserOutputLogsDocument>,
     @InjectModel('llmOutputLogs')
     private readonly llmOutputLogsModel: Model<llmOutputLogsDocument>,
     @InjectModel('getSetResult')
@@ -2269,18 +2266,6 @@ export class ScoresService {
     }).filter((sessionIdEle) => sessionIdEle != undefined);
 
     return sessionIds;
-  }
-
-  async addDenoisedOutputLog(DenoisedOutputLog: any): Promise<any> {
-    try {
-      const createDenoisedOutputLog = new this.denoiserOutputLogsModel(
-        DenoisedOutputLog,
-      );
-      const result = await createDenoisedOutputLog.save();
-      return result;
-    } catch (err) {
-      return err;
-    }
   }
 
   async addLlmOutputLog(llmOutputLog: any): Promise<any> {
