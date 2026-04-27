@@ -340,6 +340,13 @@ export class ScoresService {
 
     RecordData = await this.scoreModel.aggregate([
       {
+        $match: {
+          sessions: {
+            $elemMatch: { session_id: sessionId, language: language },
+          },
+        },
+      },
+      {
         $unwind: '$sessions',
       },
       {
@@ -835,6 +842,13 @@ export class ScoresService {
 
     const RecordData = await this.scoreModel.aggregate([
       {
+        $match: {
+          sessions: {
+            $elemMatch: { sub_session_id: subSessionId, language: language },
+          },
+        },
+      },
+      {
         $unwind: '$sessions',
       },
       {
@@ -1028,6 +1042,13 @@ export class ScoresService {
     let RecordData = [];
 
     RecordData = await this.scoreModel.aggregate([
+      {
+        $match: {
+          sessions: {
+            $elemMatch: { session_id: sessionId, language: language },
+          },
+        },
+      },
       {
         $unwind: '$sessions',
       },
@@ -1521,6 +1542,13 @@ export class ScoresService {
 
     RecordData = await this.scoreModel.aggregate([
       {
+        $match: {
+          sessions: {
+            $elemMatch: { sub_session_id: subSessionId, language: language },
+          },
+        },
+      },
+      {
         $unwind: '$sessions',
       },
       {
@@ -1738,7 +1766,7 @@ export class ScoresService {
     const RecordData = await this.scoreModel.aggregate([
       {
         $match: {
-          'sessions.session_id': sessionId,
+          sessions: { $elemMatch: { session_id: sessionId } },
         },
       },
       {
@@ -2013,7 +2041,7 @@ export class ScoresService {
     const RecordData = await this.scoreModel.aggregate([
       {
         $match: {
-          'sessions.session_id': sessionId,
+          sessions: { $elemMatch: { session_id: sessionId } },
         },
       },
       {
