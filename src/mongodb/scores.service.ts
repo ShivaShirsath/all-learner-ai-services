@@ -3534,51 +3534,52 @@ export class ScoresService {
   }
 
   async vocabularyCount(
-    user_id:string,
-    original_text:string, 
-    response_text:string, 
-    language:string, 
-    session:string, 
-    subSession:string): Promise<void>
-    {
-
+    user_id: string,
+    original_text: string,
+    response_text: string,
+    language: string,
+    session: string,
+    subSession: string,
+  ): Promise<void> {
     const originalWords = this.normalize(original_text);
-    const responseWordsSet = new Set(this.normalize(response_text));
+    if (originalWords.length === 0) return;
 
-    for (const word of originalWords) {
+    const responseWordsSet = new Set(this.normalize(response_text));
+    const now = new Date();
+
+    const ops: any[] = originalWords.map((word) => {
       const isCorrect = responseWordsSet.has(word);
-      const existing = await this.vocabularyModel.findOne({
-        user_id,
-        contentId: word,
-        language
-      });
-      const update: any = {
-        $inc: { presentCount: 1 },
-        $set: { updatedAt: new Date() }
-      };
+      const filter = { user_id, contentId: word, language };
 
       if (isCorrect) {
-        update.$inc.spokenCorrectly = 1;
-        update.$push = {
-          attempts: {
-            session,
-            subSession,
-            createdAt: new Date()
-          }
+        return {
+          updateOne: {
+            filter,
+            update: {
+              $inc: { presentCount: 1, spokenCorrectly: 1 },
+              $set: { updatedAt: now },
+              $push: { attempts: { session, subSession, createdAt: now } },
+            },
+            upsert: true,
+          },
         };
       }
 
-      // Create new record only if spoken correctly or already exists
-      const options = isCorrect ? { upsert: true } : existing ? {} : null;
+      // Incorrect word: only increment presentCount if the record already exists
+      // upsert: false ensures no new document is created for unseen words
+      return {
+        updateOne: {
+          filter,
+          update: {
+            $inc: { presentCount: 1 },
+            $set: { updatedAt: now },
+          },
+          upsert: false,
+        },
+      };
+    });
 
-      if (options !== null) {
-        await this.vocabularyModel.updateOne(
-          { user_id, contentId: word, language },
-          update,
-          options
-        );
-      }
-    }
+    await this.vocabularyModel.bulkWrite(ops, { ordered: false });
   }
 
   // Simple word normalization
