@@ -61,24 +61,14 @@ export class ScoresService {
 
   async create(createScoreDto: any): Promise<any> {
     try {
-      const recordData = await this.scoreModel
-        .find({ user_id: createScoreDto.user_id })
-        .exec();
-      if (recordData.length === 0) {
-        const createdScore = new this.scoreModel(createScoreDto);
-        const result = await createdScore.save();
-        const updatedRecordData = this.scoreModel.updateOne(
-          { user_id: createScoreDto.user_id },
-          { $push: { sessions: createScoreDto.session } },
-        );
-        return await updatedRecordData;
-      } else {
-        const updatedRecordData = this.scoreModel.updateOne(
-          { user_id: createScoreDto.user_id },
-          { $push: { sessions: createScoreDto.session } },
-        );
-        return await updatedRecordData;
-      }
+      return await this.scoreModel.updateOne(
+        { user_id: createScoreDto.user_id },
+        {
+          $push: { sessions: createScoreDto.session },
+          $setOnInsert: { user_id: createScoreDto.user_id },
+        },
+        { upsert: true },
+      );
     } catch (err) {
       throw buildHttpExceptionFromUnknown(err);
     }
