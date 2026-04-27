@@ -520,25 +520,22 @@ export class ScoresController {
 
       }
 
-      // Cal the subsessionWise and content_id wise target.
-      let targets = await this.scoresService.getTargetsBysubSession(
-        user_id,
-        CreateLearnerProfileDto.sub_session_id,
-        CreateLearnerProfileDto.language,
-      );
-
-      let originalTextSyllables = [];
-
-      originalTextSyllables = await this.scoresService.getSubsessionOriginalTextSyllables(user_id, CreateLearnerProfileDto.sub_session_id);
-      targets = targets.filter((targetsEle) => { return originalTextSyllables.includes(targetsEle.character) });
-
+      // All 3 post-save queries are independent — run in parallel
+      let [targets, originalTextSyllables, fluency] = await Promise.all([
+        this.scoresService.getTargetsBysubSession(
+          user_id,
+          CreateLearnerProfileDto.sub_session_id,
+          CreateLearnerProfileDto.language,
+        ),
+        this.scoresService.getSubsessionOriginalTextSyllables(user_id, CreateLearnerProfileDto.sub_session_id),
+        this.scoresService.getFluencyBysubSession(
+          user_id,
+          CreateLearnerProfileDto.sub_session_id,
+          CreateLearnerProfileDto.language,
+        ),
+      ]);
+      targets = targets.filter((targetsEle) => originalTextSyllables.includes(targetsEle.character));
       const totalTargets = targets.length;
-
-      const fluency = await this.scoresService.getFluencyBysubSession(
-        user_id,
-        CreateLearnerProfileDto.sub_session_id,
-        CreateLearnerProfileDto.language,
-      );
 
       return response.status(HttpStatus.CREATED).send({
         status: 'success',
@@ -978,25 +975,22 @@ export class ScoresController {
 
       }
 
-      // Cal the subsessionWise and content_id wise target.
-      let targets = await this.scoresService.getTargetsBysubSession(
-        user_id,
-        CreateLearnerProfileDto.sub_session_id,
-        CreateLearnerProfileDto.language,
-      );
-
-      let originalTextSyllables = [];
-
-      originalTextSyllables = await this.scoresService.getSubsessionOriginalTextSyllables(user_id, CreateLearnerProfileDto.sub_session_id);
-      targets = targets.filter((targetsEle) => { return originalTextSyllables.includes(targetsEle.character) });
-
+      // All 3 post-save queries are independent — run in parallel
+      let [targets, originalTextSyllables, fluency] = await Promise.all([
+        this.scoresService.getTargetsBysubSession(
+          user_id,
+          CreateLearnerProfileDto.sub_session_id,
+          CreateLearnerProfileDto.language,
+        ),
+        this.scoresService.getSubsessionOriginalTextSyllables(user_id, CreateLearnerProfileDto.sub_session_id),
+        this.scoresService.getFluencyBysubSession(
+          user_id,
+          CreateLearnerProfileDto.sub_session_id,
+          CreateLearnerProfileDto.language,
+        ),
+      ]);
+      targets = targets.filter((targetsEle) => originalTextSyllables.includes(targetsEle.character));
       const totalTargets = targets.length;
-
-      const fluency = await this.scoresService.getFluencyBysubSession(
-        user_id,
-        CreateLearnerProfileDto.sub_session_id,
-        CreateLearnerProfileDto.language,
-      );
 
       return response.status(HttpStatus.CREATED).send({
         status: 'success',
@@ -1391,26 +1385,22 @@ export class ScoresController {
 
       }
 
-      // Cal the subsessionWise and content_id wise target.
-      let targets = await this.scoresService.getTargetsBysubSession(
-        user_id,
-        CreateLearnerProfileDto.sub_session_id,
-        CreateLearnerProfileDto.language,
-      );
-
-      let originalTextSyllables = [];
-
-      originalTextSyllables = await this.scoresService.getSubsessionOriginalTextSyllables(user_id, CreateLearnerProfileDto.sub_session_id);
-
-      targets = targets.filter((targetsEle) => { return originalTextSyllables.includes(targetsEle.character) });
-
+      // All 3 post-save queries are independent — run in parallel
+      let [targets, originalTextSyllables, fluency] = await Promise.all([
+        this.scoresService.getTargetsBysubSession(
+          user_id,
+          CreateLearnerProfileDto.sub_session_id,
+          CreateLearnerProfileDto.language,
+        ),
+        this.scoresService.getSubsessionOriginalTextSyllables(user_id, CreateLearnerProfileDto.sub_session_id),
+        this.scoresService.getFluencyBysubSession(
+          user_id,
+          CreateLearnerProfileDto.sub_session_id,
+          CreateLearnerProfileDto.language,
+        ),
+      ]);
+      targets = targets.filter((targetsEle) => originalTextSyllables.includes(targetsEle.character));
       const totalTargets = targets.length;
-
-      const fluency = await this.scoresService.getFluencyBysubSession(
-        user_id,
-        CreateLearnerProfileDto.sub_session_id,
-        CreateLearnerProfileDto.language,
-      );
 
       return response.status(HttpStatus.CREATED).send({
         status: 'success',
@@ -1834,29 +1824,21 @@ export class ScoresController {
         const data = await this.scoresService.create(createScoreData);
 
       }
-      // Cal the subsessionWise and content_id wise target.
-      let targets = await this.scoresService.getTargetsBysubSession(
-        user_id,
-        CreateLearnerProfileDto.sub_session_id,
-        CreateLearnerProfileDto.language,
-      );
-
-      let originalTextSyllables = [];
-      originalTextSyllables =
-        await this.scoresService.getSubsessionOriginalTextSyllables(
+      // All 3 post-save queries are independent — run in parallel
+      let [targets, originalTextSyllables, fluency] = await Promise.all([
+        this.scoresService.getTargetsBysubSession(
           user_id,
           CreateLearnerProfileDto.sub_session_id,
-        );
-      targets = targets.filter((targetsEle) => {
-        return originalTextSyllables.includes(targetsEle.character);
-      });
-      const totalTargets = targets.length;
-
-      const fluency = await this.scoresService.getFluencyBysubSession(
-        user_id,
-        CreateLearnerProfileDto.sub_session_id,
-        CreateLearnerProfileDto.language,
-      );
+          CreateLearnerProfileDto.language,
+        ),
+        this.scoresService.getSubsessionOriginalTextSyllables(user_id, CreateLearnerProfileDto.sub_session_id),
+        this.scoresService.getFluencyBysubSession(
+          user_id,
+          CreateLearnerProfileDto.sub_session_id,
+          CreateLearnerProfileDto.language,
+        ),
+      ]);
+      targets = targets.filter((targetsEle) => originalTextSyllables.includes(targetsEle.character));
 
       return response.status(HttpStatus.CREATED).send({
         status: 'success',
@@ -2667,25 +2649,22 @@ export class ScoresController {
 
       }
 
-      // Cal the subsessionWise and content_id wise target.
-      let targets = await this.scoresService.getTargetsBysubSession(
-        user_id,
-        CreateLearnerProfileDto.sub_session_id,
-        CreateLearnerProfileDto.language,
-      );
-
-      let originalTextSyllables = [];
-
-      originalTextSyllables = await this.scoresService.getSubsessionOriginalTextSyllables(user_id, CreateLearnerProfileDto.sub_session_id);
-      targets = targets.filter((targetsEle) => { return originalTextSyllables.includes(targetsEle.character) });
-
+      // All 3 post-save queries are independent — run in parallel
+      let [targets, originalTextSyllables, fluency] = await Promise.all([
+        this.scoresService.getTargetsBysubSession(
+          user_id,
+          CreateLearnerProfileDto.sub_session_id,
+          CreateLearnerProfileDto.language,
+        ),
+        this.scoresService.getSubsessionOriginalTextSyllables(user_id, CreateLearnerProfileDto.sub_session_id),
+        this.scoresService.getFluencyBysubSession(
+          user_id,
+          CreateLearnerProfileDto.sub_session_id,
+          CreateLearnerProfileDto.language,
+        ),
+      ]);
+      targets = targets.filter((targetsEle) => originalTextSyllables.includes(targetsEle.character));
       const totalTargets = targets.length;
-
-      const fluency = await this.scoresService.getFluencyBysubSession(
-        user_id,
-        CreateLearnerProfileDto.sub_session_id,
-        CreateLearnerProfileDto.language,
-      );
 
       return response.status(HttpStatus.CREATED).send({
         status: 'success',
@@ -2792,15 +2771,10 @@ export class ScoresController {
     @Body() CreateLearnerProfileDto: CreateLearnerProfileDto,
   ) {
     try {
-      const _profileStart = Date.now();
-      const _pt: Record<string, number> = {};
-      let _t: number;
       const user_id = (request as any).user.virtual_id.toString();
-      _t = Date.now();
       const originalText = await this.scoresService.processText(
         CreateLearnerProfileDto.original_text,
       );
-      _pt['processText_original'] = Date.now() - _t;
       const substitutions = en_config.substitutions
       const mode = CreateLearnerProfileDto.mode;
 
@@ -2847,13 +2821,11 @@ export class ScoresController {
             const decoded = audioFile.toString('base64');
 
             // Send Audio file to ASR to process and provide vector with char and score
-            _t = Date.now();
             let audioOutput = await this.scoresService.audioFileToAsrOutput(
               decoded,
               CreateLearnerProfileDto.language,
               CreateLearnerProfileDto['contentType'],
             );
-            _pt['audioFileToAsrOutput'] = Date.now() - _t;
 
             CreateLearnerProfileDto['output'] = audioOutput.asrOutBeforeDenoised?.output || '';
             pause_count = audioOutput.pause_count || 0;
@@ -2883,17 +2855,13 @@ export class ScoresController {
             }
           }
 
-          _t = Date.now();
           responseText = await this.scoresService.processText(
             CreateLearnerProfileDto.output[0].source,
           );
-          _pt['processText_response'] = Date.now() - _t;
 
         // Profanity Detection logic
         try {
-          _t = Date.now();
           const badWordResponse = await this.scoresService.checkProfanity(responseText, language);
-          _pt['checkProfanity'] = Date.now() - _t;
           if (badWordResponse) {
             feedback = 'profanity detected';
             
@@ -2916,16 +2884,11 @@ export class ScoresController {
             };
 
             try {
-              _t = Date.now();
               await this.scoresService.create(profanityScoreData);
-              _pt['create_profanity'] = Date.now() - _t;
             } catch (dbError) {
               console.error('Failed to save profanity data to DB:', dbError);
-              // Continue to return response even if DB write fails
             }
 
-            _pt['total'] = Date.now() - _profileStart;
-            console.log(`[PROFILE][updateLearnerProfile/en] ${JSON.stringify(_pt)}`);
             return response.status(HttpStatus.CREATED).send({
               status: 'success',
               msg: 'Data stored with profanity detected',
@@ -2941,7 +2904,6 @@ export class ScoresController {
 
         // add the vocabulary logic
         try {
-          _t = Date.now();
           await this.scoresService.vocabularyCount(
             user_id,
             originalText,
@@ -2950,32 +2912,25 @@ export class ScoresController {
             CreateLearnerProfileDto.session_id,
             CreateLearnerProfileDto.sub_session_id
           );
-          _pt['vocabularyCount'] = Date.now() - _t;
         } catch (vocabError) {
           console.error('Vocabulary count failed:', vocabError);
           // Continue processing even if vocabulary count fails
         }
 
         // Agreeable substitution logic
-        _t = Date.now();
         responseText = await this.scoresService.getBestCorrectedResponse(originalText, responseText, substitutions)
-        _pt['getBestCorrectedResponse'] = Date.now() - _t;
 
         // Get All hexcode for this selected language
-        _t = Date.now();
         const tokenHexcodeDataArr = await this.scoresService.gethexcodeMapping(
           language,
         );
-        _pt['gethexcodeMapping'] = Date.now() - _t;
 
-        _t = Date.now();
         const textEvalMatrices = await this.scoresService.getTextMetrics(
           originalText,
           responseText,
           language,
           CreateLearnerProfileDto.audio.toString('base64'),
         );
-        _pt['getTextMetrics'] = Date.now() - _t;
         let tempo_classification = textEvalMatrices.tempo_classification;
         let pause_count_textEval = textEvalMatrices.pause_count;
         let words_per_minute = textEvalMatrices.words_per_minute;
@@ -2987,13 +2942,11 @@ export class ScoresController {
           CreateLearnerProfileDto.ans_key.length > 0 &&
           responseText.length > 0
         ) {
-          _t = Date.now();
           comprehension = await this.scoresService.getComprehensionFromLLM(
             CreateLearnerProfileDto.question_text,
             responseText,
             CreateLearnerProfileDto.ans_key[0],
           );
-          _pt['getComprehensionFromLLM'] = Date.now() - _t;
 
           let createLlmOutputLog = {
             user_id: user_id,
@@ -3010,9 +2963,7 @@ export class ScoresController {
             overall: comprehension.overall,
             feedback: comprehension.feedback
           };
-          _t = Date.now();
           await this.scoresService.addLlmOutputLog(createLlmOutputLog);
-          _pt['addLlmOutputLog'] = Date.now() - _t;
         }
 
         if (
@@ -3057,7 +3008,6 @@ export class ScoresController {
             return similarityScore >= similarityThreshold;
           };
 
-          _t = Date.now();
           if (
             (await checkResponseTextAnomaly(responseText)) ||
             (await checkHallucinationAlternatives(
@@ -3068,17 +3018,13 @@ export class ScoresController {
           ) {
             responseText = originalText;
           }
-          _pt['hallucinationCheck'] = Date.now() - _t;
         }
 
-        let _hexcodeTime = 0;
         for (const confidence_char of textEvalMatrices.confidence_char_list) {
-          const _th = Date.now();
           const hexcode = await this.scoresService.getTokenHexcode(
             tokenHexcodeDataArr,
             confidence_char,
           );
-          _hexcodeTime += Date.now() - _th;
 
           if (hexcode !== '') {
             confidence_scoresArr.push({
@@ -3098,12 +3044,10 @@ export class ScoresController {
         }
 
         for (const missing_char of textEvalMatrices.missing_char_list) {
-          const _th = Date.now();
           const hexcode = await this.scoresService.getTokenHexcode(
             tokenHexcodeDataArr,
             missing_char,
           );
-          _hexcodeTime += Date.now() - _th;
 
           if (hexcode !== '') {
             missing_token_scoresArr.push({
@@ -3121,20 +3065,15 @@ export class ScoresController {
             });
           }
         }
-        _pt['getTokenHexcode_total'] = _hexcodeTime;
-
         // Constructed Logic starts from here
-        _t = Date.now();
         let constructedTextRepCountData =
           await this.scoresService.getConstructedText(
             originalText,
             responseText,
           );
-        _pt['getConstructedText'] = Date.now() - _t;
         let repetitions = constructedTextRepCountData.reptitionCount;
         // End Constructed Text Logic
 
-        _t = Date.now();
         let fluencyScore = await this.scoresService.getCalculatedFluency(
           textEvalMatrices,
           repetitions,
@@ -3142,15 +3081,12 @@ export class ScoresController {
           responseText,
           pause_count,
         );
-        _pt['getCalculatedFluency'] = Date.now() - _t;
 
-        _t = Date.now();
         let accuracy_classification =
           this.scoresService.getAccuracyClassification(
             CreateLearnerProfileDto.contentType,
             fluencyScore,
           );
-        _pt['getAccuracyClassification'] = Date.now() - _t;
 
         // Add check for the correct choice
 
@@ -3266,9 +3202,7 @@ export class ScoresController {
 
 
         // Store Array to DB
-        _t = Date.now();
         const data = await this.scoresService.create(createScoreData);
-        _pt['create'] = Date.now() - _t;
 
       } else {
 
@@ -3289,33 +3223,25 @@ export class ScoresController {
         };
 
         // Store Array to DB
-        _t = Date.now();
         const data = await this.scoresService.create(createScoreData);
-        _pt['create'] = Date.now() - _t;
 
       }
 
-      // Cal the subsessionWise and content_id wise target.
-      _t = Date.now();
-      const targets = await this.scoresService.getTargetsBysubSession(
-        user_id,
-        CreateLearnerProfileDto.sub_session_id,
-        CreateLearnerProfileDto.language,
-      );
-      _pt['getTargetsBysubSession'] = Date.now() - _t;
+      // Both post-save queries are independent — run in parallel
+      const [targets, fluency] = await Promise.all([
+        this.scoresService.getTargetsBysubSession(
+          user_id,
+          CreateLearnerProfileDto.sub_session_id,
+          CreateLearnerProfileDto.language,
+        ),
+        this.scoresService.getFluencyBysubSession(
+          user_id,
+          CreateLearnerProfileDto.sub_session_id,
+          CreateLearnerProfileDto.language,
+        ),
+      ]);
 
       const totalTargets = targets.length;
-
-      _t = Date.now();
-      const fluency = await this.scoresService.getFluencyBysubSession(
-        user_id,
-        CreateLearnerProfileDto.sub_session_id,
-        CreateLearnerProfileDto.language,
-      );
-      _pt['getFluencyBysubSession'] = Date.now() - _t;
-
-      _pt['total'] = Date.now() - _profileStart;
-      console.log(`[PROFILE][updateLearnerProfile/en] ${JSON.stringify(_pt)}`);
 
       return response.status(HttpStatus.CREATED).send({
         status: 'success',
@@ -4118,30 +4044,22 @@ export class ScoresController {
 
       }
 
-      // Cal the subsessionWise and content_id wise target.
-      let targets = await this.scoresService.getTargetsBysubSession(
-        user_id,
-        CreateLearnerProfileDto.sub_session_id,
-        CreateLearnerProfileDto.language,
-      );
-      let originalTextSyllables = [];
-      originalTextSyllables =
-        await this.scoresService.getSubsessionOriginalTextSyllables(
+      // All 3 post-save queries are independent — run in parallel
+      let [targets, originalTextSyllables, fluency] = await Promise.all([
+        this.scoresService.getTargetsBysubSession(
           user_id,
           CreateLearnerProfileDto.sub_session_id,
-        );
-      targets = targets.filter((targetsEle) => {
-        return originalTextSyllables.includes(targetsEle.character);
-      });
-
-
+          CreateLearnerProfileDto.language,
+        ),
+        this.scoresService.getSubsessionOriginalTextSyllables(user_id, CreateLearnerProfileDto.sub_session_id),
+        this.scoresService.getFluencyBysubSession(
+          user_id,
+          CreateLearnerProfileDto.sub_session_id,
+          CreateLearnerProfileDto.language,
+        ),
+      ]);
+      targets = targets.filter((targetsEle) => originalTextSyllables.includes(targetsEle.character));
       const totalTargets = targets.length;
-
-      const fluency = await this.scoresService.getFluencyBysubSession(
-        user_id,
-        CreateLearnerProfileDto.sub_session_id,
-        CreateLearnerProfileDto.language,
-      );
 
       return response.status(HttpStatus.CREATED).send({
         status: 'success',
