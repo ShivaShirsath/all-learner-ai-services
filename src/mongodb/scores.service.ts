@@ -2,7 +2,6 @@ import { HttpException, Inject, Injectable } from '@nestjs/common';
 import { ScoreDocument } from './schemas/scores.schema';
 import { hexcodeMappingDocument } from './schemas/hexcodeMapping.schema';
 import { assessmentInputDocument } from './schemas/assessmentInput.schema';
-import { denoiserOutputLogsDocument } from './schemas/denoiserOutputLogs.schema';
 import { Model } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import axios from 'axios';
@@ -42,8 +41,6 @@ export class ScoresService {
     private readonly hexcodeMappingModel: Model<hexcodeMappingDocument>,
     @InjectModel('assessmentInput')
     private readonly assessmentInputModel: Model<assessmentInputDocument>,
-    @InjectModel('denoiserOutputLogs')
-    private readonly denoiserOutputLogsModel: Model<denoiserOutputLogsDocument>,
     @InjectModel('llmOutputLogs')
     private readonly llmOutputLogsModel: Model<llmOutputLogsDocument>,
     @InjectModel('getSetResult')
@@ -64,24 +61,14 @@ export class ScoresService {
 
   async create(createScoreDto: any): Promise<any> {
     try {
-      const recordData = await this.scoreModel
-        .find({ user_id: createScoreDto.user_id })
-        .exec();
-      if (recordData.length === 0) {
-        const createdScore = new this.scoreModel(createScoreDto);
-        const result = await createdScore.save();
-        const updatedRecordData = this.scoreModel.updateOne(
-          { user_id: createScoreDto.user_id },
-          { $push: { sessions: createScoreDto.session } },
-        );
-        return await updatedRecordData;
-      } else {
-        const updatedRecordData = this.scoreModel.updateOne(
-          { user_id: createScoreDto.user_id },
-          { $push: { sessions: createScoreDto.session } },
-        );
-        return await updatedRecordData;
-      }
+      return await this.scoreModel.updateOne(
+        { user_id: createScoreDto.user_id },
+        {
+          $push: { sessions: createScoreDto.session },
+          $setOnInsert: { user_id: createScoreDto.user_id },
+        },
+        { upsert: true },
+      );
     } catch (err) {
       throw buildHttpExceptionFromUnknown(err);
     }
@@ -156,7 +143,6 @@ export class ScoresService {
     language: string,
     contentType: string,
   ): Promise<any> {
-    let asrOutDenoisedOutput: any;
     let asrOutBeforeDenoised: any;
     let audio: any = data;
     let pause_count: number = 0;
@@ -197,9 +183,7 @@ export class ScoresService {
         serviceId = `ai4bharat/conformer-${language}-gpu--t4`;
     }
 
-    if (process.env.skipNonDenoiserAsrCall !== 'true') {
-      asrOutBeforeDenoised = await asrCall();
-    }
+    asrOutBeforeDenoised = await asrCall();
 
     const denoiserConfig = {
       method: 'post',
@@ -241,10 +225,6 @@ export class ScoresService {
         },
         status,
       );
-    }
-
-    if (process.env.denoiserEnabled === 'true') {
-      asrOutDenoisedOutput = await asrCall();
     }
 
     async function asrCall() {
@@ -302,7 +282,6 @@ export class ScoresService {
     }
 
     return {
-      asrOutDenoisedOutput: asrOutDenoisedOutput,
       asrOutBeforeDenoised: asrOutBeforeDenoised,
       pause_count: pause_count,
       avg_pause: avg_pause,
@@ -344,40 +323,19 @@ export class ScoresService {
     return UserRecordData;
   }
 
-  async getRetryStatus(userId: string, contentId: string) {
-    try {
-      const recordData = await this.scoreModel.find({ user_id: userId }).exec();
-      const updatedRecords = [];
-      for (const record of recordData) {
-        if (record.sessions.length > 0) {
-          const lastSession = record.sessions[record.sessions.length - 1];
-          if (lastSession.contentId === contentId) {
-            lastSession.isRetry = true;
-            const updatedRecord = await this.scoreModel.updateOne(
-              {
-                'sessions._id': lastSession._id,
-              },
-              {
-                $set: { 'sessions.$': lastSession },
-              },
-            );
-            updatedRecords.push(updatedRecord);
-          }
-        }
-      }
-      return 1;
-    } catch (error) {
-      console.error('Error fetching retry status:', error);
-      throw error;
-    }
-  }
-
   // Target Query
   async getTargetsBySession(sessionId: string, language: string) {
     const threshold = 0.7;
     let RecordData = [];
 
     RecordData = await this.scoreModel.aggregate([
+      {
+        $match: {
+          sessions: {
+            $elemMatch: { session_id: sessionId, language: language },
+          },
+        },
+      },
       {
         $unwind: '$sessions',
       },
@@ -874,6 +832,13 @@ export class ScoresService {
 
     const RecordData = await this.scoreModel.aggregate([
       {
+        $match: {
+          sessions: {
+            $elemMatch: { sub_session_id: subSessionId, language: language },
+          },
+        },
+      },
+      {
         $unwind: '$sessions',
       },
       {
@@ -1067,6 +1032,13 @@ export class ScoresService {
     let RecordData = [];
 
     RecordData = await this.scoreModel.aggregate([
+      {
+        $match: {
+          sessions: {
+            $elemMatch: { session_id: sessionId, language: language },
+          },
+        },
+      },
       {
         $unwind: '$sessions',
       },
@@ -1560,6 +1532,13 @@ export class ScoresService {
 
     RecordData = await this.scoreModel.aggregate([
       {
+        $match: {
+          sessions: {
+            $elemMatch: { sub_session_id: subSessionId, language: language },
+          },
+        },
+      },
+      {
         $unwind: '$sessions',
       },
       {
@@ -1777,7 +1756,7 @@ export class ScoresService {
     const RecordData = await this.scoreModel.aggregate([
       {
         $match: {
-          'sessions.session_id': sessionId,
+          sessions: { $elemMatch: { session_id: sessionId } },
         },
       },
       {
@@ -2052,7 +2031,7 @@ export class ScoresService {
     const RecordData = await this.scoreModel.aggregate([
       {
         $match: {
-          'sessions.session_id': sessionId,
+          sessions: { $elemMatch: { session_id: sessionId } },
         },
       },
       {
@@ -2305,18 +2284,6 @@ export class ScoresService {
     }).filter((sessionIdEle) => sessionIdEle != undefined);
 
     return sessionIds;
-  }
-
-  async addDenoisedOutputLog(DenoisedOutputLog: any): Promise<any> {
-    try {
-      const createDenoisedOutputLog = new this.denoiserOutputLogsModel(
-        DenoisedOutputLog,
-      );
-      const result = await createDenoisedOutputLog.save();
-      return result;
-    } catch (err) {
-      return err;
-    }
   }
 
   async addLlmOutputLog(llmOutputLog: any): Promise<any> {
@@ -3557,51 +3524,52 @@ export class ScoresService {
   }
 
   async vocabularyCount(
-    user_id:string,
-    original_text:string, 
-    response_text:string, 
-    language:string, 
-    session:string, 
-    subSession:string): Promise<void>
-    {
-
+    user_id: string,
+    original_text: string,
+    response_text: string,
+    language: string,
+    session: string,
+    subSession: string,
+  ): Promise<void> {
     const originalWords = this.normalize(original_text);
-    const responseWordsSet = new Set(this.normalize(response_text));
+    if (originalWords.length === 0) return;
 
-    for (const word of originalWords) {
+    const responseWordsSet = new Set(this.normalize(response_text));
+    const now = new Date();
+
+    const ops: any[] = originalWords.map((word) => {
       const isCorrect = responseWordsSet.has(word);
-      const existing = await this.vocabularyModel.findOne({
-        user_id,
-        contentId: word,
-        language
-      });
-      const update: any = {
-        $inc: { presentCount: 1 },
-        $set: { updatedAt: new Date() }
-      };
+      const filter = { user_id, contentId: word, language };
 
       if (isCorrect) {
-        update.$inc.spokenCorrectly = 1;
-        update.$push = {
-          attempts: {
-            session,
-            subSession,
-            createdAt: new Date()
-          }
+        return {
+          updateOne: {
+            filter,
+            update: {
+              $inc: { presentCount: 1, spokenCorrectly: 1 },
+              $set: { updatedAt: now },
+              $push: { attempts: { session, subSession, createdAt: now } },
+            },
+            upsert: true,
+          },
         };
       }
 
-      // Create new record only if spoken correctly or already exists
-      const options = isCorrect ? { upsert: true } : existing ? {} : null;
+      // Incorrect word: only increment presentCount if the record already exists
+      // upsert: false ensures no new document is created for unseen words
+      return {
+        updateOne: {
+          filter,
+          update: {
+            $inc: { presentCount: 1 },
+            $set: { updatedAt: now },
+          },
+          upsert: false,
+        },
+      };
+    });
 
-      if (options !== null) {
-        await this.vocabularyModel.updateOne(
-          { user_id, contentId: word, language },
-          update,
-          options
-        );
-      }
-    }
+    await this.vocabularyModel.bulkWrite(ops, { ordered: false });
   }
 
   // Simple word normalization

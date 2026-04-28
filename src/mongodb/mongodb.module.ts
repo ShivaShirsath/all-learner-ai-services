@@ -4,7 +4,6 @@ import { ConfigModule } from '@nestjs/config';
 import { ScoreSchema } from './schemas/scores.schema';
 import { hexcodeMappingSchema } from './schemas/hexcodeMapping.schema';
 import { assessmentInputSchema } from './schemas/assessmentInput.schema';
-import { denoiserOutputLogsSchema } from './schemas/denoiserOutputLogs.schema';
 import { ScoresController } from './scores.controller';
 import { ScoresService } from './scores.service';
 import { CacheService } from './cache/cache.service';
@@ -44,7 +43,6 @@ import { AssessmentTrackingSchema, AssessmentTrackingScoreDetailSchema } from '.
       { name: 'Score', schema: ScoreSchema },
       { name: 'hexcodeMapping', schema: hexcodeMappingSchema },
       { name: 'assessmentInput', schema: assessmentInputSchema },
-      { name: 'denoiserOutputLogs', schema: denoiserOutputLogsSchema },
       { name: 'llmOutputLogs', schema: llmOutputLogsSchema },
       { name: 'getSetResult', schema: getSetResultSchema },
       { name: 'towre', schema: TowreSchema},

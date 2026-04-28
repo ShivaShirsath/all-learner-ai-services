@@ -6,7 +6,7 @@ export class assessmentInput extends Document {
   @Prop({ required: true })
   user_id: string;
 
-  @Prop({ required: true })
+  @Prop({ required: true, index: true })
   session_id: string;
 
   @Prop({ required: true })
@@ -20,3 +20,6 @@ export type assessmentInputDocument = assessmentInput & Document;
 
 export const assessmentInputSchema =
   SchemaFactory.createForClass(assessmentInput);
+
+// Compound index covers
+assessmentInputSchema.index({ user_id: 1, session_id: 1, token: 1 });
