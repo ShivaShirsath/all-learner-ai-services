@@ -1369,11 +1369,15 @@ export class ScoresService {
           total_correctness_score: {
             $sum: '$sessions.correctness_score',
           },
+          total_count: {
+            $sum: 1,
+          },
         },
       },
     ]);
     return RecordData;
   }
+
   async getFamiliarityByUser(userId: string, language: string) {
     const threshold = 0.7;
     let RecordData = [];
