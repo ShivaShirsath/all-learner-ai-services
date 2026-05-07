@@ -1352,6 +1352,7 @@ export class ScoresService {
         $match: {
           'sessions.sub_session_id': subSessionId,
           'sessions.language': language,
+          'sessions.response_text': { $ne: '' },
         },
       },
       {
