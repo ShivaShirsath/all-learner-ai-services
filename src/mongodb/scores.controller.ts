@@ -5597,7 +5597,7 @@ export class ScoresController {
       // Require at least 3 successful record
       const minContentThreshold = 3;
       const totalContentCount = correct_score[0]?.total_count ?? 0;
-      if (sessionResult === 'pass' && totalContentCount < minContentThreshold) {
+      if (sessionResult === 'pass' && totalContentCount < minContentThreshold && !hasAnsSelectionStatus) {
         console.log(`[getSetResult] Insufficient content count: ${totalContentCount} < ${minContentThreshold}, overriding sessionResult to fail`);
         sessionResult = 'fail';
       }
