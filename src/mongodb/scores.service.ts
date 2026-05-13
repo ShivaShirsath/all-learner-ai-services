@@ -45,9 +45,9 @@ export class ScoresService {
     private readonly llmOutputLogsModel: Model<llmOutputLogsDocument>,
     @InjectModel('getSetResult')
     private readonly getSetResultModel: Model<getSetResultDocument>,
-    @InjectModel('towre') 
+    @InjectModel('towre')
     private towreModel: Model<TowreDocument>,
-    @InjectModel('vocabulary') 
+    @InjectModel('vocabulary')
     private vocabularyModel: Model<VocabularyDocument>,
     @InjectModel('correct_practice_word')
     private correctPracticeWordModel: Model<correct_practice_wordDocument>,
@@ -77,7 +77,7 @@ export class ScoresService {
   async createMilestoneRecord(createMilestoneRecord: any): Promise<any> {
     try {
       let milestoneToSet = createMilestoneRecord.milestone_level;
-      
+
       if (createMilestoneRecord.language) {
         const currentMilestoneData = await this.getlatestmilestone(
           createMilestoneRecord.user_id,
@@ -1824,7 +1824,16 @@ export class ScoresService {
             sub_session_id: '$milestone_progress.sub_session_id',
             milestone_level: '$milestone_progress.milestone_level',
             sub_milestone_level: '$milestone_progress.sub_milestone_level',
-            sessions: 1,
+            sessions: {
+              $map: {
+                input: '$sessions',
+                as: 's',
+                in: {
+                  sub_session_id: '$$s.sub_session_id',
+                  language: '$$s.language',
+                },
+              },
+            },
             storedLanguage: '$milestone_progress.language',
             createdAt: '$milestone_progress.createdAt',
           },
@@ -3455,9 +3464,9 @@ export class ScoresService {
     return filteredText != text;
   }
 
-  
+
   async getRecommendation(
-    level:string,
+    level: string,
     contentType: string,
     token_value: string,
     language: string
@@ -3511,13 +3520,13 @@ export class ScoresService {
     // standrd for towre
     const wordCount = 108;
     const totalSec = 45;
-        
+
     const correctWordsCount = towre_result.filter(word => word.isCorrect).length;
     const wordsPerMinute = Math.round((correctWordsCount / totalSec) * 60);
     const unattemptedWordsCount = Math.max(0, wordCount - towre_result.length);
     const newWordsLearnt = correctWordsCount;
     const incorrectWordCount = towre_result.filter(word => !word.isCorrect).length;
-    
+
     const towreData = {
       wordsPerMinute: wordsPerMinute,
       correctWordsCount: correctWordsCount,
@@ -3654,63 +3663,63 @@ export class ScoresService {
   }
 
   async calculateAnsSelectionResult(userId: string, sessionId: string, subSessionId: string, language: string): Promise<{ result: boolean; percentage: number } | null> {
-  try {
-    const user = await this.scoreModel.findOne({
-      user_id: userId,
-      sessions: {
-        $elemMatch: {
-          session_id: sessionId,
-          sub_session_id: subSessionId,
-          language,
-          ansSelectionStatus: { $exists: true, $ne: null }
+    try {
+      const user = await this.scoreModel.findOne({
+        user_id: userId,
+        sessions: {
+          $elemMatch: {
+            session_id: sessionId,
+            sub_session_id: subSessionId,
+            language,
+            ansSelectionStatus: { $exists: true, $ne: null }
+          }
         }
+      }).exec();
+
+      if (!user) {
+        return null;
       }
-    }).exec();
 
-    if (!user) {
+      const session = user.sessions.find(s =>
+        s.session_id === sessionId &&
+        s.sub_session_id === subSessionId &&
+        s.language === language &&
+        s.ansSelectionStatus
+      );
+
+      if (!session || !session.ansSelectionStatus) {
+        return null;
+      }
+
+      let correctCount = 0;
+      let totalCount = 0;
+
+      // Handle new array format: [{ text: "a", status: true, gameType: "..." }, ...]
+      if (Array.isArray(session.ansSelectionStatus)) {
+        totalCount = session.ansSelectionStatus.length;
+        correctCount = session.ansSelectionStatus.filter(item =>
+          item && typeof item === 'object' && item.status === true
+        ).length;
+      }
+      // Handle old object format: { "a": true, "b": false, ... } (backward compatibility)
+      else if (typeof session.ansSelectionStatus === 'object') {
+        const values = Object.values(session.ansSelectionStatus);
+        totalCount = values.length;
+        correctCount = values.filter(Boolean).length;
+      }
+      else {
+        return null;
+      }
+
+      const percentage = totalCount > 0 ? Math.floor((correctCount / totalCount) * 100) : 0;
+      const result = totalCount > 0 ? percentage >= 80 : false;
+
+      return { result, percentage };
+    } catch (err) {
+      console.error('Error calculating ansSelectionResult:', err);
       return null;
     }
-
-    const session = user.sessions.find(s =>
-      s.session_id === sessionId &&
-      s.sub_session_id === subSessionId &&
-      s.language === language &&
-      s.ansSelectionStatus
-    );
-    
-    if (!session || !session.ansSelectionStatus) {
-      return null;
-    }
-
-    let correctCount = 0;
-    let totalCount = 0;
-
-    // Handle new array format: [{ text: "a", status: true, gameType: "..." }, ...]
-    if (Array.isArray(session.ansSelectionStatus)) {
-      totalCount = session.ansSelectionStatus.length;
-      correctCount = session.ansSelectionStatus.filter(item => 
-        item && typeof item === 'object' && item.status === true
-      ).length;
-    } 
-    // Handle old object format: { "a": true, "b": false, ... } (backward compatibility)
-    else if (typeof session.ansSelectionStatus === 'object') {
-    const values = Object.values(session.ansSelectionStatus);
-      totalCount = values.length;
-      correctCount = values.filter(Boolean).length;
-    } 
-    else {
-      return null;
-    }
-
-    const percentage = totalCount > 0 ? Math.floor((correctCount / totalCount) * 100) : 0;
-    const result = totalCount > 0 ? percentage >= 80 : false;
-
-    return { result, percentage };
-  } catch (err) {
-    console.error('Error calculating ansSelectionResult:', err);
-    return null;
   }
-}
 
   async createAssessmentTracking(
     createAssessmentTrackingDto: CreateAssessmentTrackingDto,
@@ -3718,7 +3727,7 @@ export class ScoresService {
     userId?: string
   ): Promise<any> {
     try {
-      
+
       // Generate assessmentTrackingId if not provided
       if (!createAssessmentTrackingDto.assessmentTrackingId) {
         createAssessmentTrackingDto.assessmentTrackingId = randomUUID();
@@ -3756,19 +3765,19 @@ export class ScoresService {
       // Calculate session result
       let sessionResult = "pass";
       const passingThreshold = 80;
-      
+
       // Calculate total score and maxScore from assessmentSummary
       let totalScore = 0;
       let totalMaxScore = 0;
-      
-      if(createAssessmentTrackingDto.courseId === "letterLauncher"){
+
+      if (createAssessmentTrackingDto.courseId === "letterLauncher") {
         totalScore = createAssessmentTrackingDto.totalScore || 0;
         totalMaxScore = (createAssessmentTrackingDto.totalMaxScore || 0) * 5;
-  
+
       } else {
         // For other courses, calculate from assessmentSummary
         const assessmentSummaryData = createAssessmentTrackingDto.assessmentSummary || [];
-        
+
         for (const section of assessmentSummaryData) {
           const itemData = section?.data || [];
           for (const dataItem of itemData) {
@@ -3777,11 +3786,11 @@ export class ScoresService {
           }
         }
       }
-      
+
       const scorePercentage = totalMaxScore > 0
-          ? Math.round((totalScore / totalMaxScore) * 100)
-          : 0;
-      
+        ? Math.round((totalScore / totalMaxScore) * 100)
+        : 0;
+
 
       if (scorePercentage < passingThreshold) {
         sessionResult = "fail";
@@ -3791,7 +3800,7 @@ export class ScoresService {
       const targetCharSet = new Set<string>();
       const familiarityCharSet = new Set<string>();
       const assessmentSummary = createAssessmentTrackingDto.assessmentSummary || [];
-      
+
       for (const section of assessmentSummary) {
         const itemData = section?.data || [];
         for (const dataItem of itemData) {
@@ -3808,12 +3817,12 @@ export class ScoresService {
           }
         }
       }
-      
+
       // Remove from familiarity_char if it exists in target_char
       for (const char of targetCharSet) {
         familiarityCharSet.delete(char);
       }
-      
+
       const target_char = Array.from(targetCharSet);
       const familiarity_char = Array.from(familiarityCharSet);
 
@@ -3832,7 +3841,7 @@ export class ScoresService {
           existingRecord.assessmentTrackingId = existingRecord.assessmentTrackingId;
           existingRecord.userId = userId;
           existingRecord.updatedOn = new Date();
-          
+
           const updatedRecord = await existingRecord.save();
 
           // Delete existing score details
@@ -3846,7 +3855,7 @@ export class ScoresService {
             existingRecord.assessmentTrackingId,
             userId
           );
-          
+
           return {
             ...updatedRecord.toObject(),
             sessionResult: sessionResult,
@@ -3877,13 +3886,13 @@ export class ScoresService {
         timeSpent: createAssessmentTrackingDto.timeSpent,
         unitId: createAssessmentTrackingDto.unitId,
         tenantId: createAssessmentTrackingDto.tenantId,
-        showFlag: createAssessmentTrackingDto.showFlag !== undefined 
-          ? createAssessmentTrackingDto.showFlag 
+        showFlag: createAssessmentTrackingDto.showFlag !== undefined
+          ? createAssessmentTrackingDto.showFlag
           : true,
         evaluatedBy: createAssessmentTrackingDto.evaluatedBy,
         submitedBy: createAssessmentTrackingDto.submitedBy,
       };
-     
+
       // Define valid values
       const validSubMilestoneLevels = ["F1", "F2", "F3"];
       const validApplyLevels = ["A1", "A2", "A3"];
@@ -3896,22 +3905,22 @@ export class ScoresService {
       // F1 exit criteria: A3-L9 → milestone level B
       if (
         subMilestoneLevel === "F1" &&
-        applyLevel === "A3" && 
-        subApplyLevel === 9 && 
+        applyLevel === "A3" &&
+        subApplyLevel === 9 &&
         createAssessmentTrackingDto.session_id &&
         createAssessmentTrackingDto.sub_session_id
       ) {
         try {
           const milestoneLevel = "B";
           let finalSubMilestoneLevel: string;
-          
+
           // Determine next sub-milestone level when completing A3-L9
           if (sessionResult === "pass") {
             finalSubMilestoneLevel = "F2";
-          } else { 
+          } else {
             finalSubMilestoneLevel = "F1";
           }
-        
+
           await this.createMilestoneRecord({
             user_id: userId,
             session_id: createAssessmentTrackingDto.session_id,
@@ -3920,7 +3929,7 @@ export class ScoresService {
             sub_milestone_level: finalSubMilestoneLevel,
             language: createAssessmentTrackingDto.unitId
           });
-          
+
         } catch (milestoneError) {
           console.error('Error creating milestone record:', milestoneError);
         }
@@ -3928,22 +3937,22 @@ export class ScoresService {
       // F2 exit criteria: A3-L18 → milestone level B
       else if (
         subMilestoneLevel === "F2" &&
-        applyLevel === "A3" && 
-        subApplyLevel === 18 && 
+        applyLevel === "A3" &&
+        subApplyLevel === 18 &&
         createAssessmentTrackingDto.session_id &&
         createAssessmentTrackingDto.sub_session_id
       ) {
         try {
           const milestoneLevel = "B";
           let finalSubMilestoneLevel: string;
-          
+
           // Determine next sub-milestone level when completing A3-L9
           if (sessionResult === "pass") {
             finalSubMilestoneLevel = "F3";
-          } else { 
+          } else {
             finalSubMilestoneLevel = "F2";
           }
-                
+
           await this.createMilestoneRecord({
             user_id: userId,
             session_id: createAssessmentTrackingDto.session_id,
@@ -3952,15 +3961,15 @@ export class ScoresService {
             sub_milestone_level: finalSubMilestoneLevel,
             language: createAssessmentTrackingDto.unitId
           });
-          
+
         } catch (milestoneError) {
           console.error('Error creating milestone record:', milestoneError);
         }
       }
       else if (
         subMilestoneLevel === "F3" &&
-        applyLevel === "A2" && 
-        subApplyLevel === 24 && 
+        applyLevel === "A2" &&
+        subApplyLevel === 24 &&
         createAssessmentTrackingDto.courseId === "memoryChallenge" &&
         createAssessmentTrackingDto.session_id &&
         createAssessmentTrackingDto.sub_session_id
@@ -3968,7 +3977,7 @@ export class ScoresService {
         try {
           let finalMilestoneLevel: string;
           let finalSubMilestoneLevel: string;
-          
+
           if (sessionResult === "pass") {
             finalMilestoneLevel = "m1";
             finalSubMilestoneLevel = "";
@@ -3976,7 +3985,7 @@ export class ScoresService {
             finalMilestoneLevel = "B";
             finalSubMilestoneLevel = "F3";
           }
-          
+
           await this.createMilestoneRecord({
             user_id: userId,
             session_id: createAssessmentTrackingDto.session_id,
@@ -3985,12 +3994,12 @@ export class ScoresService {
             sub_milestone_level: finalSubMilestoneLevel,
             language: createAssessmentTrackingDto.unitId
           });
-          
+
         } catch (milestoneError) {
           console.error('Error creating milestone record:', milestoneError);
         }
       }
-      
+
       const createdAssessment = new this.assessmentTrackingModel(
         assessmentTrackingData,
       );
@@ -4076,91 +4085,91 @@ export class ScoresService {
    * Alert : This api is only for the UAT, Manually set milestone for a user 
    * Used for admin/manual milestone assignment
    */
-    async setMilestoneManually(setMilestoneData: {
-      user_id: string;
-      language: string;
-      milestone_level: string;
-      sub_milestone_level?: string;
-      session_id?: string;
-      sub_session_id?: string;
-    }): Promise<any> {
-      try {
-        // Validate milestone_level format
-        const validMainMilestones = ['m0', 'm1', 'm2', 'm3', 'm4', 'm5', 'm6', 'm7', 'm8', 'm9', 'B'];
-        if (!validMainMilestones.includes(setMilestoneData.milestone_level)) {
+  async setMilestoneManually(setMilestoneData: {
+    user_id: string;
+    language: string;
+    milestone_level: string;
+    sub_milestone_level?: string;
+    session_id?: string;
+    sub_session_id?: string;
+  }): Promise<any> {
+    try {
+      // Validate milestone_level format
+      const validMainMilestones = ['m0', 'm1', 'm2', 'm3', 'm4', 'm5', 'm6', 'm7', 'm8', 'm9', 'B'];
+      if (!validMainMilestones.includes(setMilestoneData.milestone_level)) {
+        throw new Error(
+          `Invalid milestone_level: ${setMilestoneData.milestone_level}. Must be one of: ${validMainMilestones.join(', ')}`
+        );
+      }
+
+      // Validate sub_milestone_level if provided
+      if (setMilestoneData.sub_milestone_level) {
+        const validSubMilestones = ['F1', 'F2', 'F3'];
+        if (!validSubMilestones.includes(setMilestoneData.sub_milestone_level)) {
           throw new Error(
-            `Invalid milestone_level: ${setMilestoneData.milestone_level}. Must be one of: ${validMainMilestones.join(', ')}`
+            `Invalid sub_milestone_level: ${setMilestoneData.sub_milestone_level}. Must be one of: ${validSubMilestones.join(', ')}`
           );
         }
-  
-        // Validate sub_milestone_level if provided
-        if (setMilestoneData.sub_milestone_level) {
-          const validSubMilestones = ['F1', 'F2', 'F3'];
-          if (!validSubMilestones.includes(setMilestoneData.sub_milestone_level)) {
-            throw new Error(
-              `Invalid sub_milestone_level: ${setMilestoneData.sub_milestone_level}. Must be one of: ${validSubMilestones.join(', ')}`
-            );
-          }
-        }
-  
-        // Generate session_id and sub_session_id if not provided
-        const session_id = setMilestoneData.session_id || `manual-${Date.now()}`;
-        const sub_session_id = setMilestoneData.sub_session_id || `manual-sub-${Date.now()}`;
-  
-        const insertData = {
-          session_id: session_id,
-          sub_session_id: sub_session_id,
+      }
+
+      // Generate session_id and sub_session_id if not provided
+      const session_id = setMilestoneData.session_id || `manual-${Date.now()}`;
+      const sub_session_id = setMilestoneData.sub_session_id || `manual-sub-${Date.now()}`;
+
+      const insertData = {
+        session_id: session_id,
+        sub_session_id: sub_session_id,
+        milestone_level: setMilestoneData.milestone_level,
+        sub_milestone_level: setMilestoneData.sub_milestone_level || '',
+        language: setMilestoneData.language,
+        createdAt: new Date().toISOString().replace('Z', '+00:00'),
+      };
+
+      const userExists = await this.scoreModel.findOne({ user_id: setMilestoneData.user_id });
+
+      if (!userExists) {
+        await this.scoreModel.create({
+          user_id: setMilestoneData.user_id,
+          milestone_progress: [insertData],
+          sessions: [],
+        });
+      } else {
+        await this.scoreModel.updateOne(
+          { user_id: setMilestoneData.user_id },
+          {
+            $push: {
+              milestone_progress: insertData,
+            },
+          },
+        );
+      }
+
+      const latestMilestone = await this.getlatestmilestone(
+        setMilestoneData.user_id,
+        setMilestoneData.language,
+      );
+
+      return {
+        success: true,
+        message: 'Milestone set successfully',
+        data: {
+          user_id: setMilestoneData.user_id,
+          language: setMilestoneData.language,
           milestone_level: setMilestoneData.milestone_level,
           sub_milestone_level: setMilestoneData.sub_milestone_level || '',
-          language: setMilestoneData.language,
-          createdAt: new Date().toISOString().replace('Z', '+00:00'),
-        };
-  
-        const userExists = await this.scoreModel.findOne({ user_id: setMilestoneData.user_id });
-        
-        if (!userExists) {
-          await this.scoreModel.create({
-            user_id: setMilestoneData.user_id,
-            milestone_progress: [insertData],
-            sessions: [],
-          });
-        } else {
-          await this.scoreModel.updateOne(
-            { user_id: setMilestoneData.user_id },
-            {
-              $push: {
-                milestone_progress: insertData,
-              },
-            },
-          );
-        }
-  
-        const latestMilestone = await this.getlatestmilestone(
-          setMilestoneData.user_id,
-          setMilestoneData.language,
-        );
-  
-        return {
-          success: true,
-          message: 'Milestone set successfully',
-          data: {
-            user_id: setMilestoneData.user_id,
-            language: setMilestoneData.language,
-            milestone_level: setMilestoneData.milestone_level,
-            sub_milestone_level: setMilestoneData.sub_milestone_level || '',
-            latest_milestone: latestMilestone[0] || null,
-          },
-        };
-      } catch (err) {
-        return {
-          success: false,
-          error: err.message || 'Failed to set milestone',
-          details: err,
-        };
-      }
+          latest_milestone: latestMilestone[0] || null,
+        },
+      };
+    } catch (err) {
+      return {
+        success: false,
+        error: err.message || 'Failed to set milestone',
+        details: err,
+      };
     }
+  }
 }
 
-  
+
 
 
