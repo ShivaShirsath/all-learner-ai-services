@@ -1813,6 +1813,34 @@ export class ScoresService {
             user_id: userId,
           },
         },
+        // Pre-filter milestone_progress to language-matching entries before $unwind
+        // to reduce intermediate document count significantly
+        {
+          $project: {
+            milestone_progress: {
+              $filter: {
+                input: '$milestone_progress',
+                as: 'mp',
+                cond: {
+                  $or: [
+                    { $eq: ['$$mp.language', language] },
+                    { $eq: [{ $ifNull: ['$$mp.language', null] }, null] },
+                  ],
+                },
+              },
+            },
+            sessions: {
+              $map: {
+                input: '$sessions',
+                as: 's',
+                in: {
+                  sub_session_id: '$$s.sub_session_id',
+                  language: '$$s.language',
+                },
+              },
+            },
+          },
+        },
         {
           $unwind: '$milestone_progress',
         },
@@ -1824,16 +1852,7 @@ export class ScoresService {
             sub_session_id: '$milestone_progress.sub_session_id',
             milestone_level: '$milestone_progress.milestone_level',
             sub_milestone_level: '$milestone_progress.sub_milestone_level',
-            sessions: {
-              $map: {
-                input: '$sessions',
-                as: 's',
-                in: {
-                  sub_session_id: '$$s.sub_session_id',
-                  language: '$$s.language',
-                },
-              },
-            },
+            sessions: 1,
             storedLanguage: '$milestone_progress.language',
             createdAt: '$milestone_progress.createdAt',
           },
@@ -1907,6 +1926,7 @@ export class ScoresService {
           },
         },
       ])
+      .allowDiskUse(false)
       .limit(1);
     return RecordData;
   }

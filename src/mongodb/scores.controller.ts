@@ -18,6 +18,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ScoresService } from './scores.service';
+import { CacheService } from './cache/cache.service';
 import { CreateLearnerProfileDto } from './dto/CreateLearnerProfile.dto';
 import { AssessmentInputDto } from './dto/AssessmentInput.dto';
 import { CreateAssessmentTrackingDto } from './dto/create-assessment-tracking.dto';
@@ -61,6 +62,7 @@ export class ScoresController {
   constructor(
     private readonly scoresService: ScoresService,
     private readonly httpService: HttpService,
+    private readonly cacheService: CacheService,
   ) { }
 
   /** Same shape as profanity minimal save — tracks empty ASR for analytics. */
@@ -5919,28 +5921,25 @@ export class ScoresController {
   ) {
     try {
       const id = (request as any).user.virtual_id.toString();
-      const recordData: any = await this.scoresService.getlatestmilestone(
-        id,
-        language,
-      );
-      // towre data
-      const latest_towre_data = await this.scoresService.getTowreData(
-        id,
-        language,
-      );
 
-      // voc count
-      const vocabulary_count = await this.scoresService.getVocabularyCount(
-        id,
-        language,
-      );
-      // Get vocabulary statistics (learned and understood words count)
-      const vocabularyStats = await this.scoresService.getVocabularyStats(id);
+      const cacheKey = `milestone_${id}_${language}`;
+      const cached = await this.cacheService.get(cacheKey);
+      if (cached) {
+        return response.status(HttpStatus.CREATED).send(cached);
+      }
+
+      const [recordData, latest_towre_data, vocabulary_count, vocabularyStats]: any =
+        await Promise.all([
+          this.scoresService.getlatestmilestone(id, language),
+          this.scoresService.getTowreData(id, language),
+          this.scoresService.getVocabularyCount(id, language),
+          this.scoresService.getVocabularyStats(id),
+        ]);
 
       // milestone data
       const milestone_level = recordData[0]?.milestone_level || 'm0';
       const sub_milestone_level = recordData[0]?.sub_milestone_level || '';
-      return response.status(HttpStatus.CREATED).send({
+      const result = {
         status: 'success',
         data: {
           milestone_level: milestone_level,
@@ -5952,7 +5951,9 @@ export class ScoresController {
             understood_voc_count: vocabularyStats.understood_words_count
           }
         },
-      });
+      };
+      await this.cacheService.set(cacheKey, result, 60);
+      return response.status(HttpStatus.CREATED).send(result);
     } catch (err) {
       throw mapUnknownToHttpException(err);
     }
