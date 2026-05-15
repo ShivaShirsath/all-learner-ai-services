@@ -5922,12 +5922,6 @@ export class ScoresController {
     try {
       const id = (request as any).user.virtual_id.toString();
 
-      // const cacheKey = `milestone_${id}_${language}`;
-      // const cached = await this.cacheService.get(cacheKey);
-      // if (cached) {
-      //   return response.status(HttpStatus.CREATED).send(cached);
-      // }
-
       const [recordData, latest_towre_data, vocabulary_count, vocabularyStats]: any =
         await Promise.all([
           this.scoresService.getlatestmilestone(id, language),
@@ -5952,7 +5946,6 @@ export class ScoresController {
           }
         },
       };
-      // await this.cacheService.set(cacheKey, result, 60);
       return response.status(HttpStatus.CREATED).send(result);
     } catch (err) {
       throw mapUnknownToHttpException(err);
