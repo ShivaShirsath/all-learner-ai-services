@@ -67,3 +67,6 @@ export class getSetResult extends Document {
 export type getSetResultDocument = getSetResult & Document;
 
 export const getSetResultSchema = SchemaFactory.createForClass(getSetResult);
+
+getSetResultSchema.index({ userId: 1, sessionId: 1, langauge: 1, createdAt: -1 });
+getSetResultSchema.index({ userId: 1, subSessionId: 1 });

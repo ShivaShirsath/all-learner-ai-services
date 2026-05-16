@@ -74,16 +74,17 @@ export class ScoresService {
     }
   }
 
-  async createMilestoneRecord(createMilestoneRecord: any): Promise<any> {
+  async createMilestoneRecord(createMilestoneRecord: any, knownCurrentMilestoneLevel?: string): Promise<any> {
     try {
       let milestoneToSet = createMilestoneRecord.milestone_level;
 
       if (createMilestoneRecord.language) {
-        const currentMilestoneData = await this.getlatestmilestone(
-          createMilestoneRecord.user_id,
-          createMilestoneRecord.language,
-        );
-        const currentMilestone = currentMilestoneData[0]?.milestone_level;
+        const currentMilestone = knownCurrentMilestoneLevel !== undefined
+          ? knownCurrentMilestoneLevel
+          : (await this.getlatestmilestone(
+              createMilestoneRecord.user_id,
+              createMilestoneRecord.language,
+            ))[0]?.milestone_level;
 
         if (currentMilestone) {
           const getMilestoneNum = (level: string): number => {
@@ -3136,6 +3137,7 @@ export class ScoresService {
     language: string,
     collectionId: string | undefined,
     previousLevel: string | undefined,
+    preloadedSessions?: any[],
   ): Promise<{ fluencyResult: SessionResult | undefined; prosodyResult: SessionResult | undefined }> {
     const langLower = language.toLowerCase();
 
@@ -3151,8 +3153,7 @@ export class ScoresService {
       return { fluencyResult: undefined, prosodyResult: undefined };
     }
 
-    // Single DB call shared between both computations.
-    const audioRecords = await this.getSubSessionScores(userId, subSessionId, langLower);
+    const audioRecords = preloadedSessions ?? await this.getSubSessionScores(userId, subSessionId, langLower);
     const total = audioRecords.length;
 
     const { passThresholdM4Plus, passThresholdBelowM4, weights } =
@@ -3245,12 +3246,9 @@ export class ScoresService {
     userId: string,
     subSessionId: string,
     language: string,
+    preloadedSessions?: any[],
   ) {
-    const sessions = await this.getSubSessionScores(
-      userId,
-      subSessionId,
-      language,
-    );
+    const sessions = preloadedSessions ?? await this.getSubSessionScores(userId, subSessionId, language);
     const comprehensionScores: any[] = [];
     sessions.forEach((session: any) => {
       if (session.comprehension !== undefined) {

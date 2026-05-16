@@ -5427,7 +5427,7 @@ export class ScoresController {
         fluency,
         familiarity,
         correct_score,
-        comprehensionResult,
+        subSessionScores,
         recordDataInitial,
         ansSelectionResult,
         originalTextSyllablesResult,
@@ -5457,7 +5457,8 @@ export class ScoresController {
           subSessionId,
           requestLanguage,
         ),
-        this.scoresService.getComprehensionScore(
+        // Fetch sub-session scores once and reuse for both comprehension and fluency/prosody computation.
+        this.scoresService.getSubSessionScores(
           user_id,
           subSessionId,
           requestLanguage,
@@ -5479,6 +5480,13 @@ export class ScoresController {
           )
           : Promise.resolve(null),
       ]);
+
+      const comprehensionResult = await this.scoresService.getComprehensionScore(
+        user_id,
+        subSessionId,
+        requestLanguage,
+        subSessionScores,
+      );
 
       let targets = targetsInitial;
       let recordData = recordDataInitial;
@@ -5610,6 +5618,7 @@ export class ScoresController {
         requestLanguage,
         getSetResult.collectionId,
         previous_level,
+        subSessionScores,
       );
 
       // If fluencyResult is computed and is 'fail', enforce overall sessionResult to 'fail'
@@ -5780,24 +5789,11 @@ export class ScoresController {
             milestone_level: milestone_level,
             sub_milestone_level: sub_milestone_level,
             language: getSetResult.language || '',
-          })
-          .then(async (milestoneResult) => {
-
-            if (milestoneResult?.savedMilestoneLevel) {
-              currentLevel = milestoneResult.savedMilestoneLevel;
-            }
-
-            recordData = await this.scoresService.getlatestmilestone(
-              user_id,
-              getSetResult.language,
-            );
-
-            currentLevel = recordData[0]?.milestone_level || undefined;
-
+          }, previous_level)
+          .then((milestoneResult) => {
+            currentLevel = milestoneResult?.savedMilestoneLevel || milestone_level;
             if (currentLevel === undefined) {
               currentLevel = previous_level;
-            } else if (getSetResult.contentType.toLowerCase() === 'char') {
-              currentLevel = milestoneResult?.savedMilestoneLevel || milestone_level;
             }
           });
       }
@@ -5805,33 +5801,29 @@ export class ScoresController {
       // Use ansSelectionPercentage when hasAnsSelectionStatus is true, otherwise use passingPercentage
       const responsePercentage = hasAnsSelectionStatus ? ansSelectionPercentage : (passingPercentage || 0);
 
-      // log the responce data into the collection
-      try {
-        await this.scoresService.addGetSetResultLog({
-          userId: user_id,
-          sessionId: getSetResult.session_id,
-          subSessionId: getSetResult.sub_session_id,
-          sessionResult: sessionResult,
-          totalTargets: totalTargets,
-          currentLevel: currentLevel,
-          previousLevel: previous_level,
-          totalSyllables: totalSyllables,
-          fluency: fluency,
-          percentage: responsePercentage,
-          fluencyResult: fluencyResult,
-          prosodyResult: prosodyResult,
-          targetsPercentage: targetsPercentage,
-          langauge: getSetResult.language,
-          totalCorrectnessScore:
-            (correct_score[0]?.total_correctness_score ?? 0) / contentLimit,
-          comprehensionScore: overallScore,
-          collectionId: getSetResult.collectionId || "",
-          setNo: getSetResult.setNo || "",
-          contentType: getSetResult.contentType || "",
-        });
-      } catch (logError) {
-        console.error('Failed to log session result:', logError);
-      }
+      // Fire-and-forget: log without blocking the response.
+      this.scoresService.addGetSetResultLog({
+        userId: user_id,
+        sessionId: getSetResult.session_id,
+        subSessionId: getSetResult.sub_session_id,
+        sessionResult: sessionResult,
+        totalTargets: totalTargets,
+        currentLevel: currentLevel,
+        previousLevel: previous_level,
+        totalSyllables: totalSyllables,
+        fluency: fluency,
+        percentage: responsePercentage,
+        fluencyResult: fluencyResult,
+        prosodyResult: prosodyResult,
+        targetsPercentage: targetsPercentage,
+        langauge: getSetResult.language,
+        totalCorrectnessScore:
+          (correct_score[0]?.total_correctness_score ?? 0) / contentLimit,
+        comprehensionScore: overallScore,
+        collectionId: getSetResult.collectionId || "",
+        setNo: getSetResult.setNo || "",
+        contentType: getSetResult.contentType || "",
+      }).catch((logError) => console.error('Failed to log session result:', logError));
 
       return response.status(HttpStatus.CREATED).send({
         status: 'success',
