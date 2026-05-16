@@ -30,7 +30,11 @@ import { AssessmentTrackingSchema, AssessmentTrackingScoreDetailSchema } from '.
     MongooseModule.forRootAsync({
       useFactory: async () => ({
         uri: process.env.MONGO_URL,
-        maxPoolSize: parseInt(process.env.POOL_SIZE, 10) || 10,
+        maxPoolSize: parseInt(process.env.POOL_SIZE, 10) || 100,
+        minPoolSize: parseInt(process.env.MIN_POOL_SIZE, 10) || 20,
+        waitQueueTimeoutMS: 5000,
+        socketTimeoutMS: 45000,
+        connectTimeoutMS: 10000,
       }),
     }),
 
