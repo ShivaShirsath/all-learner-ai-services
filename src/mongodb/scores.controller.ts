@@ -5457,7 +5457,6 @@ export class ScoresController {
           subSessionId,
           requestLanguage,
         ),
-        // Fetch sub-session scores once and reuse for both comprehension and fluency/prosody computation.
         this.scoresService.getSubSessionScores(
           user_id,
           subSessionId,
@@ -5790,10 +5789,23 @@ export class ScoresController {
             sub_milestone_level: sub_milestone_level,
             language: getSetResult.language || '',
           }, previous_level)
-          .then((milestoneResult) => {
-            currentLevel = milestoneResult?.savedMilestoneLevel || milestone_level;
+          .then(async (milestoneResult) => {
+
+            if (milestoneResult?.savedMilestoneLevel) {
+              currentLevel = milestoneResult.savedMilestoneLevel;
+            }
+
+            recordData = await this.scoresService.getlatestmilestone(
+              user_id,
+              getSetResult.language,
+            );
+
+            currentLevel = recordData[0]?.milestone_level || undefined;
+
             if (currentLevel === undefined) {
               currentLevel = previous_level;
+            } else if (getSetResult.contentType.toLowerCase() === 'char') {
+              currentLevel = milestoneResult?.savedMilestoneLevel || milestone_level;
             }
           });
       }
