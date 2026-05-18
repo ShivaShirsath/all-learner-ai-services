@@ -1561,7 +1561,6 @@ export class ScoresController {
           //   CreateLearnerProfileDto.language,
           //   CreateLearnerProfileDto['contentType'],
           // );
-          await new Promise((resolve) => setTimeout(resolve, 1000));
           const audioOutput = {
                   "asrOutBeforeDenoised": {
                       "taskType": "asr",
