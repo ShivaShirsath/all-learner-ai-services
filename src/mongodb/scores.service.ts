@@ -1851,129 +1851,149 @@ export class ScoresService {
   }
 
   async getlatestmilestone(userId: string, language: string) {
-    const RecordData = await this.scoreModel
-      .aggregate([
-        {
-          $match: {
-            user_id: userId,
-          },
-        },
-        // Pre-filter milestone_progress to language-matching entries before $unwind
-        // to reduce intermediate document count significantly
-        {
-          $project: {
-            milestone_progress: {
-              $filter: {
-                input: '$milestone_progress',
-                as: 'mp',
-                cond: {
-                  $or: [
-                    { $eq: ['$$mp.language', language] },
-                    { $eq: [{ $ifNull: ['$$mp.language', null] }, null] },
-                  ],
+    // Fast path: find the latest milestone with stored language using $reduce (O(M) single pass,
+    // no sessions array needed). For users created after language field was added, this always hits.
+    const modernResult = await this.scoreModel.aggregate([
+      { $match: { user_id: userId } },
+      {
+        $project: {
+          _id: 0,
+          user_id: 1,
+          latestMilestone: {
+            $reduce: {
+              input: {
+                $filter: {
+                  input: '$milestone_progress',
+                  as: 'mp',
+                  cond: { $eq: ['$$mp.language', language] },
                 },
               },
-            },
-            sessions: {
-              $map: {
-                input: '$sessions',
-                as: 's',
-                in: {
-                  sub_session_id: '$$s.sub_session_id',
-                  language: '$$s.language',
-                },
-              },
-            },
-          },
-        },
-        {
-          $unwind: '$milestone_progress',
-        },
-        {
-          $project: {
-            _id: 0,
-            user_id: 1,
-            session_id: '$milestone_progress.session_id',
-            sub_session_id: '$milestone_progress.sub_session_id',
-            milestone_level: '$milestone_progress.milestone_level',
-            sub_milestone_level: '$milestone_progress.sub_milestone_level',
-            sessions: 1,
-            storedLanguage: '$milestone_progress.language',
-            createdAt: '$milestone_progress.createdAt',
-          },
-        },
-        {
-          $addFields: {
-            language: {
-              $let: {
-                vars: {
-                  matchedSession: {
-                    $arrayElemAt: [
-                      {
-                        $filter: {
-                          input: '$sessions',
-                          as: 'session',
-                          cond: {
-                            $eq: [
-                              '$$session.sub_session_id',
-                              '$sub_session_id',
-                            ],
-                          },
-                        },
-                      },
-                      0,
+              initialValue: null,
+              in: {
+                $cond: {
+                  if: {
+                    $or: [
+                      { $eq: ['$$value', null] },
+                      { $gt: ['$$this.createdAt', '$$value.createdAt'] },
                     ],
                   },
-                },
-                in: {
-                  // If sub_milestone_level exists (F1/F2/F3), use stored language
-                  // Otherwise, use old flow (session lookup)
-                  $cond: {
-                    if: {
-                      $and: [
-                        { $ne: ['$sub_milestone_level', null] },
-                        { $ne: ['$sub_milestone_level', ''] },
-                      ],
-                    },
-                    then: '$storedLanguage',
-                    else: {
-                      $ifNull: [
-                        '$storedLanguage',
-                        '$$matchedSession.language',
-                      ],
-                    },
-                  },
+                  then: '$$this',
+                  else: '$$value',
                 },
               },
             },
           },
         },
+      },
+      { $match: { latestMilestone: { $ne: null } } },
+    ]);
+
+    if (modernResult.length > 0) {
+      const { user_id, latestMilestone: m } = modernResult[0];
+      return [
         {
-          $project: {
-            _id: 0,
-            user_id: 1,
-            session_id: 1,
-            sub_session_id: 1,
-            milestone_level: 1,
-            sub_milestone_level: 1,
-            createdAt: 1,
-            language: 1,
+          user_id,
+          session_id: m.session_id,
+          sub_session_id: m.sub_session_id,
+          milestone_level: m.milestone_level,
+          sub_milestone_level: m.sub_milestone_level,
+          createdAt: m.createdAt,
+          language: m.language,
+        },
+      ];
+    }
+
+    // Legacy fallback for old records without stored language.
+    // Step 1: find the latest null-language milestone entry (O(M) single pass, no sessions).
+    const legacyMilestone = await this.scoreModel.aggregate([
+      { $match: { user_id: userId } },
+      {
+        $project: {
+          _id: 0,
+          user_id: 1,
+          latestMilestone: {
+            $reduce: {
+              input: {
+                $filter: {
+                  input: '$milestone_progress',
+                  as: 'mp',
+                  cond: { $eq: [{ $ifNull: ['$$mp.language', null] }, null] },
+                },
+              },
+              initialValue: null,
+              in: {
+                $cond: {
+                  if: {
+                    $or: [
+                      { $eq: ['$$value', null] },
+                      { $gt: ['$$this.createdAt', '$$value.createdAt'] },
+                    ],
+                  },
+                  then: '$$this',
+                  else: '$$value',
+                },
+              },
+            },
           },
         },
-        {
-          $match: {
-            language: language,
+      },
+      { $match: { latestMilestone: { $ne: null } } },
+    ]);
+
+    if (!legacyMilestone.length) {
+      return [];
+    }
+
+    const { user_id, latestMilestone: lm } = legacyMilestone[0];
+
+    // Step 2: resolve language for this single entry via session lookup (O(N) once, not M times).
+    const sessionResult = await this.scoreModel.aggregate([
+      { $match: { user_id: userId } },
+      {
+        $project: {
+          _id: 0,
+          sessionLang: {
+            $arrayElemAt: [
+              {
+                $map: {
+                  input: {
+                    $filter: {
+                      input: '$sessions',
+                      as: 's',
+                      cond: { $eq: ['$$s.sub_session_id', lm.sub_session_id] },
+                    },
+                  },
+                  as: 'matched',
+                  in: '$$matched.language',
+                },
+              },
+              0,
+            ],
           },
         },
-        {
-          $sort: {
-            createdAt: -1,
-          },
-        },
-      ])
-      .allowDiskUse(false)
-      .limit(1);
-    return RecordData;
+      },
+    ]);
+
+    const resolvedLanguage =
+      lm.sub_milestone_level
+        ? lm.language ?? null
+        : (lm.language ?? sessionResult[0]?.sessionLang ?? null);
+
+    if (resolvedLanguage !== language) {
+      return [];
+    }
+
+    return [
+      {
+        user_id,
+        session_id: lm.session_id,
+        sub_session_id: lm.sub_session_id,
+        milestone_level: lm.milestone_level,
+        sub_milestone_level: lm.sub_milestone_level,
+        createdAt: lm.createdAt,
+        language: resolvedLanguage,
+      },
+    ];
   }
 
   async getMeanLearnerByUser(userId: string) {
