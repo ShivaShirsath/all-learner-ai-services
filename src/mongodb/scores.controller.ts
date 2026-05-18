@@ -1548,21 +1548,112 @@ export class ScoresController {
 
       if (CreateLearnerProfileDto['contentType'].toLowerCase() !== 'char') {
         if (
-          CreateLearnerProfileDto['output'] === undefined &&
-          CreateLearnerProfileDto.audio !== undefined
+          CreateLearnerProfileDto['output'] === undefined
+          // && CreateLearnerProfileDto.audio !== undefined
         ) {
-          const audioFile = CreateLearnerProfileDto.audio;
-          const decoded = Buffer.isBuffer(audioFile)
-            ? audioFile.toString('base64')
-            : audioFile;
+          // const audioFile = CreateLearnerProfileDto.audio;
+          // const decoded = Buffer.isBuffer(audioFile)
+          //   ? audioFile.toString('base64')
+          //   : audioFile;
 
-          const audioOutput = await this.scoresService.audioFileToAsrOutput(
-            decoded,
-            CreateLearnerProfileDto.language,
-            CreateLearnerProfileDto['contentType'],
-          );
+          // const audioOutput = await this.scoresService.audioFileToAsrOutput(
+          //   decoded,
+          //   CreateLearnerProfileDto.language,
+          //   CreateLearnerProfileDto['contentType'],
+          // );
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          const audioOutput = {
+                  "asrOutBeforeDenoised": {
+                      "taskType": "asr",
+                      "output": [
+                          {
+                              "source": "सलीम का गांव बड़ा है",
+                              "nBestTokens": [
+                                  {
+                                      "word": "सलीम",
+                                      "tokens": [
+                                          {
+                                              "स": 0.095,
+                                              "सम": 0
+                                          },
+                                          {
+                                              "ली": 0.023,
+                                              "ल": 0
+                                          },
+                                          {
+                                              "म": 0.063,
+                                              "": 0
+                                          }
+                                      ]
+                                  },
+                                  {
+                                      "word": "का",
+                                      "tokens": [
+                                          {
+                                              "का": 0
+                                          }
+                                      ]
+                                  },
+                                  {
+                                      "word": "गांव",
+                                      "tokens": [
+                                          {
+                                              "ग": 0.083,
+                                              "गा": 0
+                                          },
+                                          {
+                                              "ां": 0.037,
+                                              "ॉ": 0.014
+                                          },
+                                          {
+                                              "व": 0.085,
+                                              "ँ": 0
+                                          }
+                                      ]
+                                  },
+                                  {
+                                      "word": "बड़ा",
+                                      "tokens": [
+                                          {
+                                              "ब": 0
+                                          },
+                                          {
+                                              "ड़": 0.09,
+                                              "ड": 0.003
+                                          },
+                                          {
+                                              "ा": 0.282,
+                                              "े": 0
+                                          }
+                                      ]
+                                  },
+                                  {
+                                      "word": "है",
+                                      "tokens": [
+                                          {
+                                              "है": 0.101,
+                                              "हैं": 0.003
+                                          }
+                                      ]
+                                  }
+                              ]
+                          }
+                      ],
+                      "config": null
+                  },
+                  "pause_count": 0,
+                  "avg_pause": 0,
+                  "pitch_classification": "Flat",
+                  "pitch_mean": 146.93,
+                  "pitch_std": 13.66,
+                  "intensity_classification": "Natural",
+                  "intensity_mean": 61.6,
+                  "intensity_std": 16.85,
+                  "expression_classification": "Moderately Fluent",
+                  "smoothness_classification": "Fluent"
+              };
 
-          CreateLearnerProfileDto['output'] = audioOutput.asrOutBeforeDenoised?.output || '';
+          CreateLearnerProfileDto['output'] = audioOutput.asrOutBeforeDenoised?.output;
           pause_count = audioOutput.pause_count || 0;
           avg_pause = audioOutput.avg_pause;
           pitch_classification = audioOutput.pitch_classification;
@@ -1590,7 +1681,7 @@ export class ScoresController {
           }
         }
 
-        responseText = CreateLearnerProfileDto.output[0].source;
+        responseText = CreateLearnerProfileDto.response_text;
         responseText = await this.scoresService.mergeResponseWordsUsingOriginal(originalText, responseText);
 
         // Profanity Detection logic - Check BEFORE any further processing
