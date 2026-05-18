@@ -493,14 +493,25 @@ export class ScoresService {
           user_id: userId,
         },
       },
+      // Pre-filter sessions array before $unwind to avoid exploding the entire sessions array.
       {
-        $unwind: '$sessions',
+        $project: {
+          sessions: {
+            $filter: {
+              input: '$sessions',
+              as: 's',
+              cond: {
+                $and: [
+                  { $eq: ['$$s.sub_session_id', subSessionId] },
+                  { $eq: ['$$s.language', language] },
+                ],
+              },
+            },
+          },
+        },
       },
       {
-        $match: {
-          'sessions.sub_session_id': subSessionId,
-          'sessions.language': language,
-        },
+        $unwind: '$sessions',
       },
       {
         $facet: {
@@ -1193,14 +1204,25 @@ export class ScoresService {
           user_id: userId,
         },
       },
+      // Pre-filter sessions array before $unwind to avoid exploding the entire sessions array.
       {
-        $unwind: '$sessions',
+        $project: {
+          sessions: {
+            $filter: {
+              input: '$sessions',
+              as: 's',
+              cond: {
+                $and: [
+                  { $eq: ['$$s.sub_session_id', subSessionId] },
+                  { $eq: ['$$s.language', language] },
+                ],
+              },
+            },
+          },
+        },
       },
       {
-        $match: {
-          'sessions.sub_session_id': subSessionId,
-          'sessions.language': language,
-        },
+        $unwind: '$sessions',
       },
       {
         $facet: {
@@ -1346,15 +1368,26 @@ export class ScoresService {
           user_id: userId,
         },
       },
+      // Pre-filter sessions array before $unwind to avoid exploding the entire sessions array.
       {
-        $unwind: '$sessions',
+        $project: {
+          sessions: {
+            $filter: {
+              input: '$sessions',
+              as: 's',
+              cond: {
+                $and: [
+                  { $eq: ['$$s.sub_session_id', subSessionId] },
+                  { $eq: ['$$s.language', language] },
+                  { $ne: ['$$s.response_text', ''] },
+                ],
+              },
+            },
+          },
+        },
       },
       {
-        $match: {
-          'sessions.sub_session_id': subSessionId,
-          'sessions.language': language,
-          'sessions.response_text': { $ne: '' },
-        },
+        $unwind: '$sessions',
       },
       {
         $group: {
@@ -1707,14 +1740,25 @@ export class ScoresService {
           user_id: userId,
         },
       },
+      // Pre-filter sessions array before $unwind to avoid exploding the entire sessions array.
       {
-        $unwind: '$sessions',
+        $project: {
+          sessions: {
+            $filter: {
+              input: '$sessions',
+              as: 's',
+              cond: {
+                $and: [
+                  { $eq: ['$$s.sub_session_id', subSessionId] },
+                  { $eq: ['$$s.language', language] },
+                ],
+              },
+            },
+          },
+        },
       },
       {
-        $match: {
-          'sessions.sub_session_id': subSessionId,
-          'sessions.language': language,
-        },
+        $unwind: '$sessions',
       },
       {
         $group: {
@@ -3104,31 +3148,32 @@ export class ScoresService {
     subSessionId: string,
     language: string,
   ): Promise<any[]> {
-    // Scope to user_id first — avoids scanning the whole scores collection in production.
-    const docs = await this.scoreModel
-      .find({
-        user_id: userId,
-        sessions: {
-          $elemMatch: {
-            sub_session_id: subSessionId,
-            language: language,
+    // Use $filter projection to return only matching sessions from the DB,
+    // avoiding loading the entire user document into memory.
+    const docs = await this.scoreModel.aggregate([
+      {
+        $match: { user_id: userId },
+      },
+      {
+        $project: {
+          _id: 0,
+          sessions: {
+            $filter: {
+              input: '$sessions',
+              as: 's',
+              cond: {
+                $and: [
+                  { $eq: ['$$s.sub_session_id', subSessionId] },
+                  { $eq: ['$$s.language', language] },
+                ],
+              },
+            },
           },
         },
-      })
-      .lean();
+      },
+    ]);
 
-    // Flatten the sessions array and then filter to only those matching exactly the sub_session_id and language.
-    const sessions = docs.reduce((acc: any[], doc: any) => {
-      if (doc.sessions && Array.isArray(doc.sessions)) {
-        const matching = doc.sessions.filter(
-          (s: any) =>
-            s.sub_session_id === subSessionId && s.language === language,
-        );
-        return acc.concat(matching);
-      }
-      return acc;
-    }, []);
-    return sessions;
+    return docs.length > 0 ? docs[0].sessions : [];
   }
 
   async computeFluencyAndProsodyResults(
