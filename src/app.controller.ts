@@ -1,6 +1,7 @@
 import { Controller, Get } from '@nestjs/common';
 import { AppService } from './app.service';
 import { ApiExcludeEndpoint } from '@nestjs/swagger';
+import * as mongoose from 'mongoose';
 
 @Controller()
 export class AppController {
@@ -17,6 +18,21 @@ export class AppController {
     return {
       status: true,
       message: 'Learner ai service App is working',
+    };
+  }
+
+  @Get('/health')
+  deepHealth() {
+    const dbType = process.env.DATABASE || 'mongodb';
+    const mongoOk = dbType === 'mongodb' ? mongoose.connection.readyState === 1 : null;
+    const allOk = mongoOk !== false;
+    return {
+      status: allOk ? 'ok' : 'degraded',
+      services: {
+        ...(mongoOk !== null && { mongodb: mongoOk }),
+      },
+      uptime: process.uptime(),
+      timestamp: new Date().toISOString(),
     };
   }
 }

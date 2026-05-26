@@ -2,7 +2,6 @@ import { HttpException, Inject, Injectable } from '@nestjs/common';
 import { ScoreDocument } from './schemas/scores.schema';
 import { hexcodeMappingDocument } from './schemas/hexcodeMapping.schema';
 import { assessmentInputDocument } from './schemas/assessmentInput.schema';
-import { denoiserOutputLogsDocument } from './schemas/denoiserOutputLogs.schema';
 import { Model } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import axios from 'axios';
@@ -27,6 +26,12 @@ import {
   ErrorCodes,
   mapAxiosToUpstreamHttpException,
 } from 'src/common/exceptions/api.exceptions';
+import {
+  FluencyClassification,
+  ProsodyClassification,
+  SessionResult,
+  SUPPORTED_LANGUAGES,
+} from 'src/common/enums/scores.enum';
 
 @Injectable()
 export class ScoresService {
@@ -36,15 +41,13 @@ export class ScoresService {
     private readonly hexcodeMappingModel: Model<hexcodeMappingDocument>,
     @InjectModel('assessmentInput')
     private readonly assessmentInputModel: Model<assessmentInputDocument>,
-    @InjectModel('denoiserOutputLogs')
-    private readonly denoiserOutputLogsModel: Model<denoiserOutputLogsDocument>,
     @InjectModel('llmOutputLogs')
     private readonly llmOutputLogsModel: Model<llmOutputLogsDocument>,
     @InjectModel('getSetResult')
     private readonly getSetResultModel: Model<getSetResultDocument>,
-    @InjectModel('towre') 
+    @InjectModel('towre')
     private towreModel: Model<TowreDocument>,
-    @InjectModel('vocabulary') 
+    @InjectModel('vocabulary')
     private vocabularyModel: Model<VocabularyDocument>,
     @InjectModel('correct_practice_word')
     private correctPracticeWordModel: Model<correct_practice_wordDocument>,
@@ -58,39 +61,30 @@ export class ScoresService {
 
   async create(createScoreDto: any): Promise<any> {
     try {
-      const recordData = await this.scoreModel
-        .find({ user_id: createScoreDto.user_id })
-        .exec();
-      if (recordData.length === 0) {
-        const createdScore = new this.scoreModel(createScoreDto);
-        const result = await createdScore.save();
-        const updatedRecordData = this.scoreModel.updateOne(
-          { user_id: createScoreDto.user_id },
-          { $push: { sessions: createScoreDto.session } },
-        );
-        return await updatedRecordData;
-      } else {
-        const updatedRecordData = this.scoreModel.updateOne(
-          { user_id: createScoreDto.user_id },
-          { $push: { sessions: createScoreDto.session } },
-        );
-        return await updatedRecordData;
-      }
+      return await this.scoreModel.updateOne(
+        { user_id: createScoreDto.user_id },
+        {
+          $push: { sessions: createScoreDto.session },
+          $setOnInsert: { user_id: createScoreDto.user_id },
+        },
+        { upsert: true },
+      );
     } catch (err) {
       throw buildHttpExceptionFromUnknown(err);
     }
   }
 
-  async createMilestoneRecord(createMilestoneRecord: any): Promise<any> {
+  async createMilestoneRecord(createMilestoneRecord: any, knownCurrentMilestoneLevel?: string): Promise<any> {
     try {
       let milestoneToSet = createMilestoneRecord.milestone_level;
-      
+
       if (createMilestoneRecord.language) {
-        const currentMilestoneData = await this.getlatestmilestone(
-          createMilestoneRecord.user_id,
-          createMilestoneRecord.language,
-        );
-        const currentMilestone = currentMilestoneData[0]?.milestone_level;
+        const currentMilestone = knownCurrentMilestoneLevel !== undefined
+          ? knownCurrentMilestoneLevel
+          : (await this.getlatestmilestone(
+              createMilestoneRecord.user_id,
+              createMilestoneRecord.language,
+            ))[0]?.milestone_level;
 
         if (currentMilestone) {
           const getMilestoneNum = (level: string): number => {
@@ -150,7 +144,6 @@ export class ScoresService {
     language: string,
     contentType: string,
   ): Promise<any> {
-    let asrOutDenoisedOutput: any;
     let asrOutBeforeDenoised: any;
     let audio: any = data;
     let pause_count: number = 0;
@@ -191,9 +184,7 @@ export class ScoresService {
         serviceId = `ai4bharat/conformer-${language}-gpu--t4`;
     }
 
-    if (process.env.skipNonDenoiserAsrCall !== 'true') {
-      asrOutBeforeDenoised = await asrCall();
-    }
+    asrOutBeforeDenoised = await asrCall();
 
     const denoiserConfig = {
       method: 'post',
@@ -235,10 +226,6 @@ export class ScoresService {
         },
         status,
       );
-    }
-
-    if (process.env.denoiserEnabled === 'true') {
-      asrOutDenoisedOutput = await asrCall();
     }
 
     async function asrCall() {
@@ -296,7 +283,6 @@ export class ScoresService {
     }
 
     return {
-      asrOutDenoisedOutput: asrOutDenoisedOutput,
       asrOutBeforeDenoised: asrOutBeforeDenoised,
       pause_count: pause_count,
       avg_pause: avg_pause,
@@ -338,40 +324,19 @@ export class ScoresService {
     return UserRecordData;
   }
 
-  async getRetryStatus(userId: string, contentId: string) {
-    try {
-      const recordData = await this.scoreModel.find({ user_id: userId }).exec();
-      const updatedRecords = [];
-      for (const record of recordData) {
-        if (record.sessions.length > 0) {
-          const lastSession = record.sessions[record.sessions.length - 1];
-          if (lastSession.contentId === contentId) {
-            lastSession.isRetry = true;
-            const updatedRecord = await this.scoreModel.updateOne(
-              {
-                'sessions._id': lastSession._id,
-              },
-              {
-                $set: { 'sessions.$': lastSession },
-              },
-            );
-            updatedRecords.push(updatedRecord);
-          }
-        }
-      }
-      return 1;
-    } catch (error) {
-      console.error('Error fetching retry status:', error);
-      throw error;
-    }
-  }
-
   // Target Query
   async getTargetsBySession(sessionId: string, language: string) {
     const threshold = 0.7;
     let RecordData = [];
 
     RecordData = await this.scoreModel.aggregate([
+      {
+        $match: {
+          sessions: {
+            $elemMatch: { session_id: sessionId, language: language },
+          },
+        },
+      },
       {
         $unwind: '$sessions',
       },
@@ -528,14 +493,25 @@ export class ScoresService {
           user_id: userId,
         },
       },
+      // Pre-filter sessions array before $unwind to avoid exploding the entire sessions array.
       {
-        $unwind: '$sessions',
+        $project: {
+          sessions: {
+            $filter: {
+              input: '$sessions',
+              as: 's',
+              cond: {
+                $and: [
+                  { $eq: ['$$s.sub_session_id', subSessionId] },
+                  { $eq: ['$$s.language', language] },
+                ],
+              },
+            },
+          },
+        },
       },
       {
-        $match: {
-          'sessions.sub_session_id': subSessionId,
-          'sessions.language': language,
-        },
+        $unwind: '$sessions',
       },
       {
         $facet: {
@@ -868,6 +844,13 @@ export class ScoresService {
 
     const RecordData = await this.scoreModel.aggregate([
       {
+        $match: {
+          sessions: {
+            $elemMatch: { sub_session_id: subSessionId, language: language },
+          },
+        },
+      },
+      {
         $unwind: '$sessions',
       },
       {
@@ -1062,6 +1045,13 @@ export class ScoresService {
 
     RecordData = await this.scoreModel.aggregate([
       {
+        $match: {
+          sessions: {
+            $elemMatch: { session_id: sessionId, language: language },
+          },
+        },
+      },
+      {
         $unwind: '$sessions',
       },
       {
@@ -1214,14 +1204,25 @@ export class ScoresService {
           user_id: userId,
         },
       },
+      // Pre-filter sessions array before $unwind to avoid exploding the entire sessions array.
       {
-        $unwind: '$sessions',
+        $project: {
+          sessions: {
+            $filter: {
+              input: '$sessions',
+              as: 's',
+              cond: {
+                $and: [
+                  { $eq: ['$$s.sub_session_id', subSessionId] },
+                  { $eq: ['$$s.language', language] },
+                ],
+              },
+            },
+          },
+        },
       },
       {
-        $match: {
-          'sessions.sub_session_id': subSessionId,
-          'sessions.language': language,
-        },
+        $unwind: '$sessions',
       },
       {
         $facet: {
@@ -1367,14 +1368,26 @@ export class ScoresService {
           user_id: userId,
         },
       },
+      // Pre-filter sessions array before $unwind to avoid exploding the entire sessions array.
       {
-        $unwind: '$sessions',
+        $project: {
+          sessions: {
+            $filter: {
+              input: '$sessions',
+              as: 's',
+              cond: {
+                $and: [
+                  { $eq: ['$$s.sub_session_id', subSessionId] },
+                  { $eq: ['$$s.language', language] },
+                  { $ne: ['$$s.response_text', ''] },
+                ],
+              },
+            },
+          },
+        },
       },
       {
-        $match: {
-          'sessions.sub_session_id': subSessionId,
-          'sessions.language': language,
-        },
+        $unwind: '$sessions',
       },
       {
         $group: {
@@ -1391,11 +1404,15 @@ export class ScoresService {
           total_correctness_score: {
             $sum: '$sessions.correctness_score',
           },
+          total_count: {
+            $sum: 1,
+          },
         },
       },
     ]);
     return RecordData;
   }
+
   async getFamiliarityByUser(userId: string, language: string) {
     const threshold = 0.7;
     let RecordData = [];
@@ -1553,6 +1570,13 @@ export class ScoresService {
     let RecordData = [];
 
     RecordData = await this.scoreModel.aggregate([
+      {
+        $match: {
+          sessions: {
+            $elemMatch: { sub_session_id: subSessionId, language: language },
+          },
+        },
+      },
       {
         $unwind: '$sessions',
       },
@@ -1716,14 +1740,25 @@ export class ScoresService {
           user_id: userId,
         },
       },
+      // Pre-filter sessions array before $unwind to avoid exploding the entire sessions array.
       {
-        $unwind: '$sessions',
+        $project: {
+          sessions: {
+            $filter: {
+              input: '$sessions',
+              as: 's',
+              cond: {
+                $and: [
+                  { $eq: ['$$s.sub_session_id', subSessionId] },
+                  { $eq: ['$$s.language', language] },
+                ],
+              },
+            },
+          },
+        },
       },
       {
-        $match: {
-          'sessions.sub_session_id': subSessionId,
-          'sessions.language': language,
-        },
+        $unwind: '$sessions',
       },
       {
         $group: {
@@ -1771,7 +1806,7 @@ export class ScoresService {
     const RecordData = await this.scoreModel.aggregate([
       {
         $match: {
-          'sessions.session_id': sessionId,
+          sessions: { $elemMatch: { session_id: sessionId } },
         },
       },
       {
@@ -1816,100 +1851,149 @@ export class ScoresService {
   }
 
   async getlatestmilestone(userId: string, language: string) {
-    const RecordData = await this.scoreModel
-      .aggregate([
-        {
-          $match: {
-            user_id: userId,
-          },
-        },
-        {
-          $unwind: '$milestone_progress',
-        },
-        {
-          $project: {
-            _id: 0,
-            user_id: 1,
-            session_id: '$milestone_progress.session_id',
-            sub_session_id: '$milestone_progress.sub_session_id',
-            milestone_level: '$milestone_progress.milestone_level',
-            sub_milestone_level: '$milestone_progress.sub_milestone_level',
-            sessions: 1,
-            storedLanguage: '$milestone_progress.language',
-            createdAt: '$milestone_progress.createdAt',
-          },
-        },
-        {
-          $addFields: {
-            language: {
-              $let: {
-                vars: {
-                  matchedSession: {
-                    $arrayElemAt: [
-                      {
-                        $filter: {
-                          input: '$sessions',
-                          as: 'session',
-                          cond: {
-                            $eq: [
-                              '$$session.sub_session_id',
-                              '$sub_session_id',
-                            ],
-                          },
-                        },
-                      },
-                      0,
+    // Fast path: find the latest milestone with stored language using $reduce (O(M) single pass,
+    // no sessions array needed). For users created after language field was added, this always hits.
+    const modernResult = await this.scoreModel.aggregate([
+      { $match: { user_id: userId } },
+      {
+        $project: {
+          _id: 0,
+          user_id: 1,
+          latestMilestone: {
+            $reduce: {
+              input: {
+                $filter: {
+                  input: '$milestone_progress',
+                  as: 'mp',
+                  cond: { $eq: ['$$mp.language', language] },
+                },
+              },
+              initialValue: null,
+              in: {
+                $cond: {
+                  if: {
+                    $or: [
+                      { $eq: ['$$value', null] },
+                      { $gt: ['$$this.createdAt', '$$value.createdAt'] },
                     ],
                   },
-                },
-                in: {
-                  // If sub_milestone_level exists (F1/F2/F3), use stored language
-                  // Otherwise, use old flow (session lookup)
-                  $cond: {
-                    if: {
-                      $and: [
-                        { $ne: ['$sub_milestone_level', null] },
-                        { $ne: ['$sub_milestone_level', ''] },
-                      ],
-                    },
-                    then: '$storedLanguage',
-                    else: {
-                      $ifNull: [
-                        '$storedLanguage',
-                        '$$matchedSession.language',
-                      ],
-                    },
-                  },
+                  then: '$$this',
+                  else: '$$value',
                 },
               },
             },
           },
         },
+      },
+      { $match: { latestMilestone: { $ne: null } } },
+    ]);
+
+    if (modernResult.length > 0) {
+      const { user_id, latestMilestone: m } = modernResult[0];
+      return [
         {
-          $project: {
-            _id: 0,
-            user_id: 1,
-            session_id: 1,
-            sub_session_id: 1,
-            milestone_level: 1,
-            sub_milestone_level: 1,
-            createdAt: 1,
-            language: 1,
+          user_id,
+          session_id: m.session_id,
+          sub_session_id: m.sub_session_id,
+          milestone_level: m.milestone_level,
+          sub_milestone_level: m.sub_milestone_level,
+          createdAt: m.createdAt,
+          language: m.language,
+        },
+      ];
+    }
+
+  
+    // Step 1: find the latest null-language milestone entry (O(M) single pass, no sessions).
+    const legacyMilestone = await this.scoreModel.aggregate([
+      { $match: { user_id: userId } },
+      {
+        $project: {
+          _id: 0,
+          user_id: 1,
+          latestMilestone: {
+            $reduce: {
+              input: {
+                $filter: {
+                  input: '$milestone_progress',
+                  as: 'mp',
+                  cond: { $eq: [{ $ifNull: ['$$mp.language', null] }, null] },
+                },
+              },
+              initialValue: null,
+              in: {
+                $cond: {
+                  if: {
+                    $or: [
+                      { $eq: ['$$value', null] },
+                      { $gt: ['$$this.createdAt', '$$value.createdAt'] },
+                    ],
+                  },
+                  then: '$$this',
+                  else: '$$value',
+                },
+              },
+            },
           },
         },
-        {
-          $match: {
-            language: language,
+      },
+      { $match: { latestMilestone: { $ne: null } } },
+    ]);
+
+    if (!legacyMilestone.length) {
+      return [];
+    }
+
+    const { user_id, latestMilestone: lm } = legacyMilestone[0];
+
+    // Step 2: resolve language for this single entry via session lookup (O(N) once, not M times).
+    const sessionResult = await this.scoreModel.aggregate([
+      { $match: { user_id: userId } },
+      {
+        $project: {
+          _id: 0,
+          sessionLang: {
+            $arrayElemAt: [
+              {
+                $map: {
+                  input: {
+                    $filter: {
+                      input: '$sessions',
+                      as: 's',
+                      cond: { $eq: ['$$s.sub_session_id', lm.sub_session_id] },
+                    },
+                  },
+                  as: 'matched',
+                  in: '$$matched.language',
+                },
+              },
+              0,
+            ],
           },
         },
-        {
-          $sort: {
-            createdAt: -1,
-          },
-        },
-      ])
-      .limit(1);
-    return RecordData;
+      },
+    ]);
+
+    const resolvedLanguage =
+      lm.sub_milestone_level
+        ? lm.language ?? null
+        : (lm.language ?? sessionResult[0]?.sessionLang ?? null);
+
+    if (resolvedLanguage !== language) {
+      return [];
+    }
+
+    return [
+      {
+        user_id,
+        session_id: lm.session_id,
+        sub_session_id: lm.sub_session_id,
+        milestone_level: lm.milestone_level,
+        sub_milestone_level: lm.sub_milestone_level,
+        createdAt: lm.createdAt,
+        language: resolvedLanguage,
+      },
+    ];
   }
 
   async getMeanLearnerByUser(userId: string) {
@@ -2046,7 +2130,7 @@ export class ScoresService {
     const RecordData = await this.scoreModel.aggregate([
       {
         $match: {
-          'sessions.session_id': sessionId,
+          sessions: { $elemMatch: { session_id: sessionId } },
         },
       },
       {
@@ -2299,18 +2383,6 @@ export class ScoresService {
     }).filter((sessionIdEle) => sessionIdEle != undefined);
 
     return sessionIds;
-  }
-
-  async addDenoisedOutputLog(DenoisedOutputLog: any): Promise<any> {
-    try {
-      const createDenoisedOutputLog = new this.denoiserOutputLogsModel(
-        DenoisedOutputLog,
-      );
-      const result = await createDenoisedOutputLog.save();
-      return result;
-    } catch (err) {
-      return err;
-    }
   }
 
   async addLlmOutputLog(llmOutputLog: any): Promise<any> {
@@ -3043,54 +3115,49 @@ export class ScoresService {
     return outcomes.size > 0 ? Array.from(outcomes) : [word];
   }
 
-  getAccuracyClassification(contentType: string, score: number): string {
-    const config: Record<string, [number, number, string][]> = {
+  getAccuracyClassification(contentType: string, score: number): FluencyClassification | 'N/A' {
+    const config: Record<string, [number, number, FluencyClassification][]> = {
       word: [
-        [0, 1, "Fluent"],
-        [1, 2, "Moderately Fluent"],
-        [2, 3, "Disfluent"],
-        [3, Infinity, "Very Disfluent"]
+        [0, 1, FluencyClassification.FLUENT],
+        [1, 2, FluencyClassification.MODERATELY_FLUENT],
+        [2, 3, FluencyClassification.DISFLUENT],
+        [3, Infinity, FluencyClassification.VERY_DISFLUENT],
       ],
       sentence: [
-        [0, 3, "Fluent"],
-        [3, 6, "Moderately Fluent"],
-        [6, 8, "Disfluent"],
-        [8, Infinity, "Very Disfluent"]
+        [0, 3, FluencyClassification.FLUENT],
+        [3, 6, FluencyClassification.MODERATELY_FLUENT],
+        [6, 8, FluencyClassification.DISFLUENT],
+        [8, Infinity, FluencyClassification.VERY_DISFLUENT],
       ],
       paragraph: [
-        [0, 5, "Fluent"],
-        [5, 10, "Moderately Fluent"],
-        [10, 12, "Disfluent"],
-        [12, Infinity, "Very Disfluent"]
-      ]
+        [0, 5, FluencyClassification.FLUENT],
+        [5, 10, FluencyClassification.MODERATELY_FLUENT],
+        [10, 12, FluencyClassification.DISFLUENT],
+        [12, Infinity, FluencyClassification.VERY_DISFLUENT],
+      ],
     };
-    // Normalize the content type and get its thresholds.
     const ct = contentType.toLowerCase();
     const thresholds = config[ct];
-    // If the content type is not recognized, return "N/A"
     if (!thresholds) {
-      return "N/A";
+      return 'N/A';
     }
-    // Loop through the thresholds and return the classification that matches.
     for (const [min, max, label] of thresholds) {
       if (score >= min && score <= max) {
         return label;
       }
     }
-    // Fallback in case no classification is matched.
-    return "N/A";
+    return 'N/A';
   }
 
   public classificationToScore(classification: string): number {
     switch (classification) {
-      case 'Fluent':
+      case FluencyClassification.FLUENT:
         return 4;
-      case 'Moderately Fluent':
+      case FluencyClassification.MODERATELY_FLUENT:
         return 3;
-      case 'Disfluent':
+      case FluencyClassification.DISFLUENT:
         return 2;
-      case 'Very Disfluent':
-        return 1;
+      case FluencyClassification.VERY_DISFLUENT:
       default:
         return 1;
     }
@@ -3101,43 +3168,152 @@ export class ScoresService {
     subSessionId: string,
     language: string,
   ): Promise<any[]> {
-    // Scope to user_id first — avoids scanning the whole scores collection in production.
-    const docs = await this.scoreModel
-      .find({
-        user_id: userId,
-        sessions: {
-          $elemMatch: {
-            sub_session_id: subSessionId,
-            language: language,
+    // Use $filter projection to return only matching sessions from the DB,
+    // avoiding loading the entire user document into memory.
+    const docs = await this.scoreModel.aggregate([
+      {
+        $match: { user_id: userId },
+      },
+      {
+        $project: {
+          _id: 0,
+          sessions: {
+            $filter: {
+              input: '$sessions',
+              as: 's',
+              cond: {
+                $and: [
+                  { $eq: ['$$s.sub_session_id', subSessionId] },
+                  { $eq: ['$$s.language', language] },
+                ],
+              },
+            },
           },
         },
-      })
-      .lean();
+      },
+    ]);
 
-    // Flatten the sessions array and then filter to only those matching exactly the sub_session_id and language.
-    const sessions = docs.reduce((acc: any[], doc: any) => {
-      if (doc.sessions && Array.isArray(doc.sessions)) {
-        const matching = doc.sessions.filter(
-          (s: any) =>
-            s.sub_session_id === subSessionId && s.language === language,
-        );
-        return acc.concat(matching);
+    return docs.length > 0 ? docs[0].sessions : [];
+  }
+
+  async computeFluencyAndProsodyResults(
+    userId: string,
+    subSessionId: string,
+    language: string,
+    collectionId: string | undefined,
+    previousLevel: string | undefined,
+    preloadedSessions?: any[],
+  ): Promise<{ fluencyResult: SessionResult | undefined; prosodyResult: SessionResult | undefined }> {
+    const langLower = language.toLowerCase();
+
+    if (collectionId || !SUPPORTED_LANGUAGES.includes(langLower)) {
+      return { fluencyResult: undefined, prosodyResult: undefined };
+    }
+
+    const userLevelNum = previousLevel ? parseInt(previousLevel.replace('m', ''), 10) : NaN;
+    const needsFluency = !isNaN(userLevelNum) && userLevelNum < 10;
+    const needsProsody = !isNaN(userLevelNum) && userLevelNum >= 6;
+
+    if (!needsFluency && !needsProsody) {
+      return { fluencyResult: undefined, prosodyResult: undefined };
+    }
+
+    const audioRecords = preloadedSessions ?? await this.getSubSessionScores(userId, subSessionId, langLower);
+    const total = audioRecords.length;
+
+    const { passThresholdM4Plus, passThresholdBelowM4, weights } =
+      lang_common_config.fluencyAndProsody;
+
+    let fluencyResult: SessionResult | undefined;
+    if (needsFluency) {
+      const passThreshold = userLevelNum >= 4 ? passThresholdM4Plus : passThresholdBelowM4;
+      let passCount = 0;
+
+      for (const record of audioRecords) {
+        const prosody = record.prosody_fluency || {};
+        const exprClass: string = prosody.expression_classification || FluencyClassification.VERY_DISFLUENT;
+        const smoothClass: string = prosody.smoothness?.smoothness_classification || FluencyClassification.VERY_DISFLUENT;
+        const accClass: string = prosody.accuracy?.accuracy_classification || FluencyClassification.VERY_DISFLUENT;
+        const rateClass: string = prosody.rate?.rate_classification || FluencyClassification.VERY_DISFLUENT;
+
+        const weightedScore =
+          this.classificationToScore(exprClass) * weights.expression +
+          this.classificationToScore(smoothClass) * weights.smoothness +
+          this.classificationToScore(accClass) * weights.accuracy +
+          this.classificationToScore(rateClass) * weights.rate;
+
+        let recordPass: boolean;
+        if (userLevelNum >= 4) {
+          if (weightedScore >= passThreshold) {
+            recordPass = true;
+          } else {
+            // Exception: three borderline combinations score 2.9 but are intentionally passing.
+            recordPass =
+              (exprClass === FluencyClassification.MODERATELY_FLUENT && smoothClass === FluencyClassification.DISFLUENT && accClass === FluencyClassification.MODERATELY_FLUENT && rateClass === FluencyClassification.MODERATELY_FLUENT) ||
+              (exprClass === FluencyClassification.DISFLUENT && smoothClass === FluencyClassification.FLUENT && accClass === FluencyClassification.MODERATELY_FLUENT && rateClass === FluencyClassification.MODERATELY_FLUENT) ||
+              (exprClass === FluencyClassification.VERY_DISFLUENT && smoothClass === FluencyClassification.MODERATELY_FLUENT && accClass === FluencyClassification.MODERATELY_FLUENT && rateClass === FluencyClassification.FLUENT);
+          }
+        } else {
+          recordPass = weightedScore >= passThreshold;
+        }
+
+        if (recordPass) {
+          passCount++;
+        }
       }
-      return acc;
-    }, []);
-    return sessions;
+
+      fluencyResult = total === 0
+        ? SessionResult.FAIL
+        : total % 2 === 0
+          ? passCount >= total / 2 ? SessionResult.PASS : SessionResult.FAIL
+          : passCount > total / 2 ? SessionResult.PASS : SessionResult.FAIL;
+    }
+
+    let prosodyResult: SessionResult | undefined;
+    if (needsProsody) {
+      const validProsodyClasses: string[] = Object.values(ProsodyClassification);
+      const normalizeClass = (cls: string): string => {
+        const lower = cls.toLowerCase();
+        return validProsodyClasses.includes(lower) ? lower : ProsodyClassification.ERRATIC;
+      };
+
+      let passCountProsody = 0;
+
+      for (const record of audioRecords) {
+        const prosody = record.prosody_fluency || {};
+        const pitchClass = normalizeClass(prosody.pitch?.pitch_classification || ProsodyClassification.ERRATIC);
+        const intensityClass = normalizeClass(prosody.intensity?.intensity_classification || ProsodyClassification.ERRATIC);
+        const tempoClass = normalizeClass(prosody.tempo?.tempo_classification || ProsodyClassification.ERRATIC);
+
+        const exaggeratedCount = [pitchClass, intensityClass, tempoClass].filter(
+          (c) => c === ProsodyClassification.EXAGGERATED,
+        ).length;
+        const recordProsodyPass =
+          pitchClass !== ProsodyClassification.ERRATIC &&
+          intensityClass !== ProsodyClassification.ERRATIC &&
+          tempoClass !== ProsodyClassification.ERRATIC &&
+          exaggeratedCount < 2;
+
+        if (recordProsodyPass) passCountProsody++;
+      }
+
+      prosodyResult = total === 0
+        ? SessionResult.FAIL
+        : total % 2 === 0
+          ? passCountProsody >= total / 2 ? SessionResult.PASS : SessionResult.FAIL
+          : passCountProsody > total / 2 ? SessionResult.PASS : SessionResult.FAIL;
+    }
+
+    return { fluencyResult, prosodyResult };
   }
 
   public async getComprehensionScore(
     userId: string,
     subSessionId: string,
     language: string,
+    preloadedSessions?: any[],
   ) {
-    const sessions = await this.getSubSessionScores(
-      userId,
-      subSessionId,
-      language,
-    );
+    const sessions = preloadedSessions ?? await this.getSubSessionScores(userId, subSessionId, language);
     const comprehensionScores: any[] = [];
     sessions.forEach((session: any) => {
       if (session.comprehension !== undefined) {
@@ -3371,18 +3547,16 @@ export class ScoresService {
     return filteredText != text;
   }
 
-  
   async getRecommendation(
-    userId: string,
-    level:string,
+    level: string,
     contentType: string,
-    token_value: string
+    token_value: string,
+    language: string
   ): Promise<any> {
     const data = JSON.stringify({
-      user_id: userId,
       level: level,
       content_type: contentType,
-      token_value: token_value
+      language: language
     });
 
     const config = {
@@ -3392,6 +3566,7 @@ export class ScoresService {
       headers: {
         'accept': 'application/json',
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token_value}`,
       },
       data: data,
     };
@@ -3427,13 +3602,13 @@ export class ScoresService {
     // standrd for towre
     const wordCount = 108;
     const totalSec = 45;
-        
+
     const correctWordsCount = towre_result.filter(word => word.isCorrect).length;
     const wordsPerMinute = Math.round((correctWordsCount / totalSec) * 60);
     const unattemptedWordsCount = Math.max(0, wordCount - towre_result.length);
     const newWordsLearnt = correctWordsCount;
     const incorrectWordCount = towre_result.filter(word => !word.isCorrect).length;
-    
+
     const towreData = {
       wordsPerMinute: wordsPerMinute,
       correctWordsCount: correctWordsCount,
@@ -3445,51 +3620,52 @@ export class ScoresService {
   }
 
   async vocabularyCount(
-    user_id:string,
-    original_text:string, 
-    response_text:string, 
-    language:string, 
-    session:string, 
-    subSession:string): Promise<void>
-    {
-
+    user_id: string,
+    original_text: string,
+    response_text: string,
+    language: string,
+    session: string,
+    subSession: string,
+  ): Promise<void> {
     const originalWords = this.normalize(original_text);
-    const responseWordsSet = new Set(this.normalize(response_text));
+    if (originalWords.length === 0) return;
 
-    for (const word of originalWords) {
+    const responseWordsSet = new Set(this.normalize(response_text));
+    const now = new Date();
+
+    const ops: any[] = originalWords.map((word) => {
       const isCorrect = responseWordsSet.has(word);
-      const existing = await this.vocabularyModel.findOne({
-        user_id,
-        contentId: word,
-        language
-      });
-      const update: any = {
-        $inc: { presentCount: 1 },
-        $set: { updatedAt: new Date() }
-      };
+      const filter = { user_id, contentId: word, language };
 
       if (isCorrect) {
-        update.$inc.spokenCorrectly = 1;
-        update.$push = {
-          attempts: {
-            session,
-            subSession,
-            createdAt: new Date()
-          }
+        return {
+          updateOne: {
+            filter,
+            update: {
+              $inc: { presentCount: 1, spokenCorrectly: 1 },
+              $set: { updatedAt: now },
+              $push: { attempts: { session, subSession, createdAt: now } },
+            },
+            upsert: true,
+          },
         };
       }
 
-      // Create new record only if spoken correctly or already exists
-      const options = isCorrect ? { upsert: true } : existing ? {} : null;
+      // Incorrect word: only increment presentCount if the record already exists
+      // upsert: false ensures no new document is created for unseen words
+      return {
+        updateOne: {
+          filter,
+          update: {
+            $inc: { presentCount: 1 },
+            $set: { updatedAt: now },
+          },
+          upsert: false,
+        },
+      };
+    });
 
-      if (options !== null) {
-        await this.vocabularyModel.updateOne(
-          { user_id, contentId: word, language },
-          update,
-          options
-        );
-      }
-    }
+    await this.vocabularyModel.bulkWrite(ops, { ordered: false });
   }
 
   // Simple word normalization
@@ -3569,63 +3745,63 @@ export class ScoresService {
   }
 
   async calculateAnsSelectionResult(userId: string, sessionId: string, subSessionId: string, language: string): Promise<{ result: boolean; percentage: number } | null> {
-  try {
-    const user = await this.scoreModel.findOne({
-      user_id: userId,
-      sessions: {
-        $elemMatch: {
-          session_id: sessionId,
-          sub_session_id: subSessionId,
-          language,
-          ansSelectionStatus: { $exists: true, $ne: null }
+    try {
+      const user = await this.scoreModel.findOne({
+        user_id: userId,
+        sessions: {
+          $elemMatch: {
+            session_id: sessionId,
+            sub_session_id: subSessionId,
+            language,
+            ansSelectionStatus: { $exists: true, $ne: null }
+          }
         }
+      }).exec();
+
+      if (!user) {
+        return null;
       }
-    }).exec();
 
-    if (!user) {
+      const session = user.sessions.find(s =>
+        s.session_id === sessionId &&
+        s.sub_session_id === subSessionId &&
+        s.language === language &&
+        s.ansSelectionStatus
+      );
+
+      if (!session || !session.ansSelectionStatus) {
+        return null;
+      }
+
+      let correctCount = 0;
+      let totalCount = 0;
+
+      // Handle new array format: [{ text: "a", status: true, gameType: "..." }, ...]
+      if (Array.isArray(session.ansSelectionStatus)) {
+        totalCount = session.ansSelectionStatus.length;
+        correctCount = session.ansSelectionStatus.filter(item =>
+          item && typeof item === 'object' && item.status === true
+        ).length;
+      }
+      // Handle old object format: { "a": true, "b": false, ... } (backward compatibility)
+      else if (typeof session.ansSelectionStatus === 'object') {
+        const values = Object.values(session.ansSelectionStatus);
+        totalCount = values.length;
+        correctCount = values.filter(Boolean).length;
+      }
+      else {
+        return null;
+      }
+
+      const percentage = totalCount > 0 ? Math.floor((correctCount / totalCount) * 100) : 0;
+      const result = totalCount > 0 ? percentage >= 80 : false;
+
+      return { result, percentage };
+    } catch (err) {
+      console.error('Error calculating ansSelectionResult:', err);
       return null;
     }
-
-    const session = user.sessions.find(s =>
-      s.session_id === sessionId &&
-      s.sub_session_id === subSessionId &&
-      s.language === language &&
-      s.ansSelectionStatus
-    );
-    
-    if (!session || !session.ansSelectionStatus) {
-      return null;
-    }
-
-    let correctCount = 0;
-    let totalCount = 0;
-
-    // Handle new array format: [{ text: "a", status: true, gameType: "..." }, ...]
-    if (Array.isArray(session.ansSelectionStatus)) {
-      totalCount = session.ansSelectionStatus.length;
-      correctCount = session.ansSelectionStatus.filter(item => 
-        item && typeof item === 'object' && item.status === true
-      ).length;
-    } 
-    // Handle old object format: { "a": true, "b": false, ... } (backward compatibility)
-    else if (typeof session.ansSelectionStatus === 'object') {
-    const values = Object.values(session.ansSelectionStatus);
-      totalCount = values.length;
-      correctCount = values.filter(Boolean).length;
-    } 
-    else {
-      return null;
-    }
-
-    const percentage = totalCount > 0 ? Math.floor((correctCount / totalCount) * 100) : 0;
-    const result = totalCount > 0 ? percentage >= 80 : false;
-
-    return { result, percentage };
-  } catch (err) {
-    console.error('Error calculating ansSelectionResult:', err);
-    return null;
   }
-}
 
   async createAssessmentTracking(
     createAssessmentTrackingDto: CreateAssessmentTrackingDto,
@@ -3633,7 +3809,7 @@ export class ScoresService {
     userId?: string
   ): Promise<any> {
     try {
-      
+
       // Generate assessmentTrackingId if not provided
       if (!createAssessmentTrackingDto.assessmentTrackingId) {
         createAssessmentTrackingDto.assessmentTrackingId = randomUUID();
@@ -3671,19 +3847,19 @@ export class ScoresService {
       // Calculate session result
       let sessionResult = "pass";
       const passingThreshold = 80;
-      
+
       // Calculate total score and maxScore from assessmentSummary
       let totalScore = 0;
       let totalMaxScore = 0;
-      
-      if(createAssessmentTrackingDto.courseId === "letterLauncher"){
+
+      if (createAssessmentTrackingDto.courseId === "letterLauncher") {
         totalScore = createAssessmentTrackingDto.totalScore || 0;
         totalMaxScore = (createAssessmentTrackingDto.totalMaxScore || 0) * 5;
-  
+
       } else {
         // For other courses, calculate from assessmentSummary
         const assessmentSummaryData = createAssessmentTrackingDto.assessmentSummary || [];
-        
+
         for (const section of assessmentSummaryData) {
           const itemData = section?.data || [];
           for (const dataItem of itemData) {
@@ -3692,11 +3868,11 @@ export class ScoresService {
           }
         }
       }
-      
+
       const scorePercentage = totalMaxScore > 0
-          ? Math.round((totalScore / totalMaxScore) * 100)
-          : 0;
-      
+        ? Math.round((totalScore / totalMaxScore) * 100)
+        : 0;
+
 
       if (scorePercentage < passingThreshold) {
         sessionResult = "fail";
@@ -3706,7 +3882,7 @@ export class ScoresService {
       const targetCharSet = new Set<string>();
       const familiarityCharSet = new Set<string>();
       const assessmentSummary = createAssessmentTrackingDto.assessmentSummary || [];
-      
+
       for (const section of assessmentSummary) {
         const itemData = section?.data || [];
         for (const dataItem of itemData) {
@@ -3723,12 +3899,12 @@ export class ScoresService {
           }
         }
       }
-      
+
       // Remove from familiarity_char if it exists in target_char
       for (const char of targetCharSet) {
         familiarityCharSet.delete(char);
       }
-      
+
       const target_char = Array.from(targetCharSet);
       const familiarity_char = Array.from(familiarityCharSet);
 
@@ -3747,7 +3923,7 @@ export class ScoresService {
           existingRecord.assessmentTrackingId = existingRecord.assessmentTrackingId;
           existingRecord.userId = userId;
           existingRecord.updatedOn = new Date();
-          
+
           const updatedRecord = await existingRecord.save();
 
           // Delete existing score details
@@ -3761,7 +3937,7 @@ export class ScoresService {
             existingRecord.assessmentTrackingId,
             userId
           );
-          
+
           return {
             ...updatedRecord.toObject(),
             sessionResult: sessionResult,
@@ -3792,13 +3968,13 @@ export class ScoresService {
         timeSpent: createAssessmentTrackingDto.timeSpent,
         unitId: createAssessmentTrackingDto.unitId,
         tenantId: createAssessmentTrackingDto.tenantId,
-        showFlag: createAssessmentTrackingDto.showFlag !== undefined 
-          ? createAssessmentTrackingDto.showFlag 
+        showFlag: createAssessmentTrackingDto.showFlag !== undefined
+          ? createAssessmentTrackingDto.showFlag
           : true,
         evaluatedBy: createAssessmentTrackingDto.evaluatedBy,
         submitedBy: createAssessmentTrackingDto.submitedBy,
       };
-     
+
       // Define valid values
       const validSubMilestoneLevels = ["F1", "F2", "F3"];
       const validApplyLevels = ["A1", "A2", "A3"];
@@ -3811,22 +3987,22 @@ export class ScoresService {
       // F1 exit criteria: A3-L9 → milestone level B
       if (
         subMilestoneLevel === "F1" &&
-        applyLevel === "A3" && 
-        subApplyLevel === 9 && 
+        applyLevel === "A3" &&
+        subApplyLevel === 9 &&
         createAssessmentTrackingDto.session_id &&
         createAssessmentTrackingDto.sub_session_id
       ) {
         try {
           const milestoneLevel = "B";
           let finalSubMilestoneLevel: string;
-          
+
           // Determine next sub-milestone level when completing A3-L9
           if (sessionResult === "pass") {
             finalSubMilestoneLevel = "F2";
-          } else { 
+          } else {
             finalSubMilestoneLevel = "F1";
           }
-        
+
           await this.createMilestoneRecord({
             user_id: userId,
             session_id: createAssessmentTrackingDto.session_id,
@@ -3835,7 +4011,7 @@ export class ScoresService {
             sub_milestone_level: finalSubMilestoneLevel,
             language: createAssessmentTrackingDto.unitId
           });
-          
+
         } catch (milestoneError) {
           console.error('Error creating milestone record:', milestoneError);
         }
@@ -3843,22 +4019,22 @@ export class ScoresService {
       // F2 exit criteria: A3-L18 → milestone level B
       else if (
         subMilestoneLevel === "F2" &&
-        applyLevel === "A3" && 
-        subApplyLevel === 18 && 
+        applyLevel === "A3" &&
+        subApplyLevel === 18 &&
         createAssessmentTrackingDto.session_id &&
         createAssessmentTrackingDto.sub_session_id
       ) {
         try {
           const milestoneLevel = "B";
           let finalSubMilestoneLevel: string;
-          
+
           // Determine next sub-milestone level when completing A3-L9
           if (sessionResult === "pass") {
             finalSubMilestoneLevel = "F3";
-          } else { 
+          } else {
             finalSubMilestoneLevel = "F2";
           }
-                
+
           await this.createMilestoneRecord({
             user_id: userId,
             session_id: createAssessmentTrackingDto.session_id,
@@ -3867,15 +4043,15 @@ export class ScoresService {
             sub_milestone_level: finalSubMilestoneLevel,
             language: createAssessmentTrackingDto.unitId
           });
-          
+
         } catch (milestoneError) {
           console.error('Error creating milestone record:', milestoneError);
         }
       }
       else if (
         subMilestoneLevel === "F3" &&
-        applyLevel === "A2" && 
-        subApplyLevel === 24 && 
+        applyLevel === "A2" &&
+        subApplyLevel === 24 &&
         createAssessmentTrackingDto.courseId === "memoryChallenge" &&
         createAssessmentTrackingDto.session_id &&
         createAssessmentTrackingDto.sub_session_id
@@ -3883,7 +4059,7 @@ export class ScoresService {
         try {
           let finalMilestoneLevel: string;
           let finalSubMilestoneLevel: string;
-          
+
           if (sessionResult === "pass") {
             finalMilestoneLevel = "m1";
             finalSubMilestoneLevel = "";
@@ -3891,7 +4067,7 @@ export class ScoresService {
             finalMilestoneLevel = "B";
             finalSubMilestoneLevel = "F3";
           }
-          
+
           await this.createMilestoneRecord({
             user_id: userId,
             session_id: createAssessmentTrackingDto.session_id,
@@ -3900,12 +4076,12 @@ export class ScoresService {
             sub_milestone_level: finalSubMilestoneLevel,
             language: createAssessmentTrackingDto.unitId
           });
-          
+
         } catch (milestoneError) {
           console.error('Error creating milestone record:', milestoneError);
         }
       }
-      
+
       const createdAssessment = new this.assessmentTrackingModel(
         assessmentTrackingData,
       );
@@ -3991,91 +4167,91 @@ export class ScoresService {
    * Alert : This api is only for the UAT, Manually set milestone for a user 
    * Used for admin/manual milestone assignment
    */
-    async setMilestoneManually(setMilestoneData: {
-      user_id: string;
-      language: string;
-      milestone_level: string;
-      sub_milestone_level?: string;
-      session_id?: string;
-      sub_session_id?: string;
-    }): Promise<any> {
-      try {
-        // Validate milestone_level format
-        const validMainMilestones = ['m0', 'm1', 'm2', 'm3', 'm4', 'm5', 'm6', 'm7', 'm8', 'm9', 'B'];
-        if (!validMainMilestones.includes(setMilestoneData.milestone_level)) {
+  async setMilestoneManually(setMilestoneData: {
+    user_id: string;
+    language: string;
+    milestone_level: string;
+    sub_milestone_level?: string;
+    session_id?: string;
+    sub_session_id?: string;
+  }): Promise<any> {
+    try {
+      // Validate milestone_level format
+      const validMainMilestones = ['m0', 'm1', 'm2', 'm3', 'm4', 'm5', 'm6', 'm7', 'm8', 'm9', 'B'];
+      if (!validMainMilestones.includes(setMilestoneData.milestone_level)) {
+        throw new Error(
+          `Invalid milestone_level: ${setMilestoneData.milestone_level}. Must be one of: ${validMainMilestones.join(', ')}`
+        );
+      }
+
+      // Validate sub_milestone_level if provided
+      if (setMilestoneData.sub_milestone_level) {
+        const validSubMilestones = ['F1', 'F2', 'F3'];
+        if (!validSubMilestones.includes(setMilestoneData.sub_milestone_level)) {
           throw new Error(
-            `Invalid milestone_level: ${setMilestoneData.milestone_level}. Must be one of: ${validMainMilestones.join(', ')}`
+            `Invalid sub_milestone_level: ${setMilestoneData.sub_milestone_level}. Must be one of: ${validSubMilestones.join(', ')}`
           );
         }
-  
-        // Validate sub_milestone_level if provided
-        if (setMilestoneData.sub_milestone_level) {
-          const validSubMilestones = ['F1', 'F2', 'F3'];
-          if (!validSubMilestones.includes(setMilestoneData.sub_milestone_level)) {
-            throw new Error(
-              `Invalid sub_milestone_level: ${setMilestoneData.sub_milestone_level}. Must be one of: ${validSubMilestones.join(', ')}`
-            );
-          }
-        }
-  
-        // Generate session_id and sub_session_id if not provided
-        const session_id = setMilestoneData.session_id || `manual-${Date.now()}`;
-        const sub_session_id = setMilestoneData.sub_session_id || `manual-sub-${Date.now()}`;
-  
-        const insertData = {
-          session_id: session_id,
-          sub_session_id: sub_session_id,
+      }
+
+      // Generate session_id and sub_session_id if not provided
+      const session_id = setMilestoneData.session_id || `manual-${Date.now()}`;
+      const sub_session_id = setMilestoneData.sub_session_id || `manual-sub-${Date.now()}`;
+
+      const insertData = {
+        session_id: session_id,
+        sub_session_id: sub_session_id,
+        milestone_level: setMilestoneData.milestone_level,
+        sub_milestone_level: setMilestoneData.sub_milestone_level || '',
+        language: setMilestoneData.language,
+        createdAt: new Date().toISOString().replace('Z', '+00:00'),
+      };
+
+      const userExists = await this.scoreModel.findOne({ user_id: setMilestoneData.user_id });
+
+      if (!userExists) {
+        await this.scoreModel.create({
+          user_id: setMilestoneData.user_id,
+          milestone_progress: [insertData],
+          sessions: [],
+        });
+      } else {
+        await this.scoreModel.updateOne(
+          { user_id: setMilestoneData.user_id },
+          {
+            $push: {
+              milestone_progress: insertData,
+            },
+          },
+        );
+      }
+
+      const latestMilestone = await this.getlatestmilestone(
+        setMilestoneData.user_id,
+        setMilestoneData.language,
+      );
+
+      return {
+        success: true,
+        message: 'Milestone set successfully',
+        data: {
+          user_id: setMilestoneData.user_id,
+          language: setMilestoneData.language,
           milestone_level: setMilestoneData.milestone_level,
           sub_milestone_level: setMilestoneData.sub_milestone_level || '',
-          language: setMilestoneData.language,
-          createdAt: new Date().toISOString().replace('Z', '+00:00'),
-        };
-  
-        const userExists = await this.scoreModel.findOne({ user_id: setMilestoneData.user_id });
-        
-        if (!userExists) {
-          await this.scoreModel.create({
-            user_id: setMilestoneData.user_id,
-            milestone_progress: [insertData],
-            sessions: [],
-          });
-        } else {
-          await this.scoreModel.updateOne(
-            { user_id: setMilestoneData.user_id },
-            {
-              $push: {
-                milestone_progress: insertData,
-              },
-            },
-          );
-        }
-  
-        const latestMilestone = await this.getlatestmilestone(
-          setMilestoneData.user_id,
-          setMilestoneData.language,
-        );
-  
-        return {
-          success: true,
-          message: 'Milestone set successfully',
-          data: {
-            user_id: setMilestoneData.user_id,
-            language: setMilestoneData.language,
-            milestone_level: setMilestoneData.milestone_level,
-            sub_milestone_level: setMilestoneData.sub_milestone_level || '',
-            latest_milestone: latestMilestone[0] || null,
-          },
-        };
-      } catch (err) {
-        return {
-          success: false,
-          error: err.message || 'Failed to set milestone',
-          details: err,
-        };
-      }
+          latest_milestone: latestMilestone[0] || null,
+        },
+      };
+    } catch (err) {
+      return {
+        success: false,
+        error: err.message || 'Failed to set milestone',
+        details: err,
+      };
     }
+  }
 }
 
-  
+
 
 

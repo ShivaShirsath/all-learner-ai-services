@@ -4,7 +4,6 @@ import { ConfigModule } from '@nestjs/config';
 import { ScoreSchema } from './schemas/scores.schema';
 import { hexcodeMappingSchema } from './schemas/hexcodeMapping.schema';
 import { assessmentInputSchema } from './schemas/assessmentInput.schema';
-import { denoiserOutputLogsSchema } from './schemas/denoiserOutputLogs.schema';
 import { ScoresController } from './scores.controller';
 import { ScoresService } from './scores.service';
 import { CacheService } from './cache/cache.service';
@@ -31,7 +30,11 @@ import { AssessmentTrackingSchema, AssessmentTrackingScoreDetailSchema } from '.
     MongooseModule.forRootAsync({
       useFactory: async () => ({
         uri: process.env.MONGO_URL,
-        maxPoolSize: parseInt(process.env.POOL_SIZE) || 10,
+        maxPoolSize: parseInt(process.env.POOL_SIZE, 10) || 100,
+        minPoolSize: parseInt(process.env.MIN_POOL_SIZE, 10) || 20,
+        waitQueueTimeoutMS: 5000,
+        socketTimeoutMS: 45000,
+        connectTimeoutMS: 10000,
       }),
     }),
 
@@ -39,7 +42,6 @@ import { AssessmentTrackingSchema, AssessmentTrackingScoreDetailSchema } from '.
       { name: 'Score', schema: ScoreSchema },
       { name: 'hexcodeMapping', schema: hexcodeMappingSchema },
       { name: 'assessmentInput', schema: assessmentInputSchema },
-      { name: 'denoiserOutputLogs', schema: denoiserOutputLogsSchema },
       { name: 'llmOutputLogs', schema: llmOutputLogsSchema },
       { name: 'getSetResult', schema: getSetResultSchema },
       { name: 'towre', schema: TowreSchema},
