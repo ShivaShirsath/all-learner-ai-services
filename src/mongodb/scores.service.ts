@@ -3547,7 +3547,6 @@ export class ScoresService {
     return filteredText != text;
   }
 
-
   async getRecommendation(
     level: string,
     contentType: string,
