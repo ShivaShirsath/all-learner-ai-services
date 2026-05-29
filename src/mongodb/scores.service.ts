@@ -163,7 +163,7 @@ export class ScoresService {
         serviceId = 'ai4bharat/conformer-multilingual-all--gpu-t4';
         break;
       case 'ta':
-        serviceId = 'ai4bharat/conformer-multilingual-dravidian--gpu-t4';
+        serviceId = 'ai4bharat/conformer-multilingual-all--gpu-t4';
         break;
       case 'en':
         serviceId = 'ai4bharat/whisper--gpu-t4';
@@ -175,7 +175,7 @@ export class ScoresService {
         serviceId = 'ai4bharat/conformer-gujarati--gpu-t4';
         break;
       case 'te':
-        serviceId = 'ai4bharat/conformer-multilingual-dravidian--gpu-t4';
+        serviceId = 'ai4bharat/conformer-multilingual-all--gpu-t4';
         break;
       case 'or':
         serviceId = 'ai4bharat/conformer-multilingual-indo-aryan--gpu-t4';
