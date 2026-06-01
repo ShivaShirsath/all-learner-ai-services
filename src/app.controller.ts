@@ -24,7 +24,10 @@ export class AppController {
   @Get('/health')
   deepHealth() {
     const dbType = process.env.DATABASE || 'mongodb';
-    const mongoOk = dbType === 'mongodb' ? mongoose.connection.readyState === 1 : null;
+    const mongoOk =
+      dbType === 'mongodb'
+        ? mongoose.connections.some((c) => c.readyState === 1)
+        : null;
     const allOk = mongoOk !== false;
     return {
       status: allOk ? 'ok' : 'degraded',
