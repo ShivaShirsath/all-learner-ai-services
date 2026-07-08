@@ -5727,7 +5727,7 @@ export class ScoresController {
           } else {
             milestone_level = 'm4';
           }
-        } else if (setNo === 'set1') {
+        } else if (setNo === 'set1' || setNo === undefined || setNo === null || setNo === '') {
           if (sessionResult === 'fail') {
             milestone_level = 'B';
           } else {
