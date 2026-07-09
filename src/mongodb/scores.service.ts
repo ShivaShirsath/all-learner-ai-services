@@ -126,7 +126,11 @@ export class ScoresService {
           $push: {
             milestone_progress: insertData,
           },
+          $setOnInsert: {
+            user_id: createMilestoneRecord.user_id,
+          },
         },
+        { upsert: true },
       );
 
       // Return both the update result and the actual milestone that was saved

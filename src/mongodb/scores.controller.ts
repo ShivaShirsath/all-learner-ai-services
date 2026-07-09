@@ -5728,6 +5728,9 @@ export class ScoresController {
             milestone_level = 'm4';
           }
         } else if (setNo === 'set1' || setNo === undefined || setNo === null || setNo === '') {
+          if (previous_level === undefined) {
+            previous_level = 'm0';
+          }
           if (sessionResult === 'fail') {
             milestone_level = 'B';
           } else {
@@ -5777,6 +5780,9 @@ export class ScoresController {
       if (milestoneEntry) {
         let sub_milestone_level = '';
         if (milestone_level === "B" && previous_level === "m0" &&
+          (getSetResult.language === "en" || getSetResult.language === "te" || getSetResult.language === "hi" || getSetResult.language === "kn")) {
+          sub_milestone_level = 'F1';
+        } else if (milestone_level === "B" && previous_level === "B" &&
           (getSetResult.language === "en" || getSetResult.language === "te" || getSetResult.language === "hi" || getSetResult.language === "kn")) {
           sub_milestone_level = 'F1';
         }
