@@ -5794,7 +5794,7 @@ export class ScoresController {
             milestone_level: milestone_level,
             sub_milestone_level: sub_milestone_level,
             language: getSetResult.language || '',
-          }, previous_level)
+          }, previous_level, recordData[0]?.sub_milestone_level)
           .then(async (milestoneResult) => {
 
             if (milestoneResult?.savedMilestoneLevel) {
