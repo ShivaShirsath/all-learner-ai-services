@@ -74,17 +74,30 @@ export class ScoresService {
     }
   }
 
-  async createMilestoneRecord(createMilestoneRecord: any, knownCurrentMilestoneLevel?: string): Promise<any> {
+  async createMilestoneRecord(
+    createMilestoneRecord: any,
+    knownCurrentMilestoneLevel?: string,
+    knownCurrentSubMilestoneLevel?: string,
+  ): Promise<any> {
     try {
       let milestoneToSet = createMilestoneRecord.milestone_level;
+      let subMilestoneToSet = createMilestoneRecord.sub_milestone_level;
 
       if (createMilestoneRecord.language) {
-        const currentMilestone = knownCurrentMilestoneLevel !== undefined
-          ? knownCurrentMilestoneLevel
-          : (await this.getlatestmilestone(
-              createMilestoneRecord.user_id,
-              createMilestoneRecord.language,
-            ))[0]?.milestone_level;
+        let currentMilestone: string;
+        let currentSubMilestone: string;
+
+        if (knownCurrentMilestoneLevel !== undefined) {
+          currentMilestone = knownCurrentMilestoneLevel;
+          currentSubMilestone = knownCurrentSubMilestoneLevel;
+        } else {
+          const latest = (await this.getlatestmilestone(
+            createMilestoneRecord.user_id,
+            createMilestoneRecord.language,
+          ))[0];
+          currentMilestone = latest?.milestone_level;
+          currentSubMilestone = latest?.sub_milestone_level;
+        }
 
         if (currentMilestone) {
           const getMilestoneNum = (level: string): number => {
@@ -108,6 +121,26 @@ export class ScoresService {
             );
             milestoneToSet = currentMilestone;
           }
+
+          // Sub-milestone (F1/F2/F3) downgrade prevention, only meaningful while
+          // staying at the same main milestone_level (F-levels are B-specific).
+          if (milestoneToSet === currentMilestone) {
+            const getSubMilestoneNum = (level: string): number => {
+              const match = /^F(\d+)$/.exec(level || '');
+              return match ? parseInt(match[1], 10) : 0;
+            };
+
+            const currentSubLevelNum = getSubMilestoneNum(currentSubMilestone);
+            const newSubLevelNum = getSubMilestoneNum(subMilestoneToSet);
+
+            if (newSubLevelNum < currentSubLevelNum) {
+              console.log(
+                `Sub-milestone downgrade prevented: User ${createMilestoneRecord.user_id} is at ${currentSubMilestone}, ` +
+                `attempted to set ${subMilestoneToSet || '(none)'}. Keeping ${currentSubMilestone}.`
+              );
+              subMilestoneToSet = currentSubMilestone;
+            }
+          }
         }
       }
 
@@ -115,7 +148,7 @@ export class ScoresService {
         session_id: createMilestoneRecord.session_id,
         sub_session_id: createMilestoneRecord.sub_session_id,
         milestone_level: milestoneToSet,
-        sub_milestone_level: createMilestoneRecord.sub_milestone_level,
+        sub_milestone_level: subMilestoneToSet,
         language: createMilestoneRecord.language || null,
         createdAt: new Date().toISOString().replace('Z', '+00:00'),
       };
@@ -126,13 +159,18 @@ export class ScoresService {
           $push: {
             milestone_progress: insertData,
           },
+          $setOnInsert: {
+            user_id: createMilestoneRecord.user_id,
+          },
         },
+        { upsert: true },
       );
 
       // Return both the update result and the actual milestone that was saved
       return {
         ...updatedRecordData,
         savedMilestoneLevel: milestoneToSet,
+        savedSubMilestoneLevel: subMilestoneToSet,
       };
     } catch (err) {
       throw buildHttpExceptionFromUnknown(err);
@@ -4205,6 +4243,7 @@ export class ScoresService {
         sub_milestone_level: setMilestoneData.sub_milestone_level || '',
         language: setMilestoneData.language,
         createdAt: new Date().toISOString().replace('Z', '+00:00'),
+        isReset: true,
       };
 
       const userExists = await this.scoreModel.findOne({ user_id: setMilestoneData.user_id });
