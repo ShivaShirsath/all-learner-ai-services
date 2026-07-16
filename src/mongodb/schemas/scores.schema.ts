@@ -249,6 +249,7 @@ export class Score {
         sub_milestone_level: { type: String, required: false },
         language : {type: String, required: false},
         createdAt: { type: Date, required: true },
+        isReset: { type: Boolean, required: false },
       },
     ],
     required: false,
@@ -260,6 +261,7 @@ export class Score {
     sub_milestone_level: string;
     language: string;
     createdAt: Date;
+    isReset?: boolean;
   }[]; // This array includes milestone progress and we take latest entry in array as current milestone for user
 }
 

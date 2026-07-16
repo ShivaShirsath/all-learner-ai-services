@@ -4243,6 +4243,7 @@ export class ScoresService {
         sub_milestone_level: setMilestoneData.sub_milestone_level || '',
         language: setMilestoneData.language,
         createdAt: new Date().toISOString().replace('Z', '+00:00'),
+        isReset: true,
       };
 
       const userExists = await this.scoreModel.findOne({ user_id: setMilestoneData.user_id });
