@@ -213,7 +213,7 @@ export class ScoresService {
         serviceId = 'ai4bharat/conformer-gujarati--gpu-t4';
         break;
       case 'te':
-        serviceId = 'ai4bharat/conformer-multilingual-dravidian--gpu-t4';
+        serviceId = 'ai4bharat/conformer-multilingual-all--gpu-t4';
         break;
       case 'or':
         serviceId = 'ai4bharat/conformer-multilingual-indo-aryan--gpu-t4';
