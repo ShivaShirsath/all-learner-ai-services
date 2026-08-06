@@ -209,6 +209,9 @@ export class ScoresService {
       case 'hi':
         serviceId = 'ai4bharat/conformer-multilingual-all--gpu-t4';
         break;
+      case 'ne':
+        serviceId = 'ai4bharat/conformer-multilingual-all--gpu-t4';
+        break;
       case 'gu':
         serviceId = 'ai4bharat/conformer-gujarati--gpu-t4';
         break;

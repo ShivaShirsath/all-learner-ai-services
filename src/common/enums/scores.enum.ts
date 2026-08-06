@@ -25,6 +25,7 @@ export enum SupportedLanguage {
   TA = 'ta',
   OR = 'or',
   GU = 'gu',
+  NE = 'ne',
 }
 
 export const SUPPORTED_LANGUAGES: readonly string[] = Object.values(SupportedLanguage);
