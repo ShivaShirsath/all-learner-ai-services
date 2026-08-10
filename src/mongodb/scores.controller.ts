@@ -49,6 +49,7 @@ import {
 import gu_config from './config/language/gu';
 import or_config from './config/language/or';
 import hi_config from './config/language/hi';
+import ne_config from './config/language/ne';
 import kn_config from './config/language/kn';
 import { isNotEmptyObject } from 'class-validator';
 import { splitGraphemes } from "split-graphemes";
@@ -1515,6 +1516,444 @@ export class ScoresController {
 
       const vowelSignArr = hi_config.vowel;
       const language = hi_config.language_code;
+      const originalText = CreateLearnerProfileDto.original_text;
+
+      let responseText = '';
+      let constructText = '';
+      let pause_count = 0;
+      let avg_pause = 0;
+      let pitch_classification = '';
+      let pitch_mean = 0;
+      let pitch_std = 0;
+      let intensity_classification = '';
+      let intensity_mean = 0;
+      let intensity_std = 0;
+      let expression_classification = '';
+      let smoothness_classification = '';
+      let feedback = '';
+      let reptitionCount = 0;
+      let constructTokenArr = [];
+      let correctTokens = [];
+      let missingTokens = [];
+      let confidence_scoresArr = [];
+      let missing_token_scoresArr = [];
+      let anomaly_scoreArr = [];
+
+      const originalTokenArr = await this.scoresService.getSyllablesFromString(
+        originalText,
+        vowelSignArr,
+        language,
+      );
+      let createdAt = new Date().toISOString().replace('Z', '+00:00');
+      let ansSelectionStatus = CreateLearnerProfileDto.ansSelectionStatus;
+
+      if (CreateLearnerProfileDto['contentType'].toLowerCase() !== 'char') {
+        if (
+          CreateLearnerProfileDto['output'] === undefined &&
+          CreateLearnerProfileDto.audio !== undefined
+        ) {
+          const audioFile = CreateLearnerProfileDto.audio;
+          const decoded = Buffer.isBuffer(audioFile)
+            ? audioFile.toString('base64')
+            : audioFile;
+
+          const audioOutput = await this.scoresService.audioFileToAsrOutput(
+            decoded,
+            CreateLearnerProfileDto.language,
+            CreateLearnerProfileDto['contentType'],
+          );
+
+          CreateLearnerProfileDto['output'] = audioOutput.asrOutBeforeDenoised?.output || '';
+          pause_count = audioOutput.pause_count || 0;
+          avg_pause = audioOutput.avg_pause;
+          pitch_classification = audioOutput.pitch_classification;
+          pitch_mean = audioOutput.pitch_mean;
+          pitch_std = audioOutput.pitch_std;
+          intensity_classification = audioOutput.intensity_classification;
+          intensity_mean = audioOutput.intensity_mean;
+          intensity_std = audioOutput.intensity_std;
+          expression_classification = audioOutput.expression_classification;
+          smoothness_classification = audioOutput.smoothness_classification;
+
+          if (CreateLearnerProfileDto.output[0].source === '') {
+            await this.persistEmptyAsrLearnerProfile(
+              user_id,
+              CreateLearnerProfileDto,
+              language,
+              originalText,
+              createdAt,
+            );
+            throw new BadRequestException({
+              code: ErrorCodes.BAD_REQUEST,
+              message:
+                'Audio to Text functionality responded with an empty response. Please check the audio file or speak louder.',
+            });
+          }
+        }
+
+        responseText = CreateLearnerProfileDto.output[0].source;
+        responseText = await this.scoresService.mergeResponseWordsUsingOriginal(originalText, responseText);
+
+        // Profanity Detection logic - Check BEFORE any further processing
+        try {
+          const badWordResponse = await this.scoresService.checkProfanity(responseText, language);
+          if (badWordResponse) {
+            feedback = 'profanity detected';
+            console.warn('Profanity detected for user:', user_id, 'session:', CreateLearnerProfileDto.session_id);
+
+            // Create minimal data object
+            const profanityScoreData = {
+              user_id: user_id,
+              session: {
+                session_id: CreateLearnerProfileDto.session_id,
+                sub_session_id: CreateLearnerProfileDto.sub_session_id || '',
+                contentType: CreateLearnerProfileDto.contentType,
+                contentId: CreateLearnerProfileDto.contentId || '',
+                createdAt: createdAt,
+                language: language,
+                original_text: originalText,
+                response_text: '***',
+                construct_text: '***',
+                feedback: feedback,
+                asrOutput: '***',
+              },
+            };
+
+            try {
+              await this.scoresService.create(profanityScoreData);
+            } catch (dbError) {
+              console.error('Failed to save profanity data to DB:', dbError);
+            }
+
+            return response.status(HttpStatus.CREATED).send({
+              status: 'success',
+              msg: 'Data stored with profanity detected',
+              originalText: originalText,
+              responseText: '***',
+              feedback: feedback,
+            });
+          }
+        } catch (profanityCheckError) {
+          console.error('Profanity check failed:', profanityCheckError);
+        }
+
+        // add the vocabulary logic
+        try {
+          await this.scoresService.vocabularyCount(
+            user_id,
+            originalText,
+            responseText,
+            language,
+            CreateLearnerProfileDto.session_id,
+            CreateLearnerProfileDto.sub_session_id
+          );
+        } catch (vocabError) {
+          console.error('Vocabulary count failed:', vocabError);
+        }
+
+        const tokenHexcodeDataArr = await this.scoresService.gethexcodeMapping(
+          language,
+        );
+        const constructedTextRepCountData =
+          await this.scoresService.getConstructedText(
+            originalText,
+            responseText,
+          );
+        constructText = constructedTextRepCountData.constructText;
+        reptitionCount = constructedTextRepCountData.reptitionCount;
+        constructTokenArr = await this.scoresService.getSyllablesFromString(
+          constructText,
+          vowelSignArr,
+          language,
+        );
+
+        for (const originalToken of originalTokenArr) {
+          if (constructTokenArr.includes(originalToken)) {
+            correctTokens.push(originalToken);
+          } else {
+            missingTokens.push(originalToken);
+          }
+        }
+
+        missingTokens = Array.from(new Set(missingTokens));
+
+        const identifyTokens = await this.scoresService.identifyTokens(
+          CreateLearnerProfileDto.output[0].nBestTokens,
+          correctTokens,
+          missingTokens,
+          tokenHexcodeDataArr,
+          vowelSignArr,
+        );
+
+        confidence_scoresArr = identifyTokens.confidence_scoresArr;
+        confidence_scoresArr = confidence_scoresArr.map((item) => ({
+          ...item,
+          confidence_score:
+            item.confidence_score < 0.7 ? 0.777 : item.confidence_score,
+          identification_status: 1,
+        }));
+        missing_token_scoresArr = identifyTokens.missing_token_scoresArr;
+        anomaly_scoreArr = identifyTokens.anomaly_scoreArr;
+
+        const textEvalMatrices = await this.scoresService.getTextMetrics(
+          originalText,
+          constructText,
+          language,
+          Buffer.isBuffer(CreateLearnerProfileDto.audio)
+            ? CreateLearnerProfileDto.audio.toString('base64')
+            : CreateLearnerProfileDto.audio,
+        );
+        let tempo_classification = textEvalMatrices.tempo_classification;
+        let pause_count_textEval = textEvalMatrices.pause_count;
+        let words_per_minute = textEvalMatrices.words_per_minute;
+        let rate_classification = textEvalMatrices.rate_classification;
+
+        const fluencyScore = await this.scoresService.getCalculatedFluency(
+          textEvalMatrices,
+          reptitionCount,
+          originalText,
+          responseText,
+          pause_count,
+        );
+
+        let accuracy_classification =
+          this.scoresService.getAccuracyClassification(
+            CreateLearnerProfileDto.contentType,
+            fluencyScore,
+          );
+
+        createScoreData = {
+          user_id: user_id,
+          session: {
+            session_id: CreateLearnerProfileDto.session_id,
+            sub_session_id: CreateLearnerProfileDto.sub_session_id || '',
+            contentType: CreateLearnerProfileDto.contentType,
+            contentId: CreateLearnerProfileDto.contentId || '',
+            createdAt,
+            language,
+            original_text: originalText,
+            response_text: responseText,
+            construct_text: constructText,
+            confidence_scores: confidence_scoresArr,
+            anamolydata_scores: anomaly_scoreArr,
+            missing_token_scores: missing_token_scoresArr,
+            read_duration: CreateLearnerProfileDto.read_duration,
+            practice_duration: CreateLearnerProfileDto.practice_duration,
+            retry_count: CreateLearnerProfileDto.retry_count,
+            error_rate: {
+              character: textEvalMatrices.cer,
+              word: textEvalMatrices.wer,
+            },
+            count_diff: {
+              character: Math.abs(originalText.length - responseText.length),
+              word: Math.abs(
+                originalText.split(' ').length - responseText.split(' ').length,
+              ),
+            },
+            eucledian_distance: {
+              insertions: {
+                chars: textEvalMatrices.insertion,
+                count: textEvalMatrices.insertion.length,
+              },
+              deletions: {
+                chars: textEvalMatrices.deletion,
+                count: textEvalMatrices.deletion.length,
+              },
+              substitutions: {
+                chars: textEvalMatrices.substitution,
+                count: textEvalMatrices.substitution.length,
+              },
+            },
+            fluencyScore: fluencyScore.toFixed(3),
+            silence_Pause: {
+              total_duration: 0,
+              count: pause_count,
+            },
+            prosody_fluency: {
+              pitch: {
+                pitch_classification: pitch_classification,
+                pitch_mean: pitch_mean,
+                pitch_std: pitch_std,
+              },
+              intensity: {
+                intensity_classification: intensity_classification,
+                intensity_mean: intensity_mean,
+                intensity_std: intensity_std,
+              },
+              tempo: {
+                tempo_classification: tempo_classification,
+                words_per_minute: words_per_minute,
+                pause_count: pause_count_textEval,
+              },
+              expression_classification: expression_classification,
+              smoothness: {
+                smoothness_classification: smoothness_classification,
+                pause_count: pause_count,
+                avg_pause: avg_pause,
+              },
+              rate: {
+                rate_classification: rate_classification,
+                words_per_minute: words_per_minute,
+              },
+              accuracy: {
+                accuracy_classification: accuracy_classification,
+                fluencyScore: fluencyScore.toFixed(3),
+              },
+            },
+            reptitionsCount: reptitionCount,
+            asrOutput: JSON.stringify(CreateLearnerProfileDto.output),
+            isRetry: false,
+          },
+        };
+
+        await this.scoresService.create(createScoreData);
+      } else {
+        createScoreData = {
+          user_id: user_id,
+          session: {
+            session_id: CreateLearnerProfileDto.session_id,
+            sub_session_id: CreateLearnerProfileDto.sub_session_id || '',
+            contentType: CreateLearnerProfileDto.contentType,
+            contentId: CreateLearnerProfileDto.contentId || '',
+            createdAt: createdAt,
+            language: language,
+            original_text: originalText,
+            response_text: responseText,
+            ansSelectionStatus: ansSelectionStatus,
+          },
+        };
+
+        // Store Array to DB
+        const data = await this.scoresService.create(createScoreData);
+
+      }
+      // All 3 post-save queries are independent — run in parallel
+      let [targets, originalTextSyllables, fluency] = await Promise.all([
+        this.scoresService.getTargetsBysubSession(
+          user_id,
+          CreateLearnerProfileDto.sub_session_id,
+          CreateLearnerProfileDto.language,
+        ),
+        this.scoresService.getSubsessionOriginalTextSyllables(user_id, CreateLearnerProfileDto.sub_session_id),
+        this.scoresService.getFluencyBysubSession(
+          user_id,
+          CreateLearnerProfileDto.sub_session_id,
+          CreateLearnerProfileDto.language,
+        ),
+      ]);
+      targets = targets.filter((targetsEle) => originalTextSyllables.includes(targetsEle.character));
+
+      return response.status(HttpStatus.CREATED).send({
+        status: 'success',
+        msg: 'Successfully stored data to learner profile',
+        originalText,
+        responseText,
+        subsessionTargetsCount: targets.length,
+        subsessionFluency: parseFloat(fluency.toFixed(2)),
+        ansSelectionStatus: ansSelectionStatus ? ansSelectionStatus : {}
+      });
+    } catch (err) {
+      throw mapUnknownToHttpException(err);
+    }
+  }
+
+  @ApiBody({
+    description: 'Request body for storing Nepali language learner profile data. Processes audio through ASR and evaluates pronunciation accuracy.',
+    schema: {
+      type: 'object',
+      properties: {
+        original_text: {
+          type: 'string',
+          example: 'गाउँमा एउटा घर थियो',
+          description: 'The original Nepali text that the learner is attempting to read',
+        },
+        audio: {
+          type: 'string',
+          example: 'base64_encoded_audio_string',
+          description: 'Base64 encoded WAV audio file of the learner reading the text',
+        },
+        session_id: {
+          type: 'string',
+          example: 'IYmeBW1g3GpJb1AE0fOpHCPhKxJG4zq6',
+          description: 'Unique session identifier',
+        },
+        language: {
+          type: 'string',
+          example: 'ne',
+          description: 'Language code (ne for Nepali)',
+        },
+        date: {
+          type: 'string',
+          format: 'date-time',
+          example: '2024-05-07T12:24:51.779Z',
+          description: 'Timestamp of the recording',
+        },
+        sub_session_id: {
+          type: 'string',
+          example: '4TsVQ28LWibb8Yi2uJg4DtLK3svIbIHe',
+          description: 'Unique sub-session identifier for grouping related attempts',
+        },
+        contentId: {
+          type: 'string',
+          example: 'b70af0e5-0d74-4287-9548-4d491c714b0d',
+          description: 'Unique identifier for the content being practiced',
+        },
+        contentType: {
+          type: 'string',
+          example: 'Sentence',
+          description: 'Type of content (Char, Word, Sentence, Paragraph)',
+        },
+        mode: {
+          type: 'string',
+          example: 'online',
+          description: 'Processing mode (online/offline)',
+        },
+      },
+      required: ['original_text', 'session_id', 'sub_session_id', 'contentId', 'contentType'],
+    },
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Successfully processed and stored learner profile data',
+    schema: {
+      type: 'object',
+      properties: {
+        status: { type: 'string', example: 'success' },
+        msg: { type: 'string', example: 'Successfully stored data to learner profile' },
+        responseText: { type: 'string', example: 'गाउँमा एउटा घर थियो', description: 'ASR recognized text' },
+        subsessionTargetsCount: { type: 'number', example: 17, description: 'Number of target characters in sub-session' },
+        subsessionFluency: { type: 'number', example: 1.54, description: 'Fluency score for the sub-session' },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 500,
+    description: 'Error while processing or storing learner profile data',
+    schema: {
+      type: 'object',
+      properties: {
+        status: { type: 'string', example: 'error' },
+        msg: { type: 'string', example: 'Server error - error message' },
+      },
+    },
+  })
+  @ApiForbiddenResponse({ description: 'Forbidden.' })
+  @ApiOperation({
+    summary: 'Update learner profile for Nepali language',
+    description: 'Processes audio input through ASR (Automatic Speech Recognition) for Nepali language, evaluates pronunciation accuracy, calculates character-level scores, and stores the results in the learner profile. Supports both online and offline processing modes.',
+  })
+  @Post('/updateLearnerProfile/ne')
+  async updateLearnerProfileNe(
+    @Req() request: FastifyRequest,
+    @Res() response: FastifyReply,
+    @Body() CreateLearnerProfileDto: CreateLearnerProfileDto,
+  ) {
+    try {
+      const user_id = (request as any).user.virtual_id.toString();
+      let createScoreData;
+
+      const vowelSignArr = ne_config.vowel;
+      const language = ne_config.language_code;
       const originalText = CreateLearnerProfileDto.original_text;
 
       let responseText = '';
@@ -4084,7 +4523,7 @@ export class ScoresController {
   @ApiQuery({
     name: 'language',
     required: true,
-    description: 'Language code for the content (e.g., en, ta, hi, gu, or, kn, te)',
+    description: 'Language code for the content (e.g., en, ta, hi, gu, or, kn, te, ne)',
     example: 'ta',
   })
   @Get('/GetTargets/session/:sessionId')
@@ -4143,7 +4582,7 @@ export class ScoresController {
   @ApiQuery({
     name: 'language',
     required: true,
-    description: 'Language code for the content (e.g., en, ta, hi, gu, or, kn, te)',
+    description: 'Language code for the content (e.g., en, ta, hi, gu, or, kn, te, ne)',
     example: 'ta',
   })
   @ApiOperation({
@@ -4200,7 +4639,7 @@ export class ScoresController {
   @ApiQuery({
     name: 'language',
     required: true,
-    description: 'Language code for the content (e.g., en, ta, hi, gu, or, kn, te)',
+    description: 'Language code for the content (e.g., en, ta, hi, gu, or, kn, te, ne)',
     example: 'ta',
   })
   @Get('/GetTargets/subsession/:subsessionId')
@@ -4264,7 +4703,7 @@ export class ScoresController {
   @ApiQuery({
     name: 'language',
     required: true,
-    description: 'Language code for the content (e.g., en, ta, hi, gu, or, kn, te)',
+    description: 'Language code for the content (e.g., en, ta, hi, gu, or, kn, te, ne)',
     example: 'ta',
   })
   @Get('/GetFamiliarity/subsession/:subsessionId')
@@ -4329,7 +4768,7 @@ export class ScoresController {
   @ApiQuery({
     name: 'language',
     required: true,
-    description: 'Language code for the content (e.g., en, ta, hi, gu, or, kn, te)',
+    description: 'Language code for the content (e.g., en, ta, hi, gu, or, kn, te, ne)',
     example: 'ta',
   })
   @Get('/GetFamiliarity/session/:sessionId')
@@ -4384,7 +4823,7 @@ export class ScoresController {
   @ApiQuery({
     name: 'language',
     required: true,
-    description: 'Language code for the content (e.g., en, ta, hi, gu, or, kn, te)',
+    description: 'Language code for the content (e.g., en, ta, hi, gu, or, kn, te, ne)',
     example: 'ta',
   })
   @Get('/GetFamiliarity/user')
@@ -4438,7 +4877,7 @@ export class ScoresController {
   @ApiQuery({
     name: 'language',
     required: true,
-    description: 'Language code for the content (e.g., en, ta, hi, gu, or, kn, te)',
+    description: 'Language code for the content (e.g., en, ta, hi, gu, or, kn, te, ne)',
     example: 'ta',
   })
   @ApiQuery({
@@ -4646,7 +5085,7 @@ export class ScoresController {
   @ApiQuery({
     name: 'language',
     required: true,
-    description: 'Language code for the content (e.g., en, ta, hi, gu, or, kn, te)',
+    description: 'Language code for the content (e.g., en, ta, hi, gu, or, kn, te, ne)',
     example: 'ta',
   })
   @ApiQuery({
@@ -4854,7 +5293,7 @@ export class ScoresController {
   @ApiQuery({
     name: 'language',
     required: true,
-    description: 'Language code for the content (e.g., en, ta, hi, gu, or, kn, te)',
+    description: 'Language code for the content (e.g., en, ta, hi, gu, or, kn, te, ne)',
     example: 'ta',
   })
   @ApiQuery({
@@ -5109,7 +5548,7 @@ export class ScoresController {
   @ApiQuery({
     name: 'language',
     required: true,
-    description: 'Language code for the content (e.g., en, ta, hi, gu, or, kn, te)',
+    description: 'Language code for the content (e.g., en, ta, hi, gu, or, kn, te, ne)',
     example: 'ta',
   })
   @ApiQuery({
@@ -5326,7 +5765,7 @@ export class ScoresController {
         language: {
           type: 'string',
           example: 'ta',
-          description: 'Language code (e.g., en, ta, hi, gu, or, kn, te)',
+          description: 'Language code (e.g., en, ta, hi, gu, or, kn, te, ne)',
         },
         contentType: {
           type: 'string',
@@ -5768,10 +6207,10 @@ export class ScoresController {
       if (milestoneEntry) {
         let sub_milestone_level = '';
         if (milestone_level === "B" && previous_level === "m0" &&
-          (getSetResult.language === "en" || getSetResult.language === "te" || getSetResult.language === "hi" || getSetResult.language === "kn")) {
+          (getSetResult.language === "en" || getSetResult.language === "te" || getSetResult.language === "hi" || getSetResult.language === "kn" || getSetResult.language === "ne")) {
           sub_milestone_level = 'F1';
         } else if (milestone_level === "B" && previous_level === "B" &&
-          (getSetResult.language === "en" || getSetResult.language === "te" || getSetResult.language === "hi" || getSetResult.language === "kn")) {
+          (getSetResult.language === "en" || getSetResult.language === "te" || getSetResult.language === "hi" || getSetResult.language === "kn" || getSetResult.language === "ne")) {
           sub_milestone_level = 'F1';
         }
         await this.scoresService
@@ -5858,7 +6297,7 @@ export class ScoresController {
   @ApiQuery({
     name: 'language',
     required: true,
-    description: 'Language code for the content (e.g., en, ta, hi, gu, or, kn, te)',
+    description: 'Language code for the content (e.g., en, ta, hi, gu, or, kn, te, ne)',
     example: 'ta',
   })
   @ApiOperation({
@@ -6084,7 +6523,7 @@ export class ScoresController {
         language: {
           type: 'string',
           example: 'en',
-          description: 'Language code (e.g., en, ta, hi, gu, or, kn, te)',
+          description: 'Language code (e.g., en, ta, hi, gu, or, kn, te, ne)',
         },
       },
       required: ['userIds', 'language'],
@@ -6169,7 +6608,7 @@ export class ScoresController {
         language: {
           type: 'string',
           example: 'en',
-          description: 'Language code (e.g., en, ta, hi, gu, or, kn, te)',
+          description: 'Language code (e.g., en, ta, hi, gu, or, kn, te, ne)',
         },
       },
       required: ['userIds', 'language'],
@@ -6260,7 +6699,7 @@ export class ScoresController {
         language: {
           type: 'string',
           example: 'ta',
-          description: 'Language code (e.g., en, ta, hi, gu, or, kn, te)',
+          description: 'Language code (e.g., en, ta, hi, gu, or, kn, te, ne)',
         },
       },
       required: ['userIds', 'language'],
@@ -6337,7 +6776,7 @@ export class ScoresController {
         language: {
           type: 'string',
           example: 'ta',
-          description: 'Language code (e.g., en, ta, hi, gu, or, kn, te)',
+          description: 'Language code (e.g., en, ta, hi, gu, or, kn, te, ne)',
         },
       },
       required: ['userId', 'language'],
@@ -6506,7 +6945,7 @@ export class ScoresController {
         language: {
           type: 'string',
           example: 'en',
-          description: 'Language code for the content (e.g., en, ta, hi, gu, or, kn, te)',
+          description: 'Language code for the content (e.g., en, ta, hi, gu, or, kn, te, ne)',
         },
         content_type: {
           type: 'string',
