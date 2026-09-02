@@ -73,62 +73,45 @@ describe('JwtAuthGuard', () => {
       expect(result).toBe(true);
     });
 
-    it('should successfully authenticate a valid token', async () => {
-      const mockDecryptedToken = {
-        payload: {
-          jwtSignedToken: 'signed-jwt-token',
-        },
-      };
-
-      const mockVerifiedToken = {
-        payload: {
+    it.each([
+      {
+        scenario: 'string virtualId',
+        verifiedPayload: {
           virtualId: 'user-123',
           exp: Math.floor(Date.now() / 1000) + 3600,
           email: 'test@example.com',
         },
-      };
-
-      mockJose.jwtDecrypt.mockResolvedValue(mockDecryptedToken as any);
-      mockJose.jwtVerify.mockResolvedValue(mockVerifiedToken as any);
-      mockAuthHelper.checkTokenStatus.mockResolvedValue({ isActive: true });
-
-      const result = await guard.canActivate(mockContext);
-
-      expect(result).toBe(true);
-      expect((mockRequest as any).user).toEqual({
-        ...mockVerifiedToken.payload,
-        virtualId: 'user-123',
-        virtual_id: 'user-123',
-      });
-    });
-
-    it('should authenticate with virtualId or userId field in payload', async () => {
-      const mockDecryptedToken = {
-        payload: {
-          jwtSignedToken: 'signed-jwt-token',
-        },
-      };
-
-      const mockVerifiedToken = {
-        payload: {
-          virtualId: 'user-456',
+        expectedId: 'user-123',
+      },
+      {
+        scenario: 'numeric virtualId',
+        verifiedPayload: {
+          virtualId: 1271333057,
           exp: Math.floor(Date.now() / 1000) + 3600,
         },
-      };
+        expectedId: 1271333057,
+      },
+    ])(
+      'should successfully authenticate a valid token with $scenario',
+      async ({ verifiedPayload, expectedId }) => {
+        mockJose.jwtDecrypt.mockResolvedValue({
+          payload: { jwtSignedToken: 'signed-jwt-token' },
+        } as any);
+        mockJose.jwtVerify.mockResolvedValue({
+          payload: verifiedPayload,
+        } as any);
+        mockAuthHelper.checkTokenStatus.mockResolvedValue({ isActive: true });
 
-      mockJose.jwtDecrypt.mockResolvedValue(mockDecryptedToken as any);
-      mockJose.jwtVerify.mockResolvedValue(mockVerifiedToken as any);
-      mockAuthHelper.checkTokenStatus.mockResolvedValue({ isActive: true });
+        const result = await guard.canActivate(mockContext);
 
-      const result = await guard.canActivate(mockContext);
-
-      expect(result).toBe(true);
-      expect((mockRequest as any).user).toEqual({
-        ...mockVerifiedToken.payload,
-        virtualId: 'user-456',
-        virtual_id: 'user-456',
-      });
-    });
+        expect(result).toBe(true);
+        expect((mockRequest as any).user).toEqual({
+          ...verifiedPayload,
+          virtualId: expectedId,
+          virtual_id: expectedId,
+        });
+      },
+    );
 
     it('should throw UnauthorizedException when authorization header is missing', async () => {
       const requestWithoutAuth = {
