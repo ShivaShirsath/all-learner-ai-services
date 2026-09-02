@@ -82,7 +82,7 @@ describe('JwtAuthGuard', () => {
 
       const mockVerifiedToken = {
         payload: {
-          virtual_id: 'user-123',
+          virtualId: 'user-123',
           exp: Math.floor(Date.now() / 1000) + 3600,
           email: 'test@example.com',
         },
@@ -95,7 +95,11 @@ describe('JwtAuthGuard', () => {
       const result = await guard.canActivate(mockContext);
 
       expect(result).toBe(true);
-      expect((mockRequest as any).user).toEqual(mockVerifiedToken.payload);
+      expect((mockRequest as any).user).toEqual({
+        ...mockVerifiedToken.payload,
+        virtualId: 'user-123',
+        virtual_id: 'user-123',
+      });
     });
 
     it('should authenticate with virtualId or userId field in payload', async () => {
@@ -119,7 +123,11 @@ describe('JwtAuthGuard', () => {
       const result = await guard.canActivate(mockContext);
 
       expect(result).toBe(true);
-      expect((mockRequest as any).user).toEqual(mockVerifiedToken.payload);
+      expect((mockRequest as any).user).toEqual({
+        ...mockVerifiedToken.payload,
+        virtualId: 'user-456',
+        virtual_id: 'user-456',
+      });
     });
 
     it('should throw UnauthorizedException when authorization header is missing', async () => {
@@ -204,7 +212,7 @@ describe('JwtAuthGuard', () => {
 
       const mockVerifiedToken = {
         payload: {
-          virtual_id: 'user-123',
+          virtualId: 'user-123',
           exp: Math.floor(Date.now() / 1000) - 100,
         },
       };
@@ -247,7 +255,7 @@ describe('JwtAuthGuard', () => {
 
       const mockVerifiedToken = {
         payload: {
-          virtual_id: 'user-123',
+          virtualId: 'user-123',
           exp: Math.floor(Date.now() / 1000) + 3600,
         },
       };

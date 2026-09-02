@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import * as jose from 'jose';
 
 export const getEncryptionKey = (): Uint8Array => {
-  const encKeyStr = process.env.JWT_ENCRYPTION_PRIVATE_KEY;
+  const encKeyStr = process.env.JOSE_ENCRYPTION_PRIVATE_KEY;
   if (encKeyStr) {
     return jose.base64url.decode(encKeyStr);
   }
@@ -13,7 +13,7 @@ export const getEncryptionKey = (): Uint8Array => {
 };
 
 export const getSigningKey = (): Uint8Array => {
-  const signinKeyStr = process.env.JWT_SIGNIN_PRIVATE_KEY || '';
+  const signinKeyStr = process.env.JOSE_SIGNIN_PRIVATE_KEY || '';
   return new TextEncoder().encode(signinKeyStr);
 };
 
@@ -99,7 +99,7 @@ export const checkTokenStatus = async (
   if (loginServiceUrl) {
     try {
       const statusData: any = await postJson(
-        `${loginServiceUrl}/api/v1/virtualId/tokenStatus`,
+        loginServiceUrl,
         {
           user_id: Number(userId) || userId,
         },
