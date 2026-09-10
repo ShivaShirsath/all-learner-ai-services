@@ -137,32 +137,85 @@ export const checkTokenStatus = async (
   token: string,
 ): Promise<boolean> => {
   const loginServiceUrl = process.env.AXL_LOGIN_SERVICE_URL || '';
+  const orcServiceUrl = process.env.ALL_ORC_SERVICE_URL || '';
 
-  try {
-    const statusData: any = await postJson(loginServiceUrl, {
-      user_id: Number(userId) || userId,
-      token,
-    });
-    const isActive =
-      statusData?.responseObj?.responseDataParams?.data?.isActive ??
-      statusData?.data?.isActive ??
-      statusData?.isActive ??
-      false;
-    return Boolean(isActive);
-  } catch (err) {
-    logAuthServiceEvent('auth_service_check_failed', {
-      url: loginServiceUrl,
-      userId,
-      errorCode:
-        err instanceof AuthServiceUnavailableError ? err.code ?? null : null,
-      error: err instanceof Error ? err.message : String(err),
-    });
-    if (err instanceof AuthServiceUnavailableError) {
-      throw err;
-    }
+  if (!loginServiceUrl && !orcServiceUrl) {
     throw new AuthServiceUnavailableError(
       'Not able to connect with axl-login-service',
-      err,
     );
   }
+
+  let lastError: unknown = null;
+
+  // 1. Try axl-login-service
+  if (loginServiceUrl) {
+    try {
+      const statusData: any = await postJson(loginServiceUrl, {
+        user_id: Number(userId) || userId,
+        token,
+      });
+
+      const activeToken =
+        statusData?.responseObj?.responseDataParams?.data?.token ??
+        statusData?.data?.token ??
+        statusData?.token ??
+        null;
+      if (activeToken) {
+        return activeToken === token;
+      }
+
+      const isActive =
+        statusData?.responseObj?.responseDataParams?.data?.isActive ??
+        statusData?.data?.isActive ??
+        statusData?.isActive;
+      if (typeof isActive === 'boolean') {
+        return isActive;
+      }
+    } catch (err) {
+      lastError = err;
+      logAuthServiceEvent('auth_service_check_failed', {
+        url: loginServiceUrl,
+        userId,
+        errorCode:
+          err instanceof AuthServiceUnavailableError ? err.code ?? null : null,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  // 2. Fallback to all-orchestration-service
+  if (orcServiceUrl) {
+    try {
+      const orcData: any = await postJson(orcServiceUrl, {
+        user_id: Number(userId) || userId,
+        token,
+      });
+
+      const isActive =
+        orcData?.result?.isActive ??
+        orcData?.responseObj?.responseDataParams?.data?.isActive ??
+        orcData?.data?.isActive ??
+        orcData?.isActive ??
+        false;
+      return Boolean(isActive);
+    } catch (err) {
+      logAuthServiceEvent('orc_service_check_failed', {
+        url: orcServiceUrl,
+        userId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  if (lastError instanceof AuthServiceUnavailableError && !orcServiceUrl) {
+    throw lastError;
+  }
+  if (lastError && !orcServiceUrl) {
+    throw new AuthServiceUnavailableError(
+      'Not able to connect with axl-login-service',
+      lastError,
+    );
+  }
+
+  return false;
 };
