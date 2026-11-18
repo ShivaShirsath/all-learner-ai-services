@@ -5803,7 +5803,7 @@ export class ScoresController {
         max_level: {
           type: 'string',
           example: 'm9',
-          description: 'Maximum milestone level allowed (optional)',
+          description: 'Maximum milestone level allowed (optional). English only; it can lower the max but not raise it above the backend max (en_config.max_milestone_level)',
         },
       },
       required: ['session_id', 'sub_session_id', 'language', 'contentType'],
@@ -6091,17 +6091,22 @@ export class ScoresController {
                 ? 0 // Treat B as equivalent to m0 for progression calculation
                 : parseInt(previous_level.replace('m', ''));
 
+          // English: max_level from the app (9, "9" or "m9") can lower the max,
+          // but never raise it above en_config.max_milestone_level.
+          const requestedMaxLevel = parseInt(
+            String(max_level ?? '').replace(/^m/i, ''),
+            10,
+          );
+          const enMaxLevel =
+            Number.isInteger(requestedMaxLevel) && requestedMaxLevel >= 0
+              ? Math.min(requestedMaxLevel, en_config.max_milestone_level)
+              : en_config.max_milestone_level;
+
           if (
             getSetResult.language === en_config.language_code &&
-            previous_level_id >= en_config.max_milestone_level &&
-            max_level == undefined
+            previous_level_id >= enMaxLevel
           ) {
-            milestone_level = 'm' + en_config.max_milestone_level;
-          } else if (
-            getSetResult.language === en_config.language_code &&
-            previous_level_id >= max_level
-          ) {
-            milestone_level = 'm' + max_level;
+            milestone_level = 'm' + enMaxLevel;
           } else if (
             getSetResult.language === ta_config.language_code &&
             previous_level_id >= ta_config.max_milestone_level
