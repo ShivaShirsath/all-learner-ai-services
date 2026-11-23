@@ -219,6 +219,7 @@ export class ScoresController {
       let constructText = '';
 
       let pause_count = 0;
+      let audio_duration_sec: number | undefined;
       let avg_pause = 0;
 
       let pitch_classification = '';
@@ -254,6 +255,7 @@ export class ScoresController {
 
             CreateLearnerProfileDto['output'] = audioOutput.asrOutBeforeDenoised?.output || '';
             pause_count = audioOutput.pause_count || 0;
+            audio_duration_sec = audioOutput.audio_duration_sec;
             avg_pause = audioOutput.avg_pause;
             pitch_classification = audioOutput.pitch_classification;
             pitch_mean = audioOutput.pitch_mean;
@@ -392,6 +394,7 @@ export class ScoresController {
           constructText,
           language,
           CreateLearnerProfileDto.audio.toString('base64'),
+          { pause_count, audio_duration_sec },
         );
         let tempo_classification = textEvalMatrices.tempo_classification;
         let pause_count_textEval = textEvalMatrices.pause_count;
@@ -678,6 +681,7 @@ export class ScoresController {
       let constructText = '';
 
       let pause_count = 0;
+      let audio_duration_sec: number | undefined;
       let avg_pause = 0;
 
       let pitch_classification = '';
@@ -712,6 +716,7 @@ export class ScoresController {
 
           CreateLearnerProfileDto['output'] = audioOutput.asrOutBeforeDenoised?.output || '';
           pause_count = audioOutput.pause_count || 0;
+          audio_duration_sec = audioOutput.audio_duration_sec;
           avg_pause = audioOutput.avg_pause;
           pitch_classification = audioOutput.pitch_classification;
           pitch_mean = audioOutput.pitch_mean;
@@ -846,6 +851,7 @@ export class ScoresController {
           constructText,
           language,
           CreateLearnerProfileDto.audio.toString('base64'),
+          { pause_count, audio_duration_sec },
         );
         let tempo_classification = textEvalMatrices.tempo_classification;
         let pause_count_textEval = textEvalMatrices.pause_count;
@@ -1132,6 +1138,7 @@ export class ScoresController {
       let constructText = '';
 
       let pause_count = 0;
+      let audio_duration_sec: number | undefined;
       let avg_pause = 0;
 
       let pitch_classification = '';
@@ -1166,6 +1173,7 @@ export class ScoresController {
 
           CreateLearnerProfileDto['output'] = audioOutput.asrOutBeforeDenoised?.output || '';
           pause_count = audioOutput.pause_count || 0;
+          audio_duration_sec = audioOutput.audio_duration_sec;
           avg_pause = audioOutput.avg_pause;
           pitch_classification = audioOutput.pitch_classification;
           pitch_mean = audioOutput.pitch_mean;
@@ -1260,6 +1268,7 @@ export class ScoresController {
           constructText,
           language,
           CreateLearnerProfileDto.audio.toString('base64'),
+          { pause_count, audio_duration_sec },
         );
         let tempo_classification = textEvalMatrices.tempo_classification;
         let pause_count_textEval = textEvalMatrices.pause_count;
@@ -1521,6 +1530,7 @@ export class ScoresController {
       let responseText = '';
       let constructText = '';
       let pause_count = 0;
+      let audio_duration_sec: number | undefined;
       let avg_pause = 0;
       let pitch_classification = '';
       let pitch_mean = 0;
@@ -1565,6 +1575,7 @@ export class ScoresController {
 
           CreateLearnerProfileDto['output'] = audioOutput.asrOutBeforeDenoised?.output || '';
           pause_count = audioOutput.pause_count || 0;
+          audio_duration_sec = audioOutput.audio_duration_sec;
           avg_pause = audioOutput.avg_pause;
           pitch_classification = audioOutput.pitch_classification;
           pitch_mean = audioOutput.pitch_mean;
@@ -1702,6 +1713,7 @@ export class ScoresController {
           Buffer.isBuffer(CreateLearnerProfileDto.audio)
             ? CreateLearnerProfileDto.audio.toString('base64')
             : CreateLearnerProfileDto.audio,
+          { pause_count, audio_duration_sec },
         );
         let tempo_classification = textEvalMatrices.tempo_classification;
         let pause_count_textEval = textEvalMatrices.pause_count;
@@ -1959,6 +1971,7 @@ export class ScoresController {
       let responseText = '';
       let constructText = '';
       let pause_count = 0;
+      let audio_duration_sec: number | undefined;
       let avg_pause = 0;
       let pitch_classification = '';
       let pitch_mean = 0;
@@ -2003,6 +2016,7 @@ export class ScoresController {
 
           CreateLearnerProfileDto['output'] = audioOutput.asrOutBeforeDenoised?.output || '';
           pause_count = audioOutput.pause_count || 0;
+          audio_duration_sec = audioOutput.audio_duration_sec;
           avg_pause = audioOutput.avg_pause;
           pitch_classification = audioOutput.pitch_classification;
           pitch_mean = audioOutput.pitch_mean;
@@ -2140,6 +2154,7 @@ export class ScoresController {
           Buffer.isBuffer(CreateLearnerProfileDto.audio)
             ? CreateLearnerProfileDto.audio.toString('base64')
             : CreateLearnerProfileDto.audio,
+          { pause_count, audio_duration_sec },
         );
         let tempo_classification = textEvalMatrices.tempo_classification;
         let pause_count_textEval = textEvalMatrices.pause_count;
@@ -2414,6 +2429,7 @@ export class ScoresController {
       let createScoreData: any;
 
       let pause_count = 0;
+      let audio_duration_sec: number | undefined;
       let audioFile;
       let avg_pause = 0;
 
@@ -2447,6 +2463,7 @@ export class ScoresController {
             );
             CreateLearnerProfileDto['output'] = audioOutput.asrOutBeforeDenoised?.output || '';
             pause_count = audioOutput.pause_count || 0;
+            audio_duration_sec = audioOutput.audio_duration_sec;
             avg_pause = audioOutput.avg_pause;
             pitch_classification = audioOutput.pitch_classification;
             pitch_mean = audioOutput.pitch_mean;
@@ -2905,33 +2922,14 @@ export class ScoresController {
           }
         }
 
-        const url = process.env.ALL_TEXT_EVAL_API + '/getTextMatrices';
-
-        const textData = {
-          reference: CreateLearnerProfileDto.original_text,
-          hypothesis: CreateLearnerProfileDto.output[0].source,
-          language: 'kn',
-          base64_string: audioFile?.toString('base64'),
-        };
-
-        const textEvalMatrices = await lastValueFrom(
-          this.httpService
-            .post(url, JSON.stringify(textData), {
-              headers: {
-                'Content-Type': 'application/json',
-              },
-            })
-            .pipe(
-              map((resp) => resp.data),
-              catchError((error: AxiosError) => {
-                throw mapAxiosToUpstreamHttpException(
-                  'text-eval',
-                  ErrorCodes.TEXT_EVAL_UNAVAILABLE,
-                  'Text evaluation service is unavailable or returned an error while computing text matrices.',
-                  error,
-                );
-              }),
-            ),
+        // Shared helper (same request/error mapping as before); sends the
+        // pause count + duration from /audio_processing instead of the audio.
+        const textEvalMatrices = await this.scoresService.getTextMetrics(
+          CreateLearnerProfileDto.original_text,
+          CreateLearnerProfileDto.output[0].source,
+          'kn',
+          audioFile?.toString('base64'),
+          { pause_count, audio_duration_sec },
         );
         let tempo_classification = textEvalMatrices.tempo_classification;
         let pause_count_textEval = textEvalMatrices.pause_count;
@@ -3228,6 +3226,7 @@ export class ScoresController {
       let missing_token_scoresArr = [];
 
       let pause_count = 0;
+      let audio_duration_sec: number | undefined;
       let avg_pause = 0;
 
       let pitch_classification = '';
@@ -3270,6 +3269,7 @@ export class ScoresController {
 
             CreateLearnerProfileDto['output'] = audioOutput.asrOutBeforeDenoised?.output || '';
             pause_count = audioOutput.pause_count || 0;
+            audio_duration_sec = audioOutput.audio_duration_sec;
             avg_pause = audioOutput.avg_pause;
             pitch_classification = audioOutput.pitch_classification;
             pitch_mean = audioOutput.pitch_mean;
@@ -3371,6 +3371,7 @@ export class ScoresController {
           responseText,
           language,
           CreateLearnerProfileDto.audio.toString('base64'),
+          { pause_count, audio_duration_sec },
         );
         let tempo_classification = textEvalMatrices.tempo_classification;
         let pause_count_textEval = textEvalMatrices.pause_count;
@@ -3833,6 +3834,7 @@ export class ScoresController {
       let constructTokenArr = [];
 
       let pause_count = 0;
+      let audio_duration_sec: number | undefined;
       let avg_pause = 0;
 
       let pitch_classification = '';
@@ -3886,6 +3888,7 @@ export class ScoresController {
           );
           CreateLearnerProfileDto['output'] = audioOutput.asrOutBeforeDenoised?.output || '';
           pause_count = audioOutput.pause_count || 0;
+          audio_duration_sec = audioOutput.audio_duration_sec;
           avg_pause = audioOutput.avg_pause;
           pitch_classification = audioOutput.pitch_classification;
           pitch_mean = audioOutput.pitch_mean;
@@ -4315,33 +4318,14 @@ export class ScoresController {
           }
         }
 
-        const url = process.env.ALL_TEXT_EVAL_API + '/getTextMatrices';
-
-        const textData = {
-          reference: CreateLearnerProfileDto.original_text,
-          hypothesis: CreateLearnerProfileDto.output[0].source,
-          language: 'te',
-          base64_string: audioFile.toString('base64'),
-        };
-
-        const textEvalMatrices = await lastValueFrom(
-          this.httpService
-            .post(url, JSON.stringify(textData), {
-              headers: {
-                'Content-Type': 'application/json',
-              },
-            })
-            .pipe(
-              map((resp) => resp.data),
-              catchError((error: AxiosError) => {
-                throw mapAxiosToUpstreamHttpException(
-                  'text-eval',
-                  ErrorCodes.TEXT_EVAL_UNAVAILABLE,
-                  'Text evaluation service is unavailable or returned an error while computing text matrices.',
-                  error,
-                );
-              }),
-            ),
+        // Shared helper (same request/error mapping as before); sends the
+        // pause count + duration from /audio_processing instead of the audio.
+        const textEvalMatrices = await this.scoresService.getTextMetrics(
+          CreateLearnerProfileDto.original_text,
+          CreateLearnerProfileDto.output[0].source,
+          'te',
+          audioFile.toString('base64'),
+          { pause_count, audio_duration_sec },
         );
         let tempo_classification = textEvalMatrices.tempo_classification;
         let pause_count_textEval = textEvalMatrices.pause_count;
