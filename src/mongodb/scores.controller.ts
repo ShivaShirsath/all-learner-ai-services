@@ -3058,8 +3058,9 @@ export class ScoresController {
           },
         };
 
-        // Store Array to DB
-        const data = this.scoresService.create(createScoreData);
+        // Store Array to DB. Must finish before the sub-session queries below
+        // read it back, otherwise subsessionFluency/targets miss this attempt.
+        const data = await this.scoresService.create(createScoreData);
 
         function getTokenHexcode(token: string) {
           const result = tokenHexcodeDataArr.find(
