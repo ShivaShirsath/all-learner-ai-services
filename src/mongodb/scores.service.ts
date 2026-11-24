@@ -1,4 +1,6 @@
-import { HttpException, Inject, Injectable } from '@nestjs/common';
+import { HttpException, Inject, Injectable, Logger } from '@nestjs/common';
+import * as http from 'http';
+import * as https from 'https';
 import { ScoreDocument } from './schemas/scores.schema';
 import { hexcodeMappingDocument } from './schemas/hexcodeMapping.schema';
 import { assessmentInputDocument } from './schemas/assessmentInput.schema';
@@ -32,6 +34,50 @@ import {
   SessionResult,
   SUPPORTED_LANGUAGES,
 } from 'src/common/enums/scores.enum';
+
+// Shared client for direct upstream calls (AI4Bharat ASR, text-eval, etc.).
+// Keep-alive reuses connections; Node 16's default agent opens a new TCP/TLS
+// connection per call.
+const upstreamAxios = axios.create({
+  httpAgent: new http.Agent({ keepAlive: true, maxSockets: 256 }),
+  httpsAgent: new https.Agent({ keepAlive: true, maxSockets: 256 }),
+});
+
+const envMs = (name: string, fallback: number): number => {
+  const n = parseInt(process.env[name] ?? '', 10);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+};
+
+const upstreamTimingLogger = new Logger('UpstreamTiming');
+
+/**
+ * Runs an upstream call and logs how long it took: always when slower than
+ * SLOW_UPSTREAM_LOG_MS (default 2000), and for every call when
+ * LOG_UPSTREAM_TIMINGS=true. Shows which dependency makes a request slow.
+ */
+async function timedUpstream<T>(
+  upstream: string,
+  meta: Record<string, unknown>,
+  fn: () => Promise<T>,
+): Promise<T> {
+  const start = Date.now();
+  let ok = false;
+  try {
+    const result = await fn();
+    ok = true;
+    return result;
+  } finally {
+    const ms = Date.now() - start;
+    if (
+      process.env.LOG_UPSTREAM_TIMINGS === 'true' ||
+      ms >= envMs('SLOW_UPSTREAM_LOG_MS', 2000)
+    ) {
+      upstreamTimingLogger.log(
+        JSON.stringify({ event: 'upstream_timing', upstream, ms, ok, ...meta }),
+      );
+    }
+  }
+}
 
 @Injectable()
 export class ScoresService {
@@ -194,6 +240,7 @@ export class ScoresService {
     let intensity_std: number = 0;
     let expression_classification: any;
     let smoothness_classification: any;
+    let audio_duration_sec: number | undefined;
 
     let serviceId = '';
     switch (language) {
@@ -225,27 +272,47 @@ export class ScoresService {
         serviceId = `ai4bharat/conformer-${language}-gpu--t4`;
     }
 
-    asrOutBeforeDenoised = await asrCall();
-
     const denoiserConfig = {
       method: 'post',
       url: process.env.ALL_TEXT_EVAL_API + '/audio_processing',
       headers: {
         'Content-Type': 'application/json',
       },
+      timeout: envMs('TEXT_EVAL_AUDIO_TIMEOUT_MS', 60000),
       data: {
         base64_string: audio,
         enableDenoiser: process.env.denoiserEnabled === 'true' ? true : false,
         enablePauseCount: true,
         contentType: contentType,
         enable_prosody_fluency: true,
+        // The processed audio is not used after this call (ASR runs on the
+        // original audio), so don't have text-eval send it back.
+        return_audio: false,
       },
     };
 
+    // ASR and text-eval audio processing both use the original audio and do
+    // not depend on each other: run them at the same time instead of one
+    // after the other. allSettled keeps the previous error precedence (an
+    // ASR failure is reported first, as it was when ASR ran first).
+    const [asrResult, audioProcessingResult] = await Promise.allSettled([
+      asrCall(),
+      timedUpstream('text-eval/audio_processing', { language, contentType }, () =>
+        upstreamAxios.request(denoiserConfig),
+      ),
+    ]);
+    if (asrResult.status === 'rejected') {
+      throw asrResult.reason;
+    }
+    asrOutBeforeDenoised = asrResult.value;
+
     try {
-      const denoiserResponse = await axios.request(denoiserConfig);
-      audio = denoiserResponse.data.denoised_audio_base64;
+      if (audioProcessingResult.status === 'rejected') {
+        throw audioProcessingResult.reason;
+      }
+      const denoiserResponse = audioProcessingResult.value;
       pause_count = denoiserResponse.data.pause_count;
+      audio_duration_sec = denoiserResponse.data.audio_duration_sec;
       avg_pause = denoiserResponse.data.avg_pause;
       pitch_classification = denoiserResponse.data.pitch_classification;
       pitch_mean = denoiserResponse.data.pitch_mean;
@@ -302,11 +369,18 @@ export class ScoresService {
           'Content-Type': 'application/json',
           Authorization: process.env.AI4BHARAT_API_KEY,
         },
+        // Previously no timeout: a hung ASR call held the request until the
+        // gateway returned 504.
+        timeout: envMs('ASR_TIMEOUT_MS', 60000),
         data: options,
       };
 
       try {
-        const asrResponse = await axios.request(config);
+        const asrResponse = await timedUpstream(
+          'ai4bharat/asr',
+          { language, serviceId },
+          () => upstreamAxios.request(config),
+        );
         return asrResponse.data;
       } catch (error) {
         const { status, body } = buildErrorPayload(error);
@@ -335,6 +409,8 @@ export class ScoresService {
       intensity_std: intensity_std,
       expression_classification: expression_classification,
       smoothness_classification: smoothness_classification,
+      // Pass to getTextMetrics so text-eval doesn't re-process the audio.
+      audio_duration_sec: audio_duration_sec,
     };
   }
 
@@ -719,6 +795,22 @@ export class ScoresService {
     const threshold = 0.7;
     let RecordData = [];
 
+    // Keep only this language's sessions *before* $unwind (same result as
+    // unwinding everything and matching afterwards, without exploding the
+    // user's other-language history). Sessions are $push-ed in time order.
+    const languageSessions = {
+      $filter: {
+        input: { $ifNull: ['$sessions', []] },
+        as: 's',
+        cond: { $eq: ['$$s.language', language] },
+      },
+    };
+    // Optional cap: TARGETS_HISTORY_SESSION_LIMIT=N reads only the N most
+    // recent sessions. Default 0 = whole history (current behaviour). The
+    // cost of this query grows with every submission a learner makes.
+    const historyLimit =
+      parseInt(process.env.TARGETS_HISTORY_SESSION_LIMIT ?? '', 10) || 0;
+
     RecordData = await this.scoreModel.aggregate([
       {
         $match: {
@@ -726,12 +818,15 @@ export class ScoresService {
         },
       },
       {
-        $unwind: '$sessions',
+        $project: {
+          sessions:
+            historyLimit > 0
+              ? { $slice: [languageSessions, -historyLimit] }
+              : languageSessions,
+        },
       },
       {
-        $match: {
-          'sessions.language': language,
-        },
+        $unwind: '$sessions',
       },
       {
         $facet: {
@@ -2629,17 +2724,26 @@ export class ScoresService {
     response_text: string,
     language: string,
     base64_audio: string,
+    audioMeta?: { pause_count?: number; audio_duration_sec?: number },
   ) {
     const url = process.env.ALL_TEXT_EVAL_API + '/getTextMatrices';
 
-    const textData = {
+    const textData: Record<string, unknown> = {
       reference: original_text,
       hypothesis: response_text,
       language: language,
-      base64_string: base64_audio,
     };
+    if (audioMeta?.audio_duration_sec != null) {
+      // Values already computed by /audio_processing for this same audio:
+      // text-eval skips decoding it and running pause detection again, and
+      // the (multi-MB) audio is not uploaded a second time.
+      textData.audio_duration_sec = audioMeta.audio_duration_sec;
+      textData.pause_count = audioMeta.pause_count;
+    } else {
+      textData.base64_string = base64_audio;
+    }
 
-    const textEvalMatrices = await lastValueFrom(
+    const textEvalMatrices = await timedUpstream('text-eval/getTextMatrices', { language }, () => lastValueFrom(
       this.httpService
         .post(url, JSON.stringify(textData), {
           headers: {
@@ -2657,7 +2761,7 @@ export class ScoresService {
             );
           }),
         ),
-    );
+    ));
 
     return textEvalMatrices;
   }
@@ -2972,13 +3076,22 @@ export class ScoresService {
           user_id: userId,
         },
       },
+      // Keep only this sub-session's entries before $unwind (same result as
+      // unwinding the whole history and matching afterwards). Called on every
+      // getSetResult.
       {
-        $unwind: '$sessions',
+        $project: {
+          sessions: {
+            $filter: {
+              input: { $ifNull: ['$sessions', []] },
+              as: 's',
+              cond: { $eq: ['$$s.sub_session_id', sub_session_id] },
+            },
+          },
+        },
       },
       {
-        $match: {
-          'sessions.sub_session_id': sub_session_id,
-        },
+        $unwind: '$sessions',
       },
       {
         $project: {
@@ -3381,7 +3494,7 @@ export class ScoresService {
       teacherText: teacherText,
       markPrompt: '',
     };
-    const comprehension = await lastValueFrom(
+    const comprehension = await timedUpstream('llm/comprehension', {}, () => lastValueFrom(
       this.httpService
         .post(url, JSON.stringify(data), {
           headers: {
@@ -3410,7 +3523,7 @@ export class ScoresService {
             );
           }),
         ),
-    );
+    ));
 
     return comprehension;
   }
@@ -3613,7 +3726,7 @@ export class ScoresService {
     };
 
     try {
-      const response = await axios.request(config);
+      const response = await upstreamAxios.request(config);
       return response.data;
     } catch (error) {
       console.error(
@@ -3748,7 +3861,7 @@ export class ScoresService {
     };
 
     try {
-      const response = await axios.request(config);
+      const response = await upstreamAxios.request(config);
       return response.data;
     } catch (error) {
       console.error('Error in Voice auth api:', error.response?.data || error.message);

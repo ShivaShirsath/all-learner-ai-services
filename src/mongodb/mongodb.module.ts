@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import * as http from 'http';
+import * as https from 'https';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule } from '@nestjs/config';
 import { ScoreSchema } from './schemas/scores.schema';
@@ -21,7 +23,12 @@ import { AssessmentTrackingSchema, AssessmentTrackingScoreDetailSchema } from '.
 @Module({
   imports: [
     HttpModule.register({
-      timeout: 5000,
+      // Same 5 s default as before; tunable per environment.
+      timeout: parseInt(process.env.HTTP_CLIENT_TIMEOUT_MS, 10) || 5000,
+      // Reuse connections to text-eval / content-service / LLM. Node 16 has
+      // no keep-alive by default, so every call opened a new TCP connection.
+      httpAgent: new http.Agent({ keepAlive: true, maxSockets: 256 }),
+      httpsAgent: new https.Agent({ keepAlive: true, maxSockets: 256 }),
     }),
     ConfigModule.forRoot({
       isGlobal: true,
@@ -30,8 +37,11 @@ import { AssessmentTrackingSchema, AssessmentTrackingScoreDetailSchema } from '.
     MongooseModule.forRootAsync({
       useFactory: async () => ({
         uri: process.env.MONGO_URL,
-        maxPoolSize: parseInt(process.env.POOL_SIZE, 10) || 100,
-        minPoolSize: parseInt(process.env.MIN_POOL_SIZE, 10) || 20,
+        // Pool size is PER PROCESS. Total connections to MongoDB =
+        // POOL_SIZE x cluster workers (WORKERS) x pods. Large values do not add
+        // throughput; they let more heavy aggregations run at once on MongoDB.
+        maxPoolSize: parseInt(process.env.POOL_SIZE, 10) || 50,
+        minPoolSize: parseInt(process.env.MIN_POOL_SIZE, 10) || 5,
         waitQueueTimeoutMS: 5000,
         socketTimeoutMS: 45000,
         connectTimeoutMS: 10000,

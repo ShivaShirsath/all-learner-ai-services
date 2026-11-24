@@ -7,6 +7,7 @@ import {
   getSigningKey,
   postJson,
   checkTokenStatus,
+  clearTokenStatusCache,
   AuthServiceUnavailableError,
 } from './authHelper';
 
@@ -224,6 +225,72 @@ describe('authHelper', () => {
       await expect(checkTokenStatus('12345', 'my-token')).rejects.toThrow(
         AuthServiceUnavailableError,
       );
+    });
+  });
+
+  describe('checkTokenStatus cache (AUTH_TOKEN_STATUS_CACHE_TTL_MS)', () => {
+    const URL = 'http://axl-login-service:8000/api/v1/virtualId/tokenStatus';
+
+    beforeEach(() => {
+      clearTokenStatusCache();
+      process.env.AXL_LOGIN_SERVICE_URL = URL;
+    });
+
+    it('is disabled by default: every check calls axl-login-service', async () => {
+      const { spy } = mockHttpRequest(http, { isActive: true });
+      await checkTokenStatus('1', 'tok');
+      await checkTokenStatus('1', 'tok');
+      expect(spy).toHaveBeenCalledTimes(2);
+      spy.mockRestore();
+    });
+
+    it('answers repeat checks of the same token from memory within the TTL', async () => {
+      process.env.AUTH_TOKEN_STATUS_CACHE_TTL_MS = '30000';
+      const { spy } = mockHttpRequest(http, { isActive: true });
+      expect(await checkTokenStatus('1', 'tok')).toBe(true);
+      expect(await checkTokenStatus('1', 'tok')).toBe(true);
+      expect(spy).toHaveBeenCalledTimes(1);
+      // a different token is a different cache entry
+      await checkTokenStatus('1', 'other-token');
+      expect(spy).toHaveBeenCalledTimes(2);
+      spy.mockRestore();
+    });
+
+    it('calls axl-login-service again once the entry has expired', async () => {
+      process.env.AUTH_TOKEN_STATUS_CACHE_TTL_MS = '30000';
+      const now = jest.spyOn(Date, 'now').mockReturnValue(1_000_000);
+      const { spy } = mockHttpRequest(http, { isActive: true });
+      await checkTokenStatus('1', 'tok');
+      now.mockReturnValue(1_000_000 + 30_001);
+      await checkTokenStatus('1', 'tok');
+      expect(spy).toHaveBeenCalledTimes(2);
+      spy.mockRestore();
+      now.mockRestore();
+    });
+
+    it('never caches failures', async () => {
+      process.env.AUTH_TOKEN_STATUS_CACHE_TTL_MS = '30000';
+      const failing = mockHttpRequest(http, undefined, new Error('Network error'));
+      await expect(checkTokenStatus('1', 'tok')).rejects.toThrow(
+        AuthServiceUnavailableError,
+      );
+      failing.spy.mockRestore();
+      const ok = mockHttpRequest(http, { isActive: true });
+      expect(await checkTokenStatus('1', 'tok')).toBe(true);
+      expect(ok.spy).toHaveBeenCalledTimes(1);
+      ok.spy.mockRestore();
+    });
+  });
+
+  describe('postJson connection settings', () => {
+    it('reuses connections (keep-alive agent) and sets a timeout', async () => {
+      const { spy } = mockHttpRequest(http, { ok: true });
+      await postJson('http://example.com/api', {});
+      const options = spy.mock.calls[0][1] as any;
+      expect(options.agent).toBeDefined();
+      expect(options.agent.keepAlive).toBe(true);
+      expect(options.timeout).toBe(3000);
+      spy.mockRestore();
     });
   });
 });
